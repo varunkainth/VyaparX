@@ -1,0 +1,186 @@
+import express from "express";
+import { v4 as uuid } from "uuid";
+import env from "./src/config/env";
+import pool from "./src/config/db";
+import { ERROR_CODES } from "./src/constants/errorCodes";
+import { openApiSpec } from "./src/config/openapi";
+import { requestLogger } from "./src/middleware/requestLogger";
+import { authRateLimit, corsMiddleware, globalRateLimit, helmetMiddleware } from "./src/middleware/security";
+import authRouter from "./src/routes/auth.routes";
+import passwordResetRouter from "./src/routes/password-reset.routes";
+import emailVerificationRouter from "./src/routes/email-verification.routes";
+import businessRouter from "./src/routes/business.routes";
+import financeRouter from "./src/routes/finance.routes";
+import inventoryRouter from "./src/routes/inventory.routes";
+import invoiceRouter from "./src/routes/invoice.routes";
+import ledgerRouter from "./src/routes/ledger.routes";
+import paymentRouter from "./src/routes/payment.routes";
+import partyRouter from "./src/routes/party.routes";
+import analyticsRouter from "./src/routes/analytics.routes";
+import reportRouter from "./src/routes/report.routes";
+import syncRouter from "./src/routes/sync.routes";
+import dashboardRouter from "./src/routes/dashboard.routes";
+import analyticsDashboardRouter from "./src/routes/analytics-dashboard.routes";
+import invoiceSettingsRouter from "./src/routes/invoice-settings.routes";
+import emailRouter from "./src/routes/email.routes";
+import { errorHandler } from "./src/utils/errorHandler";
+import { sendSuccess } from "./src/utils/responseHandler";
+
+const app = express();
+
+app.use(express.json());
+app.use(helmetMiddleware);
+app.use(corsMiddleware);
+app.use(globalRateLimit);
+app.use(requestLogger);
+app.use((req, _res, next) => {
+    req.id = req.id || uuid();
+    next();
+});
+
+app.get("/", (_req, res) => {
+    return sendSuccess(res, { data: { message: "VyaparX API" } });
+});
+
+app.get("/health", (_req, res) => {
+    return sendSuccess(res, {
+        data: {
+            status: "ok",
+            uptime: process.uptime(),
+            timestamp: new Date().toISOString(),
+        },
+    });
+});
+
+app.get("/test-db", async (_req, res, next) => {
+    try {
+        const result = await pool.query("SELECT NOW()");
+        return sendSuccess(res, {
+            message: "Database Connection Successful",
+            data: { time: result.rows[0].now },
+        });
+    } catch (err) {
+        return next(err);
+    }
+});
+
+app.get("/meta/error-codes", (_req, res) => {
+    return sendSuccess(res, {
+        message: "Error codes fetched",
+        data: { error_codes: ERROR_CODES },
+    });
+});
+
+app.get("/openapi.json", (_req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    return res.status(200).json(openApiSpec);
+});
+
+app.get("/docs", (_req, res) => {
+    const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>VyaparX API Docs</title>
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+  </head>
+  <body>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+    <script>
+      window.ui = SwaggerUIBundle({
+        url: '/openapi.json',
+        dom_id: '#swagger-ui',
+        deepLinking: true,
+        presets: [SwaggerUIBundle.presets.apis],
+        layout: 'BaseLayout'
+      });
+    </script>
+  </body>
+</html>`;
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    return res.status(200).send(html);
+});
+
+app.use("/auth", authRateLimit, authRouter);
+app.use("/api/v1", passwordResetRouter);
+app.use("/api/v1", emailVerificationRouter);
+app.use("/api/v1", financeRouter);
+app.use("/api/v1", invoiceRouter);
+app.use("/api/v1", ledgerRouter);
+app.use("/api/v1", paymentRouter);
+app.use("/api/v1", businessRouter);
+app.use("/api/v1", partyRouter);
+app.use("/api/v1", inventoryRouter);
+app.use("/api/v1", reportRouter);
+app.use("/api/v1", analyticsRouter);
+app.use("/api/v1", syncRouter);
+app.use("/api/v1", dashboardRouter);
+app.use("/api/v1", analyticsDashboardRouter);
+app.use("/api/v1", invoiceSettingsRouter);
+app.use("/api/v1", emailRouter);
+
+app.use((req, res) => {
+    res.status(404).json({
+        success: false,
+        error: {
+            code: ERROR_CODES.NOT_FOUND,
+            message: `Route ${req.method} ${req.path} not found`,
+        },
+    });
+});
+
+app.use(errorHandler);
+
+const PORT = env.PORT || 5000;
+const HOST = "0.0.0.0";
+
+const server = app.listen(PORT, HOST, async () => {
+    console.log(`Server running on http://${HOST}:${PORT}`);
+
+    try {
+        const client = await pool.connect();
+        console.log("Database connection verified on startup");
+        client.release();
+    } catch (err: any) {
+        console.error("Failed to connect to database on startup:", err.message);
+        process.exit(1);
+    }
+});
+
+pool.on("connect", () => {
+    console.log("New client connected to PostgresDB");
+});
+
+pool.on("acquire", () => {
+    console.log("Client acquired from pool");
+});
+
+pool.on("remove", () => {
+    console.log("Client removed from pool");
+});
+
+pool.on("error", (err) => {
+    console.error("Unexpected error on idle client:", err.message);
+    process.exit(1);
+});
+
+const shutdown = async (signal: string) => {
+    console.log(`\n${signal} received. Shutting down gracefully...`);
+
+    server.close(async () => {
+        console.log("HTTP server closed");
+        try {
+            await pool.end();
+            console.log("Database pool closed");
+            process.exit(0);
+        } catch (err: any) {
+            console.error("Error closing database pool:", err.message);
+            process.exit(1);
+        }
+    });
+};
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));

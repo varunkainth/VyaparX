@@ -1,0 +1,65 @@
+{
+    "defaultTemplate": "bill_pro",
+    "templates": {
+        "classic": {
+            "layout": "classic",
+            "title": "Tax Invoice",
+            "titleAlign": "center",
+            "headerBackgroundColor": "#FFFFFF",
+            "headerTextColor": "#000000",
+            "metaFontSize": 12,
+            "sectionFontSize": 11,
+            "itemFontSize": 9,
+            "totalFontSize": 11,
+            "showPlaceOfSupply": true
+        },
+        "modern": {
+            "layout": "modern",
+            "title": "INVOICE",
+            "titleAlign": "left",
+            "headerBackgroundColor": "#1f2937",
+            "headerTextColor": "#FFFFFF",
+            "metaFontSize": 11,
+            "sectionFontSize": 11,
+            "itemFontSize": 9,
+            "totalFontSize": 13,
+            "showPlaceOfSupply": true
+        },
+        "compact": {
+            "layout": "compact",
+            "title": "Invoice",
+            "titleAlign": "left",
+            "headerBackgroundColor": "#FFFFFF",
+            "headerTextColor": "#000000",
+            "metaFontSize": 9,
+            "sectionFontSize": 10,
+            "itemFontSize": 8,
+            "totalFontSize": 10,
+            "showPlaceOfSupply": false
+        },
+        "bill_pro": {
+            "layout": "bill_pro",
+            "title": "TAX INVOICE",
+            "titleAlign": "center",
+            "headerBackgroundColor": "#111827",
+            "headerTextColor": "#FFFFFF",
+            "metaFontSize": 10,
+            "sectionFontSize": 11,
+            "itemFontSize": 9,
+            "totalFontSize": 12,
+            "showPlaceOfSupply": true
+        },
+        "bill_pro_legacy": {
+            "layout": "bill_pro_legacy",
+            "title": "TAX INVOICE",
+            "titleAlign": "center",
+            "headerBackgroundColor": "#111827",
+            "headerTextColor": "#FFFFFF",
+            "metaFontSize": 10,
+            "sectionFontSize": 11,
+            "itemFontSize": 9,
+            "totalFontSize": 12,
+            "showPlaceOfSupply": true
+        }
+    }
+}
