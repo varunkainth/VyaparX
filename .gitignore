@@ -58,3 +58,7 @@ Thumbs.db
 # ── Docs (auto-generated) ─────────────────────────────────
 frontend/docs/
 server/docs/
+
+# ── Miscellaneous ─────────────────────────────────────────
+.qoder
+.vscode
