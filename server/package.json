@@ -6,6 +6,8 @@
   "scripts": {
     "start": "bun run index.ts",
     "dev": "bun run --watch index.ts",
+    "build": "bun build index.ts --outdir ./dist --target bun",
+    "type-check": "bunx tsc --noEmit",
     "migrate": "bun run src/migration/migration-runner.ts",
     "seed:dev": "bun run src/seeds/seed-dev.ts",
     "test:integration": "bun test src/tests/integration",

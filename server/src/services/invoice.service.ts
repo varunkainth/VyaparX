@@ -595,11 +595,13 @@ export async function createInvoiceNote(data: CreateInvoiceNoteInput) {
             return idempotencyStart.cachedResponse as { success: boolean; invoice_id: string };
         }
 
+        // Credit notes use sales sequence, debit notes use purchase sequence
+        const sequenceType = data.note_type === "credit_note" ? "sales" : "purchase";
         const sequenceNo = await invoiceRepository.nextInvoiceSequence(
             client,
             data.business_id,
             financialYear,
-            data.note_type
+            sequenceType
         );
         const prefix = data.note_type === "credit_note" ? "CN" : "DN";
         const invoiceNumber = `${prefix}-${financialYear.split("-")[0]}-${String(sequenceNo).padStart(3, "0")}`;
@@ -607,7 +609,7 @@ export async function createInvoiceNote(data: CreateInvoiceNoteInput) {
         const invoiceId = await invoiceRepository.insertInvoice(client, {
             business_id: data.business_id,
             party_id: data.party_id,
-            invoice_type: data.note_type,
+            invoice_type: sequenceType,
             invoice_number: invoiceNumber,
             financial_year: financialYear,
             invoice_date: data.invoice_date,

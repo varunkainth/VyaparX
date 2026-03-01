@@ -10,17 +10,12 @@ import { sendSuccess } from "../utils/responseHandler";
 import { AppError } from "../utils/appError";
 import { ERROR_CODES } from "../constants/errorCodes";
 
-interface SendInvoiceEmailRequest {
-    business_id: string;
-    invoice_id: string;
-}
-
 interface SendInvoiceEmailBody {
     recipient_email: string;
 }
 
 export async function sendInvoiceEmailHandler(
-    req: Request<SendInvoiceEmailRequest, {}, SendInvoiceEmailBody>,
+    req: Request<{ business_id: string; invoice_id: string }, {}, SendInvoiceEmailBody>,
     res: Response
 ) {
     const { business_id, invoice_id } = req.params;

@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { getInvoiceSettings, updateInvoiceSettings, resetInvoiceSettings } from "../services/invoice-settings.service";
 import { sendSuccess } from "../utils/responseHandler";
 
-export async function getInvoiceSettingsHandler(req: Request, res: Response) {
+export async function getInvoiceSettingsHandler(req: Request<{ business_id: string }>, res: Response) {
     const { business_id } = req.params;
 
     const settings = await getInvoiceSettings(business_id);
@@ -13,7 +13,7 @@ export async function getInvoiceSettingsHandler(req: Request, res: Response) {
     });
 }
 
-export async function updateInvoiceSettingsHandler(req: Request, res: Response) {
+export async function updateInvoiceSettingsHandler(req: Request<{ business_id: string }>, res: Response) {
     const { business_id } = req.params;
     const data = req.body;
 
@@ -25,7 +25,7 @@ export async function updateInvoiceSettingsHandler(req: Request, res: Response) 
     });
 }
 
-export async function resetInvoiceSettingsHandler(req: Request, res: Response) {
+export async function resetInvoiceSettingsHandler(req: Request<{ business_id: string }>, res: Response) {
     const { business_id } = req.params;
 
     const settings = await resetInvoiceSettings(business_id);

@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { getAnalytics, getActivity } from "../services/analytics-dashboard.service";
 import { sendSuccess } from "../utils/responseHandler";
 
-export async function analyticsHandler(req: Request, res: Response) {
+export async function analyticsHandler(req: Request<{ business_id: string }>, res: Response) {
     const { business_id } = req.params;
     const days = parseInt(req.query.days as string) || 30;
 
@@ -14,7 +14,7 @@ export async function analyticsHandler(req: Request, res: Response) {
     });
 }
 
-export async function activityHandler(req: Request, res: Response) {
+export async function activityHandler(req: Request<{ business_id: string }>, res: Response) {
     const { business_id } = req.params;
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
