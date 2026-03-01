@@ -1,4 +1,9 @@
+import type { Metadata } from "next"
 import { AppSidebar } from "@/components/layout/app-sidebar";
+
+export const metadata: Metadata = {
+  title: "Create Invoice Note",
+}
 import {
   Breadcrumb,
   BreadcrumbItem,

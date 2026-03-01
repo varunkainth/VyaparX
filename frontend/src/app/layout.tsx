@@ -15,8 +15,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "VyaparX ",
-  description: "A Inventory Management , Billing & Ledgers Handler Application",
+  title: {
+    default: "VyaparX",
+    template: "%s | VyaparX",
+  },
+  description: "Inventory Management, Billing & Ledger Handler Application",
 };
 
 export const viewport: Viewport = {

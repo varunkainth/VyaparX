@@ -1,4 +1,9 @@
+import type { Metadata } from "next"
 import { AppSidebar } from "@/components/layout/app-sidebar"
+
+export const metadata: Metadata = {
+  title: "Analytics",
+}
 import { PageLayout } from "@/components/layout/page-layout"
 import {
   Breadcrumb,

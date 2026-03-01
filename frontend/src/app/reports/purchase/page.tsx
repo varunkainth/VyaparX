@@ -1,4 +1,9 @@
+import type { Metadata } from "next"
 import { AppSidebar } from "@/components/layout/app-sidebar";
+
+export const metadata: Metadata = {
+  title: "Purchase Report",
+}
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import {
   Breadcrumb,
