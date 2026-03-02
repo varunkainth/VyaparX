@@ -14,6 +14,14 @@ import type { InvoiceWithItems, Invoice } from "@/types/invoice"
 import { PAYMENT_MODES } from "@/types/payment"
 import { toast } from "sonner"
 import { getErrorMessage } from "@/lib/error-handler"
+
+// Helper for dev-only logging
+const devLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV === "development") {
+    console.log(...args)
+  }
+}
+
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -121,7 +129,7 @@ export function RecordPaymentPage() {
 
   // Fetch available invoices when party is selected
   useEffect(() => {
-    console.log("Party/PaymentType changed:", { watchPartyId, paymentType, hasInvoiceId: !!invoiceId })
+    devLog("Party/PaymentType changed:", { watchPartyId, paymentType, hasInvoiceId: !!invoiceId })
     if (watchPartyId && !invoiceId) {
       fetchAvailableInvoices(watchPartyId)
     } else if (!watchPartyId) {
@@ -138,7 +146,7 @@ export function RecordPaymentPage() {
     setIsLoadingAvailableInvoices(true)
     try {
       const invoiceType = paymentType === "received" ? "sales" : "purchase"
-      console.log("Fetching invoices for:", { partyId, invoiceType, paymentType })
+      devLog("Fetching invoices for:", { partyId, invoiceType, paymentType })
       
       const data = await invoiceService.listInvoices(currentBusiness.id, {
         party_id: partyId,
@@ -146,14 +154,14 @@ export function RecordPaymentPage() {
         limit: 100,
       })
       
-      console.log("All invoices:", data.items)
+      devLog("All invoices:", data.items)
       
       // Filter for unpaid and partial invoices
       const unpaidInvoices = data.items.filter(
         inv => inv.payment_status === "unpaid" || inv.payment_status === "partial"
       )
       
-      console.log("Unpaid/Partial invoices:", unpaidInvoices)
+      devLog("Unpaid/Partial invoices:", unpaidInvoices)
       setAvailableInvoices(unpaidInvoices)
     } catch (error) {
       const errorMessage = getErrorMessage(error)
@@ -552,7 +560,7 @@ export function RecordPaymentPage() {
                       <FieldLabel>Mode</FieldLabel>
                       <Select
                         value={paymentMode}
-                        onValueChange={(value) => setValue("payment_mode", value as any)}
+                        onValueChange={(value) => setValue("payment_mode", value as RecordPaymentFormData["payment_mode"])}
                       >
                         <SelectTrigger>
                           <SelectValue />
@@ -628,7 +636,7 @@ export function RecordPaymentPage() {
                     {paymentMode === "cash" && (
                       <Alert>
                         <AlertDescription className="text-xs">
-                          Cash payments are automatically reconciled and don't require bank verification.
+                          Cash payments are automatically reconciled and don&apos;t require bank verification.
                         </AlertDescription>
                       </Alert>
                     )}

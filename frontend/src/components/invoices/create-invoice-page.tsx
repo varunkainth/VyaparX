@@ -27,7 +27,8 @@ import {
   Save,
   Plus,
   Trash2,
-  Calculator
+  Calculator,
+  Package
 } from "lucide-react"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { PageLayout } from "@/components/layout/page-layout"
@@ -266,8 +267,49 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
     }
   }
 
+  const validateStockForSales = (): { valid: boolean; message?: string } => {
+    if (invoiceType !== "sales") return { valid: true }
+
+    const stockErrors: string[] = []
+
+    for (const item of watchItems) {
+      if (!item.item_id) continue
+
+      const inventoryItem = inventoryItems.find((i) => i.id === item.item_id)
+      if (!inventoryItem) continue
+
+      if (inventoryItem.current_stock <= 0) {
+        stockErrors.push(`${item.item_name}: Out of stock (available: ${inventoryItem.current_stock})`)
+      } else if (item.quantity > inventoryItem.current_stock) {
+        stockErrors.push(
+          `${item.item_name}: Insufficient stock (requested: ${item.quantity}, available: ${inventoryItem.current_stock})`
+        )
+      }
+    }
+
+    if (stockErrors.length > 0) {
+      return {
+        valid: false,
+        message: `Cannot create sales invoice due to stock issues:\n${stockErrors.join("\n")}`,
+      }
+    }
+
+    return { valid: true }
+  }
+
   const onSubmit = async (data: CreateInvoiceFormData) => {
     if (!currentBusiness) return
+
+    // Validate stock for sales invoices
+    if (invoiceType === "sales") {
+      const stockValidation = validateStockForSales()
+      if (!stockValidation.valid) {
+        toast.error(stockValidation.message, {
+          duration: 6000,
+        })
+        return
+      }
+    }
 
     try {
       const totals = calculateTotals()
@@ -355,6 +397,38 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
         await invoiceService.createSalesInvoice(invoiceData)
       } else {
         await invoiceService.createPurchaseInvoice(invoiceData)
+
+        // Auto-update inventory stock for purchase invoices
+        const stockUpdatePromises = data.items
+          .filter((item) => item.item_id && item.quantity > 0)
+          .map(async (item) => {
+            try {
+              await inventoryService.adjustStock(currentBusiness.id, item.item_id!, {
+                quantity: item.quantity,
+                direction: "in",
+                unit_price: item.unit_price,
+                notes: `Stock added via purchase invoice`,
+              })
+              return { success: true, itemName: item.item_name }
+            } catch (error) {
+              return { success: false, itemName: item.item_name, error }
+            }
+          })
+
+        const stockResults = await Promise.all(stockUpdatePromises)
+        const successfulUpdates = stockResults.filter((r) => r.success)
+        const failedUpdates = stockResults.filter((r) => !r.success)
+
+        if (successfulUpdates.length > 0) {
+          toast.success(
+            `Stock updated for ${successfulUpdates.length} item(s): ${successfulUpdates.map((r) => r.itemName).join(", ")}`
+          )
+        }
+        if (failedUpdates.length > 0) {
+          toast.warning(
+            `Failed to update stock for: ${failedUpdates.map((r) => r.itemName).join(", ")}. Please update manually.`
+          )
+        }
       }
 
       toast.success(`${invoiceType === "sales" ? "Sales" : "Purchase"} invoice created successfully!`)
@@ -616,48 +690,126 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div>
                     <CardTitle className="text-base md:text-lg">Invoice Items</CardTitle>
-                    <CardDescription className="text-xs md:text-sm">Add items to the invoice</CardDescription>
+                    <CardDescription className="text-xs md:text-sm">
+                      {invoiceType === "sales" 
+                        ? "Select items from inventory to add to invoice" 
+                        : "Select items from inventory or add custom items"}
+                    </CardDescription>
                   </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      append({
-                        item_name: "",
-                        unit: "PCS",
-                        quantity: 1,
-                        unit_price: 0,
-                        discount_pct: 0,
-                        gst_rate: 18,
-                      })
-                    }
-                    className="cursor-pointer w-full sm:w-auto"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Item
-                  </Button>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <Select
+                      onValueChange={(value) => {
+                        if (value === "__custom__") {
+                          append({
+                            item_name: "",
+                            unit: "PCS",
+                            quantity: 1,
+                            unit_price: 0,
+                            discount_pct: 0,
+                            gst_rate: 18,
+                          })
+                        } else {
+                          const item = inventoryItems.find((i) => i.id === value)
+                          if (item) {
+                            append({
+                              item_id: item.id,
+                              item_name: item.name,
+                              unit: item.unit,
+                              quantity: 1,
+                              unit_price: invoiceType === "sales" ? item.selling_price : item.purchase_price,
+                              discount_pct: 0,
+                              gst_rate: item.gst_rate,
+                              hsn_code: item.hsn_code || "",
+                            })
+                          }
+                        }
+                      }}
+                      disabled={isLoadingInventory}
+                    >
+                      <SelectTrigger className="w-full sm:w-[280px]">
+                        <SelectValue placeholder="+ Add item from inventory" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-[300px]">
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Inventory Items
+                        </div>
+                        {inventoryItems.length === 0 ? (
+                          <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                            No inventory items available
+                          </div>
+                        ) : (
+                          inventoryItems.map((item) => {
+                            const isOutOfStock = item.current_stock <= 0
+                            const isLowStock = item.current_stock <= (item.low_stock_threshold || 0)
+                            const canUseForSales = invoiceType === "purchase" || item.current_stock > 0
+
+                            return (
+                              <SelectItem
+                                key={item.id}
+                                value={item.id}
+                                disabled={invoiceType === "sales" && isOutOfStock}
+                                className={invoiceType === "sales" && isOutOfStock ? "opacity-50" : ""}
+                              >
+                                <div className="flex items-center justify-between w-full gap-3">
+                                  <div className="flex flex-col">
+                                    <span className="text-sm font-medium truncate max-w-[180px]">{item.name}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      ₹{invoiceType === "sales" ? item.selling_price : item.purchase_price} / {item.unit}
+                                    </span>
+                                  </div>
+                                  <Badge
+                                    variant="outline"
+                                    className={`text-xs flex-shrink-0 ${
+                                      isOutOfStock
+                                        ? "text-red-600 border-red-600 bg-red-50 dark:bg-red-950/20"
+                                        : isLowStock
+                                        ? "text-orange-600 border-orange-600 bg-orange-50 dark:bg-orange-950/20"
+                                        : "text-green-600 border-green-600 bg-green-50 dark:bg-green-950/20"
+                                    }`}
+                                  >
+                                    {isOutOfStock ? "Out" : item.current_stock}
+                                  </Badge>
+                                </div>
+                              </SelectItem>
+                            )
+                          })
+                        )}
+                        <div className="border-t my-1" />
+                        <SelectItem value="__custom__">
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Plus className="h-4 w-4" />
+                            <span className="text-sm">Add custom item</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 md:space-y-4">
+                  {fields.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+                      <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No items added yet</p>
+                      <p className="text-xs mt-1">Use the dropdown above to add items</p>
+                    </div>
+                  )}
                   {fields.map((field, index) => (
                     <Card key={field.id} className="border-2">
                       <CardContent className="pt-4 md:pt-6">
                         <div className="space-y-3 md:space-y-4">
                           <div className="flex items-center justify-between">
                             <Badge className="text-xs">Item {index + 1}</Badge>
-                            {fields.length > 1 && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => remove(index)}
-                                className="cursor-pointer"
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            )}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => remove(index)}
+                              className="cursor-pointer"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
                           </div>
 
                           <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
@@ -668,26 +820,38 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                                 disabled={isLoadingInventory}
                               >
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select item" />
+                                  <SelectValue placeholder="Change item..." />
                                 </SelectTrigger>
-                                <SelectContent>
-                                  {inventoryItems.map((item) => (
-                                    <SelectItem key={item.id} value={item.id}>
-                                      <div className="flex items-center justify-between w-full gap-4">
-                                        <span className="text-xs md:text-sm">{item.name} ({item.unit})</span>
-                                        <Badge 
-                                          variant="outline" 
-                                          className={`text-xs ${
-                                            item.current_stock <= (item.low_stock_threshold || 0)
-                                              ? "text-red-600 border-red-600 bg-red-50 dark:bg-red-950/20"
-                                              : "text-green-600 border-green-600 bg-green-50 dark:bg-green-950/20"
-                                          }`}
-                                        >
-                                          {item.current_stock}
-                                        </Badge>
-                                      </div>
-                                    </SelectItem>
-                                  ))}
+                                <SelectContent className="max-h-[300px]">
+                                  {inventoryItems.map((item) => {
+                                    const isOutOfStock = item.current_stock <= 0
+                                    const isLowStock = item.current_stock <= (item.low_stock_threshold || 0)
+
+                                    return (
+                                      <SelectItem
+                                        key={item.id}
+                                        value={item.id}
+                                        disabled={invoiceType === "sales" && isOutOfStock}
+                                        className={invoiceType === "sales" && isOutOfStock ? "opacity-50" : ""}
+                                      >
+                                        <div className="flex items-center justify-between w-full gap-4">
+                                          <span className="text-xs md:text-sm">{item.name} ({item.unit})</span>
+                                          <Badge
+                                            variant="outline"
+                                            className={`text-xs ${
+                                              isOutOfStock
+                                                ? "text-red-600 border-red-600 bg-red-50 dark:bg-red-950/20"
+                                                : isLowStock
+                                                ? "text-orange-600 border-orange-600 bg-orange-50 dark:bg-orange-950/20"
+                                                : "text-green-600 border-green-600 bg-green-50 dark:bg-green-950/20"
+                                            }`}
+                                          >
+                                            {isOutOfStock ? "Out" : item.current_stock}
+                                          </Badge>
+                                        </div>
+                                      </SelectItem>
+                                    )
+                                  })}
                                 </SelectContent>
                               </Select>
                             </Field>

@@ -70,7 +70,7 @@ export function CreatePartyPage() {
       name: "",
       gstin: "",
       pan: "",
-      address: "",
+      address: undefined,
       city: "",
       pincode: "",
       phone: "",
@@ -473,8 +473,8 @@ export function CreatePartyPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none">None</SelectItem>
-                            <SelectItem value="receivable">Receivable (You'll receive)</SelectItem>
-                            <SelectItem value="payable">Payable (You'll pay)</SelectItem>
+                            <SelectItem value="receivable">Receivable (You&apos;ll receive)</SelectItem>
+                            <SelectItem value="payable">Payable (You&apos;ll pay)</SelectItem>
                           </SelectContent>
                         </Select>
                         {errors.opening_balance_type && (

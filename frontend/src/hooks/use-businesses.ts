@@ -8,6 +8,13 @@ import { authService } from "@/services/auth.service";
 import { getErrorMessage } from "@/lib/error-handler";
 import { updateBusinessContext } from "@/lib/business-utils";
 
+// Helper for dev-only logging
+const devLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV === "development") {
+    console.log(...args);
+  }
+};
+
 // Global state to track if businesses have been fetched
 let hasInitiallyFetched = false;
 let isFetchingBusinesses = false;
@@ -38,22 +45,22 @@ export function useBusinesses(options?: { forceRefetch?: boolean }) {
       const { setLoading, setBusinesses } = useBusinessStore.getState();
       setLoading(true);
       
-      console.log("[useBusinesses] Fetching businesses from API...");
+      devLog("[useBusinesses] Fetching businesses from API...");
       const data = await businessService.listBusinesses();
-      console.log("[useBusinesses] Businesses fetched:", data.length, "businesses");
-      console.log("[useBusinesses] First business role:", data[0]?.role);
+      devLog("[useBusinesses] Businesses fetched:", data.length, "businesses");
+      devLog("[useBusinesses] First business role:", data[0]?.role);
       
       setBusinesses(data);
       
       // Auto-select first business if none selected and switch to get proper tokens
       const currentBusiness = useBusinessStore.getState().currentBusiness;
       if (data.length > 0 && !currentBusiness) {
-        console.log("[useBusinesses] Auto-selecting first business:", data[0].name);
+        devLog("[useBusinesses] Auto-selecting first business:", data[0].name);
         try {
           // Call switch business to get tokens with business context
           const response = await authService.switchBusiness({ business_id: data[0].id });
           updateBusinessContext(response.tokens, response.session, data[0]);
-          console.log("[useBusinesses] Business context updated with tokens");
+          devLog("[useBusinesses] Business context updated with tokens");
         } catch (switchError) {
           console.error("[useBusinesses] Failed to switch business:", switchError);
           // Fallback: just set the business without switching
@@ -63,7 +70,7 @@ export function useBusinesses(options?: { forceRefetch?: boolean }) {
         // Update current business with fresh data (including role)
         const updatedCurrent = data.find(b => b.id === currentBusiness.id);
         if (updatedCurrent) {
-          console.log("[useBusinesses] Updating current business with fresh data");
+          devLog("[useBusinesses] Updating current business with fresh data");
           useBusinessStore.getState().setCurrentBusiness(updatedCurrent);
         }
       }
@@ -99,5 +106,5 @@ export function useBusinesses(options?: { forceRefetch?: boolean }) {
 export function resetBusinessesFetchState() {
   hasInitiallyFetched = false;
   isFetchingBusinesses = false;
-  console.log("[useBusinesses] Fetch state reset");
+  devLog("[useBusinesses] Fetch state reset");
 }

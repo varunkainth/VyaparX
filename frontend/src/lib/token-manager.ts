@@ -1,8 +1,25 @@
 import { useAuthStore } from "@/store/useAuthStore";
 import { authService } from "@/services/auth.service";
 
+// Helper for dev-only logging
+const devLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV === "development") {
+    console.log(...args);
+  }
+};
+
+// JWT payload interface
+interface JWTPayload {
+  exp?: number;
+  iat?: number;
+  sub?: string;
+  userId?: string;
+  email?: string;
+  [key: string]: unknown;
+}
+
 // Decode JWT without verification (just to read payload)
-function decodeJWT(token: string): any {
+function decodeJWT(token: string): JWTPayload | null {
   try {
     const base64Url = token.split(".")[1];
     const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
@@ -42,7 +59,7 @@ let refreshTimer: NodeJS.Timeout | null = null;
 export function scheduleTokenRefresh() {
   // DISABLED: Let the API client handle token refresh automatically on 401
   // This prevents duplicate refresh calls
-  console.log("[TokenManager] Scheduled refresh disabled - API client handles refresh automatically");
+  devLog("[TokenManager] Scheduled refresh disabled - API client handles refresh automatically");
   return;
   
   /* Original implementation commented out

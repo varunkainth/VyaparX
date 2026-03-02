@@ -6,6 +6,13 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { checkAndRefreshToken, cancelTokenRefresh } from "@/lib/token-manager";
 import { useBusinesses } from "@/hooks/use-businesses";
 
+// Helper for dev-only logging
+const devLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV === "development") {
+    console.log(...args);
+  }
+};
+
 // Routes that don't require authentication
 const PUBLIC_ROUTES = ["/", "/login", "/signup", "/forgot-password", "/reset-password", "/verify-email"];
 
@@ -39,22 +46,22 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
     const isAuthRedirectRoute = AUTH_REDIRECT_ROUTES.includes(pathname);
 
-    console.log("[AuthGuard] Checking route:", pathname);
-    console.log("[AuthGuard] isAuthenticated:", isAuthenticated);
-    console.log("[AuthGuard] isLoading:", isLoading);
-    console.log("[AuthGuard] _hasHydrated:", _hasHydrated);
-    console.log("[AuthGuard] isPublicRoute:", isPublicRoute);
+    devLog("[AuthGuard] Checking route:", pathname);
+    devLog("[AuthGuard] isAuthenticated:", isAuthenticated);
+    devLog("[AuthGuard] isLoading:", isLoading);
+    devLog("[AuthGuard] _hasHydrated:", _hasHydrated);
+    devLog("[AuthGuard] isPublicRoute:", isPublicRoute);
 
     // If user is authenticated and trying to access login/signup, redirect to dashboard
     if (isAuthenticated && isAuthRedirectRoute) {
-      console.log("[AuthGuard] Redirecting to dashboard (already authenticated)");
+      devLog("[AuthGuard] Redirecting to dashboard (already authenticated)");
       router.push("/dashboard");
       return;
     }
 
     // If user is not authenticated and trying to access protected route, redirect to login
     if (!isAuthenticated && !isPublicRoute) {
-      console.log("[AuthGuard] Redirecting to login (not authenticated)");
+      devLog("[AuthGuard] Redirecting to login (not authenticated)");
       router.push("/login");
       return;
     }

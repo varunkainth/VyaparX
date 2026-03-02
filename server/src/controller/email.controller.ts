@@ -157,3 +157,26 @@ export async function testEmailConfigHandler(req: Request, res: Response) {
         },
     });
 }
+
+export async function checkEmailStatusHandler(req: Request, res: Response) {
+    const isConfigured = emailService.isReady();
+    
+    // Get configuration details (without exposing sensitive data)
+    const config = {
+        host: process.env.EMAIL_HOST || "smtp.gmail.com",
+        port: parseInt(process.env.EMAIL_PORT || "587"),
+        user: process.env.EMAIL_USER ? 
+            `${process.env.EMAIL_USER.substring(0, 3)}***@${process.env.EMAIL_USER.split('@')[1] || 'domain.com'}` : 
+            null,
+        from_name: process.env.EMAIL_FROM_NAME || "VyaparX",
+    };
+
+    return sendSuccess(res, {
+        message: isConfigured ? "Email service is configured" : "Email service is not configured",
+        data: {
+            configured: isConfigured,
+            config: isConfigured ? config : null,
+            timestamp: new Date().toISOString(),
+        },
+    });
+}

@@ -4,6 +4,13 @@ import { scheduleTokenRefresh } from "@/lib/token-manager";
 import type { Tokens, Session } from "@/types/auth";
 import type { BusinessWithRole } from "@/types/business";
 
+// Helper for dev-only logging
+const devLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV === "development") {
+    console.log(...args);
+  }
+};
+
 /**
  * Update tokens and session after business context change
  * Used when switching businesses or creating new business
@@ -38,7 +45,7 @@ export function updateBusinessContext(
 export function clearBusinessCache() {
   if (typeof window !== "undefined") {
     localStorage.removeItem("business-storage");
-    console.log("[BusinessUtils] Business cache cleared");
+    devLog("[BusinessUtils] Business cache cleared");
   }
 }
 
@@ -58,15 +65,15 @@ export function needsBusinessDataMigration(): boolean {
     
     // Check if currentBusiness exists but doesn't have role
     if (state?.currentBusiness && !state.currentBusiness.role) {
-      console.log("[BusinessUtils] Business data needs migration - missing role field");
+      devLog("[BusinessUtils] Business data needs migration - missing role field");
       return true;
     }
     
     // Check if any business in the list is missing role
     if (state?.businesses?.length > 0) {
-      const missingRole = state.businesses.some((b: any) => !b.role);
+      const missingRole = state.businesses.some((b: { role?: unknown }) => !b.role);
       if (missingRole) {
-        console.log("[BusinessUtils] Business data needs migration - some businesses missing role");
+        devLog("[BusinessUtils] Business data needs migration - some businesses missing role");
         return true;
       }
     }

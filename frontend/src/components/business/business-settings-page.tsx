@@ -10,6 +10,13 @@ import type { BusinessMember } from "@/types/business"
 import { toast } from "sonner"
 import { getErrorMessage } from "@/lib/error-handler"
 import { INDIAN_STATES, formatStateDisplay } from "@/constants/indian-states"
+
+// Helper for dev-only logging
+const devLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV === "development") {
+    console.log(...args)
+  }
+}
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -68,8 +75,8 @@ export function BusinessSettingsPage() {
   // Debug: Log current business to check role
   useEffect(() => {
     if (currentBusiness) {
-      console.log("[BusinessSettings] Current business:", currentBusiness)
-      console.log("[BusinessSettings] Role:", currentBusiness.role)
+      devLog("[BusinessSettings] Current business:", currentBusiness)
+      devLog("[BusinessSettings] Role:", currentBusiness.role)
     }
   }, [currentBusiness])
 
@@ -79,9 +86,9 @@ export function BusinessSettingsPage() {
     
     setRefreshingBusiness(true)
     try {
-      console.log("[BusinessSettings] Refreshing business data...")
+      devLog("[BusinessSettings] Refreshing business data...")
       const updatedBusiness = await businessService.getBusiness(currentBusiness.id)
-      console.log("[BusinessSettings] Updated business:", updatedBusiness)
+      devLog("[BusinessSettings] Updated business:", updatedBusiness)
       setCurrentBusiness(updatedBusiness)
       toast.success("Business data refreshed!")
     } catch (error) {

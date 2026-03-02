@@ -2,6 +2,13 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { BusinessState, BusinessWithRole } from "@/types/business";
 
+// Helper for dev-only logging
+const devLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV === "development") {
+    console.log(...args);
+  }
+};
+
 interface BusinessActions {
   setBusinesses: (businesses: BusinessWithRole[]) => void;
   setCurrentBusiness: (business: BusinessWithRole | null) => void;
@@ -76,7 +83,8 @@ export const useBusinessStore = create<BusinessState & BusinessActions>()(
         // Helper to reset the global fetch flag if needed
         // This is useful for debugging or forcing a refetch
         if (typeof window !== "undefined") {
-          (window as any).__businessFetchFlag = false;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (window as unknown as Record<string, unknown>).__businessFetchFlag = false;
         }
       },
     }),
@@ -87,10 +95,10 @@ export const useBusinessStore = create<BusinessState & BusinessActions>()(
         businesses: state.businesses,
         currentBusiness: state.currentBusiness,
       }),
-      migrate: (persistedState: any, version: number) => {
+      migrate: (persistedState: unknown, version: number) => {
         // If version is less than 2, clear the data to force refetch with role field
         if (version < 2) {
-          console.log("[BusinessStore] Migrating from version", version, "to", STORAGE_VERSION);
+          devLog("[BusinessStore] Migrating from version", version, "to", STORAGE_VERSION);
           return initialState;
         }
         return persistedState;

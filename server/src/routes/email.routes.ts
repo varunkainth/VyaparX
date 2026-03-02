@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { sendInvoiceEmailHandler, testEmailConfigHandler } from "../controller/email.controller";
+import { sendInvoiceEmailHandler, testEmailConfigHandler, checkEmailStatusHandler } from "../controller/email.controller";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { businessGuard } from "../middleware/businessGaurd";
 import { authenticateToken } from "../middleware/jwt";
@@ -28,6 +28,13 @@ emailRouter.post(
     authorizeRoles(["owner", "admin"]),
     validate(testEmailSchema),
     asyncHandler(testEmailConfigHandler)
+);
+
+// Check email service status
+emailRouter.get(
+    "/email/status",
+    authorizeRoles(["owner", "admin"]),
+    asyncHandler(checkEmailStatusHandler)
 );
 
 export default emailRouter;

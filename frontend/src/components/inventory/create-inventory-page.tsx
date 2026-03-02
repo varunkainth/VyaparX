@@ -357,7 +357,7 @@ export function CreateInventoryPage() {
                       <Input
                         id="purchase_price"
                         type="number"
-                        step="10"
+                        step="0.01"
                         placeholder="0.00"
                         {...register("purchase_price", { valueAsNumber: true })}
                         disabled={isSubmitting}
@@ -376,7 +376,7 @@ export function CreateInventoryPage() {
                       <Input
                         id="selling_price"
                         type="number"
-                        step="10"
+                        step="0.01"
                         placeholder="0.00"
                         {...register("selling_price", { valueAsNumber: true })}
                         disabled={isSubmitting}
