@@ -26,7 +26,8 @@ class EmailService {
         const emailPort = parseInt(process.env.EMAIL_PORT || "587");
 
         if (!emailUser || !emailPassword) {
-            console.warn("Email service not configured. EMAIL_USER and EMAIL_PASSWORD environment variables are required.");
+            console.warn("⚠ Email service not configured");
+            console.warn("  Required: EMAIL_USER and EMAIL_PASSWORD environment variables");
             return;
         }
 
@@ -55,10 +56,11 @@ class EmailService {
         // Verify connection (don't block initialization)
         this.transporter.verify((error) => {
             if (error) {
-                console.error("Email service verification failed:", error);
+                console.error("✗ Email service verification failed:", error.message);
+                console.error("  Check your EMAIL_USER, EMAIL_PASSWORD, and SMTP settings");
                 this.isConfigured = false;
             } else {
-                console.log("Email service is ready to send messages");
+                console.log("✓ Email service verified successfully");
             }
         });
     }

@@ -1,7 +1,15 @@
-import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
+import axios, { type AxiosInstance, type InternalAxiosRequestConfig, type AxiosResponse } from "axios";
 import { useAuthStore } from "@/store/useAuthStore";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
+
+// Request deduplication map
+const pendingRequests = new Map<string, Promise<AxiosResponse>>();
+
+// Generate request key for deduplication
+function generateRequestKey(config: InternalAxiosRequestConfig): string {
+  return `${config.method}:${config.url}:${JSON.stringify(config.params)}`;
+}
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -23,13 +31,29 @@ const waitForTokenRefresh = (): Promise<string> => {
   return Promise.reject(new Error("No refresh in progress"));
 };
 
-// Request interceptor to add auth token
+// Request interceptor to add auth token and handle deduplication
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const { tokens } = useAuthStore.getState();
     
     if (tokens?.accessToken) {
       config.headers.Authorization = `Bearer ${tokens.accessToken}`;
+    }
+    
+    // Request deduplication for GET requests
+    if (config.method?.toLowerCase() === 'get') {
+      const requestKey = generateRequestKey(config);
+      const pendingRequest = pendingRequests.get(requestKey);
+      
+      if (pendingRequest) {
+        // Return existing pending request
+        return Promise.reject({
+          config,
+          message: 'Request deduplicated',
+          __DEDUPLICATED__: true,
+          pendingRequest,
+        });
+      }
     }
     
     // Log API calls for debugging (remove in production)
@@ -44,12 +68,27 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle token refresh
+// Response interceptor to handle token refresh and cleanup deduplication
 apiClient.interceptors.response.use(
   (response) => {
+    // Clean up pending request
+    if (response.config.method?.toLowerCase() === 'get') {
+      const requestKey = generateRequestKey(response.config);
+      pendingRequests.delete(requestKey);
+    }
     return response;
   },
   async (error) => {
+    // Handle deduplicated requests
+    if (error.__DEDUPLICATED__) {
+      return error.pendingRequest;
+    }
+    
+    // Clean up pending request on error
+    if (error.config?.method?.toLowerCase() === 'get') {
+      const requestKey = generateRequestKey(error.config);
+      pendingRequests.delete(requestKey);
+    }
     const originalRequest = error.config;
 
     // Skip refresh for auth endpoints

@@ -157,8 +157,10 @@ export const paymentRepository = {
         notes?: string | null;
         business_id: string;
         payment_id: string;
+        client?: PoolClient;
     }) {
-        return pool.query(
+        const db = args.client ?? pool;
+        return db.query(
             `
             UPDATE payments
             SET

@@ -278,51 +278,59 @@ export function PaymentDetailsPage({ paymentId }: PaymentDetailsPageProps) {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
-              {!payment.is_reconciled && payment.payment_mode !== "cash" ? (
+              {!payment.is_reconciled ? (
                 <AlertDialog open={showReconcileDialog} onOpenChange={setShowReconcileDialog}>
                   <AlertDialogTrigger asChild>
                     <Button size="sm" className="flex-1 cursor-pointer active:scale-95">
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      Reconcile
+                      {payment.payment_mode === "cash" ? "Verify" : "Reconcile"}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent className="max-w-[95vw] sm:max-w-lg">
                     <AlertDialogHeader>
-                      <AlertDialogTitle className="text-base md:text-lg">Reconcile Payment</AlertDialogTitle>
+                      <AlertDialogTitle className="text-base md:text-lg">
+                        {payment.payment_mode === "cash" ? "Verify Payment" : "Reconcile Payment"}
+                      </AlertDialogTitle>
                       <AlertDialogDescription className="text-xs md:text-sm">
-                        Mark this payment as reconciled with bank statement
+                        {payment.payment_mode === "cash" 
+                          ? "Mark this cash payment as verified"
+                          : "Mark this payment as reconciled with bank statement"}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <form onSubmit={handleSubmit(onReconcile)} className="space-y-3 md:space-y-4">
-                      <Field>
-                        <FieldLabel className="text-xs md:text-sm">Bank Statement Date</FieldLabel>
-                        <Input
-                          type="date"
-                          {...register("bank_statement_date")}
-                          className="text-sm"
-                        />
-                        {errors.bank_statement_date && (
-                          <p className="text-xs text-destructive">
-                            {errors.bank_statement_date.message}
-                          </p>
-                        )}
-                      </Field>
+                      {payment.payment_mode !== "cash" && (
+                        <>
+                          <Field>
+                            <FieldLabel className="text-xs md:text-sm">Bank Statement Date</FieldLabel>
+                            <Input
+                              type="date"
+                              {...register("bank_statement_date")}
+                              className="text-sm"
+                            />
+                            {errors.bank_statement_date && (
+                              <p className="text-xs text-destructive">
+                                {errors.bank_statement_date.message}
+                              </p>
+                            )}
+                          </Field>
 
-                      <Field>
-                        <FieldLabel className="text-xs md:text-sm">Bank Reference Number</FieldLabel>
-                        <Input
-                          {...register("bank_ref_no")}
-                          placeholder="Enter bank reference"
-                          className="text-sm"
-                        />
-                      </Field>
+                          <Field>
+                            <FieldLabel className="text-xs md:text-sm">Bank Reference Number</FieldLabel>
+                            <Input
+                              {...register("bank_ref_no")}
+                              placeholder="Enter bank reference"
+                              className="text-sm"
+                            />
+                          </Field>
+                        </>
+                      )}
 
                       <Field>
                         <FieldLabel className="text-xs md:text-sm">Notes</FieldLabel>
                         <Textarea
                           {...register("notes")}
                           rows={2}
-                          placeholder="Add reconciliation notes"
+                          placeholder={payment.payment_mode === "cash" ? "Add verification notes" : "Add reconciliation notes"}
                           className="text-sm"
                         />
                       </Field>
@@ -330,31 +338,33 @@ export function PaymentDetailsPage({ paymentId }: PaymentDetailsPageProps) {
                       <AlertDialogFooter className="flex-col sm:flex-row gap-2">
                         <AlertDialogCancel type="button" className="w-full sm:w-auto cursor-pointer">Cancel</AlertDialogCancel>
                         <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto cursor-pointer">
-                          {isSubmitting ? "Reconciling..." : "Reconcile Payment"}
+                          {isSubmitting ? "Processing..." : (payment.payment_mode === "cash" ? "Verify Payment" : "Reconcile Payment")}
                         </Button>
                       </AlertDialogFooter>
                     </form>
                   </AlertDialogContent>
                 </AlertDialog>
-              ) : payment.is_reconciled && payment.payment_mode !== "cash" ? (
+              ) : payment.is_reconciled ? (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="outline" size="sm" className="flex-1 cursor-pointer active:scale-95">
                       <Clock className="h-4 w-4 mr-2" />
-                      Unreconcile
+                      {payment.payment_mode === "cash" ? "Unverify" : "Unreconcile"}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent className="max-w-[95vw] sm:max-w-lg">
                     <AlertDialogHeader>
-                      <AlertDialogTitle className="text-base md:text-lg">Unreconcile Payment?</AlertDialogTitle>
+                      <AlertDialogTitle className="text-base md:text-lg">
+                        {payment.payment_mode === "cash" ? "Unverify Payment?" : "Unreconcile Payment?"}
+                      </AlertDialogTitle>
                       <AlertDialogDescription className="text-xs md:text-sm">
-                        This will mark the payment as unreconciled. Are you sure?
+                        This will mark the payment as {payment.payment_mode === "cash" ? "unverified" : "unreconciled"}. Are you sure?
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="flex-col sm:flex-row gap-2">
                       <AlertDialogCancel className="w-full sm:w-auto cursor-pointer">Cancel</AlertDialogCancel>
                       <AlertDialogAction onClick={handleUnreconcile} className="w-full sm:w-auto cursor-pointer">
-                        Unreconcile
+                        {payment.payment_mode === "cash" ? "Unverify" : "Unreconcile"}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -368,80 +378,90 @@ export function PaymentDetailsPage({ paymentId }: PaymentDetailsPageProps) {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
-              {!payment.is_reconciled && payment.payment_mode !== "cash" ? (
+              {!payment.is_reconciled ? (
                 <AlertDialog open={showReconcileDialog} onOpenChange={setShowReconcileDialog}>
                   <AlertDialogTrigger asChild>
                     <Button className="cursor-pointer">
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      Reconcile
+                      {payment.payment_mode === "cash" ? "Verify" : "Reconcile"}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Reconcile Payment</AlertDialogTitle>
+                      <AlertDialogTitle>
+                        {payment.payment_mode === "cash" ? "Verify Payment" : "Reconcile Payment"}
+                      </AlertDialogTitle>
                       <AlertDialogDescription>
-                        Mark this payment as reconciled with bank statement
+                        {payment.payment_mode === "cash" 
+                          ? "Mark this cash payment as verified"
+                          : "Mark this payment as reconciled with bank statement"}
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <form onSubmit={handleSubmit(onReconcile)} className="space-y-4">
-                      <Field>
-                        <FieldLabel>Bank Statement Date</FieldLabel>
-                        <Input
-                          type="date"
-                          {...register("bank_statement_date")}
-                        />
-                        {errors.bank_statement_date && (
-                          <p className="text-sm text-destructive">
-                            {errors.bank_statement_date.message}
-                          </p>
-                        )}
-                      </Field>
+                      {payment.payment_mode !== "cash" && (
+                        <>
+                          <Field>
+                            <FieldLabel>Bank Statement Date</FieldLabel>
+                            <Input
+                              type="date"
+                              {...register("bank_statement_date")}
+                            />
+                            {errors.bank_statement_date && (
+                              <p className="text-sm text-destructive">
+                                {errors.bank_statement_date.message}
+                              </p>
+                            )}
+                          </Field>
 
-                      <Field>
-                        <FieldLabel>Bank Reference Number</FieldLabel>
-                        <Input
-                          {...register("bank_ref_no")}
-                          placeholder="Enter bank reference"
-                        />
-                      </Field>
+                          <Field>
+                            <FieldLabel>Bank Reference Number</FieldLabel>
+                            <Input
+                              {...register("bank_ref_no")}
+                              placeholder="Enter bank reference"
+                            />
+                          </Field>
+                        </>
+                      )}
 
                       <Field>
                         <FieldLabel>Notes</FieldLabel>
                         <Textarea
                           {...register("notes")}
                           rows={2}
-                          placeholder="Add reconciliation notes"
+                          placeholder={payment.payment_mode === "cash" ? "Add verification notes" : "Add reconciliation notes"}
                         />
                       </Field>
 
                       <AlertDialogFooter>
                         <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
                         <Button type="submit" disabled={isSubmitting}>
-                          {isSubmitting ? "Reconciling..." : "Reconcile Payment"}
+                          {isSubmitting ? "Processing..." : (payment.payment_mode === "cash" ? "Verify Payment" : "Reconcile Payment")}
                         </Button>
                       </AlertDialogFooter>
                     </form>
                   </AlertDialogContent>
                 </AlertDialog>
-              ) : payment.is_reconciled && payment.payment_mode !== "cash" ? (
+              ) : payment.is_reconciled ? (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="outline" className="cursor-pointer">
                       <Clock className="h-4 w-4 mr-2" />
-                      Unreconcile
+                      {payment.payment_mode === "cash" ? "Unverify" : "Unreconcile"}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Unreconcile Payment?</AlertDialogTitle>
+                      <AlertDialogTitle>
+                        {payment.payment_mode === "cash" ? "Unverify Payment?" : "Unreconcile Payment?"}
+                      </AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will mark the payment as unreconciled. Are you sure?
+                        This will mark the payment as {payment.payment_mode === "cash" ? "unverified" : "unreconciled"}. Are you sure?
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction onClick={handleUnreconcile}>
-                        Unreconcile
+                        {payment.payment_mode === "cash" ? "Unverify" : "Unreconcile"}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>

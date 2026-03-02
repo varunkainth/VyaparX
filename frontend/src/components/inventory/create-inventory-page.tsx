@@ -389,9 +389,16 @@ export function CreateInventoryPage() {
                         id="purchase_price"
                         type="number"
                         step="0.01"
+                        min="0"
                         placeholder="0.00"
                         {...register("purchase_price", { valueAsNumber: true })}
                         disabled={isSubmitting}
+                        onKeyDown={(e) => {
+                          if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                            e.preventDefault();
+                          }
+                        }}
+                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                       {errors.purchase_price && (
                         <p className="text-sm text-destructive mt-1">
@@ -408,9 +415,16 @@ export function CreateInventoryPage() {
                         id="selling_price"
                         type="number"
                         step="0.01"
+                        min="0"
                         placeholder="0.00"
                         {...register("selling_price", { valueAsNumber: true })}
                         disabled={isSubmitting}
+                        onKeyDown={(e) => {
+                          if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                            e.preventDefault();
+                          }
+                        }}
+                        className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                       />
                       {errors.selling_price && (
                         <p className="text-sm text-destructive mt-1">
@@ -452,10 +466,17 @@ export function CreateInventoryPage() {
                         <Input
                           id="opening_stock"
                           type="number"
-                          step="10"
+                          step="1"
+                          min="0"
                           placeholder="0"
                           {...register("opening_stock", { valueAsNumber: true })}
                           disabled={isSubmitting}
+                          onKeyDown={(e) => {
+                            if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '.') {
+                              e.preventDefault();
+                            }
+                          }}
+                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                         {errors.opening_stock && (
                           <p className="text-sm text-destructive mt-1">
@@ -470,10 +491,17 @@ export function CreateInventoryPage() {
                         <Input
                           id="low_stock_threshold"
                           type="number"
-                          step="10"
+                          step="1"
+                          min="0"
                           placeholder="10"
                           {...register("low_stock_threshold", { valueAsNumber: true })}
                           disabled={isSubmitting}
+                          onKeyDown={(e) => {
+                            if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '.') {
+                              e.preventDefault();
+                            }
+                          }}
+                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                         {errors.low_stock_threshold && (
                           <p className="text-sm text-destructive mt-1">

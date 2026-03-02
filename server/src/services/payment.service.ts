@@ -58,8 +58,9 @@ export async function recordPayment(data: RecordPaymentInput) {
             return idempotencyStart.cachedResponse as { success: boolean; payment_id: string };
         }
 
-        // Auto-reconcile cash payments (no bank reconciliation needed)
-        const autoReconcile = data.payment_mode === "cash";
+        // Note: Cash payments are NOT auto-reconciled anymore
+        // Users should manually verify when cash is actually received
+        // This gives better control over cash flow tracking
 
         const paymentId = await paymentRepository.insertPayment(client, [
             data.business_id,
@@ -71,18 +72,6 @@ export async function recordPayment(data: RecordPaymentInput) {
             data.bank_account_id || null,
             data.createdBy,
         ]);
-
-        // If cash payment, mark as reconciled immediately
-        if (autoReconcile) {
-            await paymentRepository.reconcile({
-                reconciled_by: data.createdBy,
-                bank_statement_date: data.payment_date,
-                bank_ref_no: "CASH",
-                notes: "Auto-reconciled (Cash payment)",
-                business_id: data.business_id,
-                payment_id: paymentId,
-            });
-        }
 
         for (const allocation of data.allocations) {
             if (allocation.allocated_amount <= 0) {

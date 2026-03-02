@@ -8,6 +8,7 @@ import {
     getBusinessForUser,
     inviteOrUpsertBusinessMember,
     listUserBusinesses,
+    listBusinessMembers,
     setBusinessMemberRole,
     setBusinessMemberStatus,
     updateBusiness,
@@ -120,16 +121,16 @@ export const inviteBusinessMember = async (
 ) => {
     const invitedBy = ensureAuthUser(req);
     const business_id = getBusinessId(req.params);
-    const { user_id, role } = req.body;
+    const { email, role } = req.body;
 
-    const user = await userRepository.findById(user_id);
+    const user = await userRepository.findByEmail(email);
     if (!user) {
-        throw new AppError("User not found", 404, ERROR_CODES.USER_NOT_FOUND);
+        throw new AppError("User not found with that email", 404, ERROR_CODES.USER_NOT_FOUND);
     }
 
     const member = await inviteOrUpsertBusinessMember({
         businessId: business_id,
-        userId: user_id,
+        userId: user.id,
         role,
         invitedBy,
     });
@@ -140,12 +141,24 @@ export const inviteBusinessMember = async (
         action: "business_member_invited",
         entity_type: "business_member",
         entity_id: member.id,
-        metadata: { user_id, role },
+        metadata: { user_id: user.id, role },
     });
 
     return sendSuccess(res, {
         message: "Business member invited",
         data: member,
+    });
+};
+
+export const getBusinessMembers = async (req: Request<BusinessIdParams>, res: Response) => {
+    ensureAuthUser(req);
+    const business_id = getBusinessId(req.params);
+
+    const members = await listBusinessMembers(business_id);
+
+    return sendSuccess(res, {
+        message: "Business members fetched",
+        data: members,
     });
 };
 

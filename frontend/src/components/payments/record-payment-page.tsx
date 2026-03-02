@@ -525,8 +525,15 @@ export function RecordPaymentPage() {
                         <Input
                           type="number"
                           step="0.01"
+                          min="0"
                           {...register("amount", { valueAsNumber: true })}
                           disabled={isSubmitting}
+                          onKeyDown={(e) => {
+                            if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                              e.preventDefault();
+                            }
+                          }}
+                          className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                         {errors.amount && (
                           <p className="text-sm text-destructive">{errors.amount.message}</p>
@@ -634,9 +641,9 @@ export function RecordPaymentPage() {
                     )}
 
                     {paymentMode === "cash" && (
-                      <Alert>
+                      <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
                         <AlertDescription className="text-xs">
-                          Cash payments are automatically reconciled and don&apos;t require bank verification.
+                          <span className="font-semibold">Cash Payment:</span> This payment will be marked as &quot;Pending Verification&quot; until you manually verify it after receiving the cash. You can verify it later from the payment details page.
                         </AlertDescription>
                       </Alert>
                     )}

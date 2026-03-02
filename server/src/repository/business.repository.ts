@@ -171,4 +171,33 @@ export const businessRepository = {
         );
         return result.rows[0] ?? null;
     },
+
+    async getBusinessMembers(businessId: string) {
+        const result = await pool.query(
+            `
+            SELECT 
+                bm.user_id as id,
+                bm.role,
+                bm.is_active,
+                bm.joined_at,
+                u.name,
+                u.email
+            FROM business_members bm
+            JOIN users u ON u.id = bm.user_id
+            WHERE bm.business_id = $1
+            ORDER BY 
+                CASE bm.role 
+                    WHEN 'owner' THEN 1 
+                    WHEN 'admin' THEN 2 
+                    WHEN 'staff' THEN 3 
+                    WHEN 'accountant' THEN 4 
+                    WHEN 'viewer' THEN 5 
+                    ELSE 6 
+                END,
+                u.name ASC
+            `,
+            [businessId]
+        );
+        return result.rows;
+    },
 };

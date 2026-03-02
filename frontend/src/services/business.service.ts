@@ -100,4 +100,10 @@ export const businessService = {
     );
     return response.data.data;
   },
+  async getBusinessMembers(businessId: string): Promise<BusinessMember[]> {
+    const response = await apiClient.get<ApiResponse<BusinessMember[]>>(
+      `/api/v1/businesses/${businessId}/members`
+    );
+    return response.data.data;
+  },
 };

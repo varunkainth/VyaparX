@@ -58,3 +58,7 @@ export async function setBusinessMemberRole(args: BusinessMemberMutationInput) {
 export async function setBusinessMemberStatus(args: BusinessMemberStatusInput) {
     return businessRepository.setBusinessMemberStatus(args);
 }
+
+export async function listBusinessMembers(businessId: string) {
+    return businessRepository.getBusinessMembers(businessId);
+}

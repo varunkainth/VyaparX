@@ -3,6 +3,7 @@
 import { useAuthStore } from "@/store/useAuthStore";
 import { EmailVerificationBanner } from "@/components/auth/email-verification-banner";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { PullToRefreshIndicator } from "@/components/ui/pull-to-refresh-indicator";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { useState, useEffect } from "react";

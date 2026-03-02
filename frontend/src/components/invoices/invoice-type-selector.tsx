@@ -19,7 +19,7 @@ export function InvoiceTypeSelector({ open, onOpenChange }: InvoiceTypeSelectorP
   const router = useRouter();
 
   const handleSelect = (type: "sales" | "purchase") => {
-    router.push(`/invoices/create?type=${type}`);
+    router.push(`/invoices/create/${type}`);
     onOpenChange(false);
   };
 

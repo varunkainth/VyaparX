@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
     createBusiness,
     getBusiness,
+    getBusinessMembers,
     inviteBusinessMember,
     listBusinesses,
     updateBusinessById,
@@ -34,6 +35,14 @@ businessRouter.get(
     authorizeRoles(["owner", "admin", "staff", "accountant", "viewer"]),
     asyncHandler(getBusiness)
 );
+
+businessRouter.get(
+    "/businesses/:business_id/members",
+    businessGuard,
+    authorizeRoles(["owner", "admin", "staff", "accountant", "viewer"]),
+    asyncHandler(getBusinessMembers)
+);
+
 businessRouter.patch(
     "/businesses/:business_id",
     businessGuard,

@@ -54,7 +54,7 @@ export interface BusinessMemberStatusInput {
 export type BusinessAssignableRole = "admin" | "staff" | "viewer" | "accountant";
 
 export interface InviteBusinessMemberBody {
-    user_id: string;
+    email: string;
     role: BusinessAssignableRole;
 }
 

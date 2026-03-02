@@ -29,7 +29,8 @@ import {
   Plus,
   Trash2,
   Calculator,
-  Package
+  Package,
+  Database
 } from "lucide-react"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { PageLayout } from "@/components/layout/page-layout"
@@ -184,6 +185,49 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
       setValue(`items.${index}.unit`, item.unit)
       setValue(`items.${index}.unit_price`, invoiceType === "sales" ? item.selling_price : item.purchase_price)
       setValue(`items.${index}.gst_rate`, item.gst_rate)
+    }
+  }
+
+  const handleAddToMasterInventory = async (index: number) => {
+    if (!currentBusiness) return
+
+    const item = watchItems[index]
+    if (!item || item.item_id) {
+      toast.error("This item is already in the master inventory")
+      return
+    }
+
+    if (!item.item_name || !item.unit_price) {
+      toast.error("Please fill in item name and unit price before adding to inventory")
+      return
+    }
+
+    try {
+      const inventoryData = {
+        name: item.item_name,
+        sku: item.hsn_code || "",
+        hsn_code: item.hsn_code || "",
+        description: item.description || "",
+        unit: item.unit || "PCS",
+        gst_rate: item.gst_rate || 18,
+        purchase_price: item.unit_price,
+        selling_price: item.unit_price * 1.2, // Default 20% markup
+        low_stock_threshold: 10,
+        opening_stock: 0,
+      }
+
+      const newItem = await inventoryService.createItem(currentBusiness.id, inventoryData)
+      
+      // Update the item in the form to link it to the newly created inventory item
+      setValue(`items.${index}.item_id`, newItem.id)
+      
+      // Refresh inventory list
+      await fetchInventory()
+      
+      toast.success(`"${item.item_name}" added to master inventory!`)
+    } catch (error) {
+      const errorMessage = getErrorMessage(error)
+      toast.error(`Failed to add to inventory: ${errorMessage}`)
     }
   }
 
@@ -802,15 +846,30 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                         <div className="space-y-3 md:space-y-4">
                           <div className="flex items-center justify-between">
                             <Badge className="text-xs">Item {index + 1}</Badge>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => remove(index)}
-                              className="cursor-pointer"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              {invoiceType === "purchase" && !watchItems[index]?.item_id && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleAddToMasterInventory(index)}
+                                  className="cursor-pointer text-xs"
+                                  title="Add this item to master inventory"
+                                >
+                                  <Database className="h-3 w-3 mr-1" />
+                                  Add to Inventory
+                                </Button>
+                              )}
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => remove(index)}
+                                className="cursor-pointer"
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
                           </div>
 
                           <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
@@ -903,9 +962,15 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                               <Input
                                 type="number"
                                 step="0.001"
+                                min="0"
                                 {...register(`items.${index}.quantity`, { valueAsNumber: true })}
                                 disabled={isSubmitting}
-                                className="text-sm"
+                                onKeyDown={(e) => {
+                                  if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                className="text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               />
                               {watchItems[index]?.item_id && (() => {
                                 const selectedItem = inventoryItems.find(i => i.id === watchItems[index].item_id)
@@ -940,9 +1005,15 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                               <Input
                                 type="number"
                                 step="0.01"
+                                min="0"
                                 {...register(`items.${index}.unit_price`, { valueAsNumber: true })}
                                 disabled={isSubmitting}
-                                className="text-sm"
+                                onKeyDown={(e) => {
+                                  if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                className="text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               />
                             </Field>
 
@@ -951,9 +1022,16 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                               <Input
                                 type="number"
                                 step="0.01"
+                                min="0"
+                                max="100"
                                 {...register(`items.${index}.discount_pct`, { valueAsNumber: true })}
                                 disabled={isSubmitting}
-                                className="text-sm"
+                                onKeyDown={(e) => {
+                                  if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                className="text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                               />
                             </Field>
 

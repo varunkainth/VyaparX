@@ -2,6 +2,7 @@ import express from "express";
 import { v4 as uuid } from "uuid";
 import env from "./src/config/env";
 import pool from "./src/config/db";
+import { emailService } from "./src/config/email";
 import { ERROR_CODES } from "./src/constants/errorCodes";
 import { openApiSpec } from "./src/config/openapi";
 import { requestLogger } from "./src/middleware/requestLogger";
@@ -139,14 +140,34 @@ const HOST = "0.0.0.0";
 const server = app.listen(PORT, HOST, async () => {
     console.log(`Server running on http://${HOST}:${PORT}`);
 
+    // Database connection check
     try {
         const client = await pool.connect();
-        console.log("Database connection verified on startup");
+        console.log("✓ Database connection verified on startup");
         client.release();
     } catch (err: any) {
-        console.error("Failed to connect to database on startup:", err.message);
+        console.error("✗ Failed to connect to database on startup:", err.message);
         process.exit(1);
     }
+
+    // Email service health check
+    console.log("\n--- Email Service Status ---");
+    if (emailService.isReady()) {
+        console.log("✓ Email service is configured and ready");
+        console.log(`  Host: ${process.env.EMAIL_HOST || "smtp.gmail.com"}`);
+        console.log(`  Port: ${process.env.EMAIL_PORT || "587"}`);
+        console.log(`  User: ${process.env.EMAIL_USER}`);
+        console.log(`  From: ${process.env.EMAIL_FROM_NAME || "VyaparX"} <${process.env.EMAIL_USER}>`);
+    } else {
+        console.warn("⚠ Email service is NOT configured");
+        console.warn("  Missing: EMAIL_USER and/or EMAIL_PASSWORD environment variables");
+        console.warn("  Features affected:");
+        console.warn("    - Password reset emails");
+        console.warn("    - Email verification");
+        console.warn("    - Invoice emails");
+        console.warn("  To enable: Set EMAIL_USER and EMAIL_PASSWORD in .env file");
+    }
+    console.log("----------------------------\n");
 });
 
 pool.on("connect", () => {

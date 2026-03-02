@@ -35,7 +35,7 @@ export const updateBusinessSchema = createBusinessBase
     });
 
 export const inviteBusinessMemberSchema = z.object({
-    user_id: z.string().uuid(),
+    email: z.string().email(),
     role: roleEnum.refine((role) => role !== "owner", {
         message: "owner role cannot be assigned via invite",
     }),

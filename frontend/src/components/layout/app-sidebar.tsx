@@ -67,10 +67,6 @@ const data = {
           url: "#",
           isSpecialAction: true,
         },
-        {
-          title: "Drafts",
-          url: "/invoices/drafts",
-        },
       ],
     },
     {
@@ -217,10 +213,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   React.useEffect(() => {
     const handleClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      
+
       // Check if the clicked element is the "Create" button in the Invoices menu
-      if (target.closest('a[href="#"]') && 
-          target.textContent?.trim() === "Create") {
+      if (target.closest('a[href="#"]') &&
+        target.textContent?.trim() === "Create") {
         event.preventDefault();
         setShowInvoiceTypeSelector(true);
       }
@@ -244,9 +240,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
-      <InvoiceTypeSelector 
-        open={showInvoiceTypeSelector} 
-        onOpenChange={setShowInvoiceTypeSelector} 
+      <InvoiceTypeSelector
+        open={showInvoiceTypeSelector}
+        onOpenChange={setShowInvoiceTypeSelector}
       />
     </>
   )

@@ -393,7 +393,14 @@ export function InventoryDetailsPage({ itemId }: InventoryDetailsPageProps) {
                           <Input
                             type="number"
                             step="1"
+                            min="0"
                             {...stockForm.register("quantity", { valueAsNumber: true })}
+                            onKeyDown={(e) => {
+                              if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '.') {
+                                e.preventDefault();
+                              }
+                            }}
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                           {stockForm.formState.errors.quantity && (
                             <p className="text-sm text-destructive">
@@ -407,7 +414,14 @@ export function InventoryDetailsPage({ itemId }: InventoryDetailsPageProps) {
                           <Input
                             type="number"
                             step="0.01"
+                            min="0"
                             {...stockForm.register("unit_price", { valueAsNumber: true })}
+                            onKeyDown={(e) => {
+                              if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                                e.preventDefault();
+                              }
+                            }}
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </Field>
 
@@ -490,7 +504,14 @@ export function InventoryDetailsPage({ itemId }: InventoryDetailsPageProps) {
                           <Input
                             type="number"
                             step="1"
+                            min="0"
                             {...stockForm.register("quantity", { valueAsNumber: true })}
+                            onKeyDown={(e) => {
+                              if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '.') {
+                                e.preventDefault();
+                              }
+                            }}
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                           {stockForm.formState.errors.quantity && (
                             <p className="text-sm text-destructive">
@@ -504,7 +525,14 @@ export function InventoryDetailsPage({ itemId }: InventoryDetailsPageProps) {
                           <Input
                             type="number"
                             step="0.01"
+                            min="0"
                             {...stockForm.register("unit_price", { valueAsNumber: true })}
+                            onKeyDown={(e) => {
+                              if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                                e.preventDefault();
+                              }
+                            }}
+                            className="[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           />
                         </Field>
 
