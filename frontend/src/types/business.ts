@@ -6,7 +6,7 @@ export interface Business {
   name: string;
   gstin?: string | null;
   pan?: string | null;
-  address?: string | null;
+  address_line1?: string | null;
   city?: string | null;
   state?: string | null;
   state_code?: string | null;

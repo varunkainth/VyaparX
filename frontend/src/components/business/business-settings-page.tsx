@@ -143,7 +143,7 @@ export function BusinessSettingsPage() {
       name: currentBusiness?.name || "",
       gstin: currentBusiness?.gstin || "",
       pan: currentBusiness?.pan || "",
-      address: currentBusiness?.address || "",
+      address_line1: currentBusiness?.address_line1 || "",
       city: currentBusiness?.city || "",
       state: currentBusiness?.state || "",
       pincode: currentBusiness?.pincode || "",
@@ -175,7 +175,7 @@ export function BusinessSettingsPage() {
         name: currentBusiness.name || "",
         gstin: currentBusiness.gstin || "",
         pan: currentBusiness.pan || "",
-        address: currentBusiness.address || "",
+        address_line1: currentBusiness.address_line1 || "",
         city: currentBusiness.city || "",
         state: currentBusiness.state || "",
         pincode: currentBusiness.pincode || "",
@@ -567,18 +567,18 @@ export function BusinessSettingsPage() {
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="address" className="text-xs md:text-sm">Street Address</FieldLabel>
+                      <FieldLabel htmlFor="address_line1" className="text-xs md:text-sm">Street Address</FieldLabel>
                       <Input
-                        id="address"
+                        id="address_line1"
                         type="text"
                         placeholder="123 Business Street, Area Name"
-                        {...register("address")}
+                        {...register("address_line1")}
                         disabled={isSubmitting}
                         className="text-sm"
                       />
-                      {errors.address && (
+                      {errors.address_line1 && (
                         <p className="text-xs text-destructive mt-1">
-                          {errors.address.message}
+                          {errors.address_line1.message}
                         </p>
                       )}
                     </Field>
