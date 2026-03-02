@@ -16,11 +16,10 @@ export const createBusinessSchema = z.object({
     .regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN format")
     .optional()
     .or(z.literal("")),
-  address: z
+  address_line1: z
     .string()
-    .max(500, "Address is too long")
-    .optional()
-    .or(z.literal("")),
+    .min(3, "Address is required")
+    .max(500, "Address is too long"),
   city: z
     .string()
     .max(100, "City name is too long")
@@ -70,11 +69,10 @@ export const updateBusinessSchema = z.object({
     .regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Invalid PAN format")
     .optional()
     .or(z.literal("")),
-  address: z
+  address_line1: z
     .string()
-    .max(500, "Address is too long")
-    .optional()
-    .or(z.literal("")),
+    .min(3, "Address is required")
+    .max(500, "Address is too long"),
   city: z
     .string()
     .max(100, "City name is too long")

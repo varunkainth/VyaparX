@@ -317,21 +317,21 @@ export function CreateBusinessPage() {
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="address" className="flex items-center gap-2 text-xs md:text-sm">
+                      <FieldLabel htmlFor="address_line1" className="flex items-center gap-2 text-xs md:text-sm">
                         <MapPin className="h-3 w-3 md:h-4 md:w-4" />
                         Street Address
                       </FieldLabel>
                       <Input
-                        id="address"
+                        id="address_line1"
                         type="text"
                         placeholder="123 Business Street, Area Name"
-                        {...register("address")}
+                        {...register("address_line1")}
                         disabled={isSubmitting}
                         className="text-sm"
                       />
-                      {errors.address && (
+                      {errors.address_line1 && (
                         <p className="text-xs text-destructive mt-1">
-                          {errors.address.message}
+                          {errors.address_line1.message}
                         </p>
                       )}
                     </Field>

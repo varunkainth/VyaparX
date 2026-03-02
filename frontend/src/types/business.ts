@@ -42,7 +42,7 @@ export interface CreateBusinessInput {
   name: string;
   gstin?: string;
   pan?: string;
-  address?: string;
+  address_line1: string;
   city?: string;
   state?: string;
   state_code?: string;
