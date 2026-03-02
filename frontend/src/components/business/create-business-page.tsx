@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { createBusinessSchema, type CreateBusinessFormData } from "@/validators/business.validator"
 import { businessService } from "@/services/business.service"
@@ -56,14 +56,13 @@ export function CreateBusinessPage() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    watch,
     setValue,
   } = useForm<CreateBusinessFormData>({
     resolver: zodResolver(createBusinessSchema),
   })
 
-  const stateCode = watch("state_code")
-  const stateName = watch("state")
+  const stateCode = useWatch({ name: "state_code" })
+  const stateName = useWatch({ name: "state" })
 
   // Auto-fill state name when state code is selected
   const handleStateCodeChange = (code: string) => {
@@ -125,7 +124,7 @@ export function CreateBusinessPage() {
         <div className="flex flex-1 flex-col gap-4 md:gap-6 p-4 md:p-6 pb-20 md:pb-6">
           {/* Page Header - Mobile Optimized */}
           <div className="flex items-center gap-3">
-            <div className="p-2 md:p-3 rounded-xl bg-primary/10 border-2 border-primary/20 flex-shrink-0">
+            <div className="p-2 md:p-3 rounded-xl bg-primary/10 border-2 border-primary/20 shrink-0">
               <Building2 className="h-6 w-6 md:h-8 md:w-8 text-primary" />
             </div>
             <div>
@@ -143,7 +142,7 @@ export function CreateBusinessPage() {
               <Card className="lg:col-span-2">
                 <CardHeader>
                   <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                    <div className="p-2 rounded-lg bg-primary/10 shrink-0">
                       <Building2 className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                     </div>
                     <div>
@@ -185,7 +184,7 @@ export function CreateBusinessPage() {
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                    <div className="p-2 rounded-lg bg-primary/10 shrink-0">
                       <CreditCard className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                     </div>
                     <div>
@@ -245,7 +244,7 @@ export function CreateBusinessPage() {
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                    <div className="p-2 rounded-lg bg-primary/10 shrink-0">
                       <Phone className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                     </div>
                     <div>
@@ -305,7 +304,7 @@ export function CreateBusinessPage() {
               <Card className="lg:col-span-2">
                 <CardHeader>
                   <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg bg-primary/10 flex-shrink-0">
+                    <div className="p-2 rounded-lg bg-primary/10 shrink-0">
                       <MapPinned className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                     </div>
                     <div>
@@ -407,7 +406,7 @@ export function CreateBusinessPage() {
               <CardContent className="pt-4 md:pt-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 md:gap-4">
                   <div className="flex items-center gap-3">
-                    <Sparkles className="h-5 w-5 text-primary flex-shrink-0" />
+                    <Sparkles className="h-5 w-5 text-primary shrink-0" />
                     <div>
                       <p className="font-semibold text-sm md:text-base">Ready to get started?</p>
                       <p className="text-xs md:text-sm text-muted-foreground">
