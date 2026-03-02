@@ -29,7 +29,8 @@ import {
   ArrowLeft,
   Barcode,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Wand2
 } from "lucide-react"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import {
@@ -84,6 +85,13 @@ export function CreateInventoryPage() {
       return (((sellingPrice - purchasePrice) / purchasePrice) * 100).toFixed(2)
     }
     return "0.00"
+  }
+
+  const generateSKU = () => {
+    const timestamp = Date.now().toString(36).toUpperCase()
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase()
+    const sku = `SKU-${timestamp}-${random}`
+    setValue("sku", sku)
   }
 
   const onSubmit = async (data: CreateInventoryFormData) => {
@@ -215,8 +223,19 @@ export function CreateInventoryPage() {
                             placeholder="Stock Keeping Unit"
                             {...register("sku")}
                             disabled={isSubmitting}
-                            className="pl-10"
+                            className="pl-10 pr-16"
                           />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full rounded-l-none"
+                            onClick={generateSKU}
+                            disabled={isSubmitting}
+                          >
+                            <Wand2 className="h-4 w-4" />
+                            <span className="sr-only">Generate SKU</span>
+                          </Button>
                         </div>
                         {errors.sku && (
                           <p className="text-sm text-destructive mt-1">

@@ -31,40 +31,28 @@ export function NavMain({
     items?: {
       title: string
       url: string
+      isSpecialAction?: boolean
     }[]
   }[]
 }) {
   const pathname = usePathname()
-  const [openItem, setOpenItem] = useState<string | null>(null)
-
-  // Determine which section should be open based on current path
-  useEffect(() => {
-    const activeItem = items.find((item) => {
-      // Check if current path matches the main item or any sub-item
-      if (pathname === item.url) return true
-      return item.items?.some((subItem) => pathname.startsWith(subItem.url))
-    })
-    
-    if (activeItem) {
-      setOpenItem(activeItem.title)
-    }
-  }, [pathname, items])
 
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
-          const isOpen = openItem === item.title
-          
+          // Determine if this section should be open based on current path
+          const isOpen = item.items?.some((subItem) => 
+            pathname.startsWith(subItem.url)
+          ) || pathname === item.url;
+
           return (
             <Collapsible
               key={item.title}
               asChild
               open={isOpen}
-              onOpenChange={(open) => {
-                setOpenItem(open ? item.title : null)
-              }}
+              onOpenChange={() => {}}
               className="group/collapsible"
             >
               <SidebarMenuItem>
@@ -79,11 +67,19 @@ export function NavMain({
                   <SidebarMenuSub>
                     {item.items?.map((subItem) => (
                       <SidebarMenuSubItem key={subItem.title}>
-                        <SidebarMenuSubButton asChild isActive={pathname === subItem.url}>
-                          <a href={subItem.url}>
-                            <span>{subItem.title}</span>
-                          </a>
-                        </SidebarMenuSubButton>
+                        {subItem.isSpecialAction ? (
+                          <SidebarMenuSubButton asChild>
+                            <a href={subItem.url}>
+                              <span>{subItem.title}</span>
+                            </a>
+                          </SidebarMenuSubButton>
+                        ) : (
+                          <SidebarMenuSubButton asChild isActive={pathname === subItem.url}>
+                            <a href={subItem.url}>
+                              <span>{subItem.title}</span>
+                            </a>
+                          </SidebarMenuSubButton>
+                        )}
                       </SidebarMenuSubItem>
                     ))}
                   </SidebarMenuSub>

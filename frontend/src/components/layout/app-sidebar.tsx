@@ -17,6 +17,7 @@ import {
 import { NavMain } from "@/components/layout/nav-main"
 import { NavUser } from "@/components/layout/nav-user"
 import { BusinessSwitcher } from "@/components/business/business-switcher"
+import { InvoiceTypeSelector } from "@/components/invoices/invoice-type-selector"
 import {
   Sidebar,
   SidebarContent,
@@ -62,8 +63,9 @@ const data = {
           url: "/invoices",
         },
         {
-          title: "Create Invoice",
-          url: "/invoices/create",
+          title: "Create",
+          url: "#",
+          isSpecialAction: true,
         },
         {
           title: "Drafts",
@@ -209,18 +211,43 @@ const data = {
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const [showInvoiceTypeSelector, setShowInvoiceTypeSelector] = React.useState(false);
+
+  // Handle click events on the sidebar
+  React.useEffect(() => {
+    const handleClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Check if the clicked element is the "Create" button in the Invoices menu
+      if (target.closest('a[href="#"]') && 
+          target.textContent?.trim() === "Create") {
+        event.preventDefault();
+        setShowInvoiceTypeSelector(true);
+      }
+    };
+
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
+
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <BusinessSwitcher />
-      </SidebarHeader>
-      <SidebarContent>
-        <NavMain items={data.navMain} />
-      </SidebarContent>
-      <SidebarFooter>
-        <NavUser />
-      </SidebarFooter>
-      <SidebarRail />
-    </Sidebar>
+    <>
+      <Sidebar collapsible="icon" {...props}>
+        <SidebarHeader>
+          <BusinessSwitcher />
+        </SidebarHeader>
+        <SidebarContent>
+          <NavMain items={data.navMain} />
+        </SidebarContent>
+        <SidebarFooter>
+          <NavUser />
+        </SidebarFooter>
+        <SidebarRail />
+      </Sidebar>
+      <InvoiceTypeSelector 
+        open={showInvoiceTypeSelector} 
+        onOpenChange={setShowInvoiceTypeSelector} 
+      />
+    </>
   )
 }
