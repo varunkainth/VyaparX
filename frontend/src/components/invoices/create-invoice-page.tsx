@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import * as React from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useForm, useFieldArray } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -53,7 +54,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Alert } from "@/components/ui/alert"
 
 interface CreateInvoicePageProps {
   invoiceType: "sales" | "purchase"
@@ -105,6 +106,44 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
   const watchPlaceOfSupply = watch("place_of_supply")
   const watchPriceMode = watch("price_mode")
 
+  const fetchParties = useCallback(async () => {
+    if (!currentBusiness) return
+
+    setIsLoadingParties(true)
+    try {
+      const data = await partyService.listParties(currentBusiness.id, {
+        include_inactive: false,
+      })
+      // Filter based on invoice type
+      const filtered = invoiceType === "sales" 
+        ? data.filter(p => p.party_type === "customer" || p.party_type === "both")
+        : data.filter(p => p.party_type === "supplier" || p.party_type === "both")
+      setParties(filtered)
+    } catch (error) {
+      const errorMessage = getErrorMessage(error)
+      toast.error(errorMessage)
+    } finally {
+      setIsLoadingParties(false)
+    }
+  }, [currentBusiness, invoiceType])
+
+  const fetchInventory = useCallback(async () => {
+    if (!currentBusiness) return
+
+    setIsLoadingInventory(true)
+    try {
+      const data = await inventoryService.listItems(currentBusiness.id, {
+        include_inactive: false,
+      })
+      setInventoryItems(data)
+    } catch (error) {
+      const errorMessage = getErrorMessage(error)
+      toast.error(errorMessage)
+    } finally {
+      setIsLoadingInventory(false)
+    }
+  }, [currentBusiness])
+
   useEffect(() => {
     if (currentBusiness) {
       // Fetch both parties and inventory in parallel
@@ -115,7 +154,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
         setValue("place_of_supply", currentBusiness.state_code)
       }
     }
-  }, [currentBusiness])
+  }, [currentBusiness, fetchInventory, fetchParties, setValue])
 
   useEffect(() => {
     // Update IGST flag when place of supply changes
@@ -135,44 +174,6 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
       }
     }
   }, [watchPartyId, parties])
-
-  const fetchParties = async () => {
-    if (!currentBusiness) return
-
-    setIsLoadingParties(true)
-    try {
-      const data = await partyService.listParties(currentBusiness.id, {
-        include_inactive: false,
-      })
-      // Filter based on invoice type
-      const filtered = invoiceType === "sales" 
-        ? data.filter(p => p.party_type === "customer" || p.party_type === "both")
-        : data.filter(p => p.party_type === "supplier" || p.party_type === "both")
-      setParties(filtered)
-    } catch (error) {
-      const errorMessage = getErrorMessage(error)
-      toast.error(errorMessage)
-    } finally {
-      setIsLoadingParties(false)
-    }
-  }
-
-  const fetchInventory = async () => {
-    if (!currentBusiness) return
-
-    setIsLoadingInventory(true)
-    try {
-      const data = await inventoryService.listItems(currentBusiness.id, {
-        include_inactive: false,
-      })
-      setInventoryItems(data)
-    } catch (error) {
-      const errorMessage = getErrorMessage(error)
-      toast.error(errorMessage)
-    } finally {
-      setIsLoadingInventory(false)
-    }
-  }
 
   const handleItemSelect = (index: number, itemId: string) => {
     const item = inventoryItems.find(i => i.id === itemId)
@@ -496,7 +497,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
           {/* Page Header - Mobile Optimized */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 md:p-3 rounded-xl bg-primary/10 border-2 border-primary/20 flex-shrink-0">
+              <div className="p-2 md:p-3 rounded-xl bg-primary/10 border-2 border-primary/20 shrink-0">
                 <FileText className="h-5 w-5 md:h-6 md:w-6 lg:h-8 lg:w-8 text-primary" />
               </div>
               <div>
@@ -627,7 +628,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                     }>
                       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-6">
                         <div className="flex items-center gap-3 sm:gap-4">
-                          <div className={`p-2 sm:p-2.5 rounded-lg flex-shrink-0 ${
+                          <div className={`p-2 sm:p-2.5 rounded-lg shrink-0 ${
                             watchPlaceOfSupply === currentBusiness.state_code 
                               ? "bg-green-500/15" 
                               : "bg-blue-500/15"
@@ -752,14 +753,14 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                               >
                                 <div className="flex items-center justify-between w-full gap-3">
                                   <div className="flex flex-col">
-                                    <span className="text-sm font-medium truncate max-w-[180px]">{item.name}</span>
+                                    <span className="text-sm font-medium truncate max-w-45">{item.name}</span>
                                     <span className="text-xs text-muted-foreground">
                                       ₹{invoiceType === "sales" ? item.selling_price : item.purchase_price} / {item.unit}
                                     </span>
                                   </div>
                                   <Badge
                                     variant="outline"
-                                    className={`text-xs flex-shrink-0 ${
+                                    className={`text-xs shrink-0 ${
                                       isOutOfStock
                                         ? "text-red-600 border-red-600 bg-red-50 dark:bg-red-950/20"
                                         : isLowStock
@@ -1068,7 +1069,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
               <CardContent className="pt-4 md:pt-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <Save className="h-5 w-5 text-primary flex-shrink-0" />
+                    <Save className="h-5 w-5 text-primary shrink-0" />
                     <p className="font-semibold text-sm md:text-base">Create Invoice</p>
                   </div>
                   <div className="flex gap-2 md:gap-3 w-full sm:w-auto">

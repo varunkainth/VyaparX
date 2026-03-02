@@ -531,7 +531,7 @@ export function CreatePartyPage() {
               <CardContent className="pt-4 md:pt-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 md:gap-4">
                   <div className="flex items-center gap-3">
-                    <Save className="h-5 w-5 text-primary flex-shrink-0" />
+                    <Save className="h-5 w-5 text-primary shrink-0" />
                     <div>
                       <p className="font-semibold text-sm md:text-base">Create Party</p>
                       <p className="text-xs md:text-sm text-muted-foreground">

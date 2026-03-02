@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { createInventorySchema, type CreateInventoryFormData } from "@/validators/inventory.validator"
 import { inventoryService } from "@/services/inventory.service"
@@ -29,7 +29,6 @@ import {
   ArrowLeft,
   Barcode,
   FileText,
-  AlertCircle,
   Wand2
 } from "lucide-react"
 import { AppSidebar } from "@/components/layout/app-sidebar"
@@ -47,6 +46,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
+import { useMemo } from "react"
 
 export function CreateInventoryPage() {
   const router = useRouter()
@@ -56,8 +56,8 @@ export function CreateInventoryPage() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    watch,
     setValue,
+    control, // Destructure control for useWatch
   } = useForm<CreateInventoryFormData>({
     resolver: zodResolver(createInventorySchema),
     defaultValues: {
@@ -75,17 +75,29 @@ export function CreateInventoryPage() {
     },
   })
 
-  const unit = watch("unit")
-  const gstRate = watch("gst_rate")
-  const purchasePrice = watch("purchase_price")
-  const sellingPrice = watch("selling_price")
+  const unit = useWatch({
+    control: control,
+    name: "unit"
+  })
+  const gstRate = useWatch({
+    control: control,
+    name: "gst_rate"
+  })
+  const purchasePrice = useWatch({
+    control: control,
+    name: "purchase_price"
+  })
+  const sellingPrice = useWatch({
+    control: control,
+    name: "selling_price"
+  })
 
-  const calculateMargin = () => {
+  const marginPercentage = useMemo(() => {
     if (purchasePrice && sellingPrice && sellingPrice > purchasePrice) {
       return (((sellingPrice - purchasePrice) / purchasePrice) * 100).toFixed(2)
     }
     return "0.00"
-  }
+  }, [purchasePrice, sellingPrice])
 
   const generateSKU = () => {
     const timestamp = Date.now().toString(36).toUpperCase()
@@ -103,7 +115,7 @@ export function CreateInventoryPage() {
     try {
       // Clean up empty strings
       const cleanData = Object.fromEntries(
-        Object.entries(data).filter(([_, v]) => v !== "")
+        Object.entries(data).filter(([, v]) => v !== "")
       ) as CreateInventoryFormData
 
       await inventoryService.createItem(currentBusiness.id, cleanData)
@@ -407,11 +419,11 @@ export function CreateInventoryPage() {
                       )}
                     </Field>
 
-                    {purchasePrice > 0 && sellingPrice > 0 && (
+                    {(purchasePrice ?? 0) > 0 && (sellingPrice ?? 0) > 0 && (
                       <div className="p-3 rounded-lg bg-muted">
                         <p className="text-sm text-muted-foreground">Profit Margin</p>
                         <p className="text-lg font-semibold text-green-600">
-                          {calculateMargin()}%
+                          {marginPercentage}%
                         </p>
                       </div>
                     )}
@@ -518,7 +530,7 @@ export function CreateInventoryPage() {
                     <Button
                       type="submit"
                       disabled={isSubmitting}
-                      className="flex-1 md:flex-none min-w-[160px]"
+                      className="flex-1 md:flex-none min-w-40"
                     >
                       {isSubmitting ? "Creating..." : "Create Item"}
                     </Button>
