@@ -19,6 +19,9 @@ const devLog = (...args: unknown[]) => {
 let hasInitiallyFetched = false;
 let isFetchingBusinesses = false;
 
+// Global state to track if we've shown the empty business modal
+let hasShownEmptyBusinessModal = false;
+
 /**
  * Hook to fetch and sync businesses from API
  * Only fetches once per session when authenticated
@@ -52,6 +55,13 @@ export function useBusinesses(options?: { forceRefetch?: boolean }) {
       
       setBusinesses(data);
       
+      // Check if user has no businesses and hasn't been shown the modal yet
+      if (data.length === 0 && !hasShownEmptyBusinessModal) {
+        devLog("[useBusinesses] User has no businesses, should show creation modal");
+        hasShownEmptyBusinessModal = true;
+        // This will be handled by the AuthGuard component
+      }
+      
       // Auto-select first business if none selected and switch to get proper tokens
       const currentBusiness = useBusinessStore.getState().currentBusiness;
       if (data.length > 0 && !currentBusiness) {
@@ -82,6 +92,7 @@ export function useBusinesses(options?: { forceRefetch?: boolean }) {
       // Reset flags on error to allow retry
       hasFetchedRef.current = false;
       hasInitiallyFetched = false;
+      hasShownEmptyBusinessModal = false; // Allow retry on error
     } finally {
       const { setLoading } = useBusinessStore.getState();
       setLoading(false);
@@ -106,5 +117,6 @@ export function useBusinesses(options?: { forceRefetch?: boolean }) {
 export function resetBusinessesFetchState() {
   hasInitiallyFetched = false;
   isFetchingBusinesses = false;
+  hasShownEmptyBusinessModal = false;
   devLog("[useBusinesses] Fetch state reset");
 }

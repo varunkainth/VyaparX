@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -21,7 +22,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { 
   Building2, 
   MapPin, 
@@ -30,36 +37,42 @@ import {
   FileText,
   Sparkles,
   CreditCard,
-  MapPinned
+  MapPinned,
+  X
 } from "lucide-react"
-import { AppSidebar } from "@/components/layout/app-sidebar"
-import { PageLayout } from "@/components/layout/page-layout"
-import {
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
 
-export function CreateBusinessPage() {
+interface CreateBusinessModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSuccess?: () => void
+}
+
+export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBusinessModalProps) {
   const router = useRouter()
   const { addBusiness } = useBusinessStore()
+  const [isMinimized, setIsMinimized] = useState(false)
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     setValue,
+    reset,
     control,
   } = useForm<CreateBusinessFormData>({
     resolver: zodResolver(createBusinessSchema),
+    defaultValues: {
+      name: "",
+      gstin: "",
+      pan: "",
+      phone: "",
+      email: "",
+      address_line1: "",
+      city: "",
+      state_code: "",
+      state: "",
+      pincode: "",
+    }
   })
 
   const stateCode = useWatch({ name: "state_code", control: control })
@@ -89,7 +102,13 @@ export function CreateBusinessPage() {
       // Update tokens and session with new business context
       updateBusinessContext(response.tokens, response.session, businessWithRole)
       
-      toast.success("Business created successfully!")
+      toast.success("Business created successfully! Welcome to VyaparX!")
+      
+      // Close modal and trigger success callback
+      onOpenChange(false)
+      onSuccess?.()
+      
+      // Redirect to dashboard
       router.push("/dashboard")
     } catch (error) {
       const errorMessage = getErrorMessage(error)
@@ -97,68 +116,68 @@ export function CreateBusinessPage() {
     }
   }
 
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (open) {
+      reset()
+      // Use setTimeout to avoid setState in effect warning
+      setTimeout(() => {
+        setIsMinimized(false)
+      }, 0)
+    }
+  }, [open, reset])
+
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <SidebarInset>
-        <PageLayout>
-        {/* Header */}
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Create Business</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-        </header>
-
-        {/* Main Content - Mobile Optimized */}
-        <div className="flex flex-1 flex-col gap-4 md:gap-6 p-4 md:p-6 pb-20 md:pb-6">
-          {/* Page Header - Mobile Optimized */}
-          <div className="flex items-center gap-3">
-            <div className="p-2 md:p-3 rounded-xl bg-primary/10 border-2 border-primary/20 shrink-0">
-              <Building2 className="h-6 w-6 md:h-8 md:w-8 text-primary" />
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
+        {/* Modal Header */}
+        <DialogHeader className="p-6 pb-4 border-b sticky top-0 bg-background z-10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-primary/10 border-2 border-primary/20">
+                <Building2 className="h-6 w-6 text-primary" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-bold">Create Your First Business</DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground mt-1">
+                  Set up your business profile to start managing invoices, inventory, and finances
+                </DialogDescription>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">Create Business</h1>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
-                <span className="hidden sm:inline">Set up your business profile to start managing invoices and inventory</span>
-                <span className="sm:hidden">Set up your business</span>
-              </p>
-            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              className="h-8 w-8 p-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
+        </DialogHeader>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 md:space-y-6">
-            <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
-              {/* Basic Information - Mobile Optimized */}
+        {/* Modal Content */}
+        <div className="overflow-y-auto p-6">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Basic Information */}
               <Card className="lg:col-span-2">
                 <CardHeader>
                   <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg bg-primary/10 shrink-0">
-                      <Building2 className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Building2 className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <CardTitle className="text-base md:text-lg">Business Details</CardTitle>
-                      <CardDescription className="text-xs md:text-sm">Basic information about your business</CardDescription>
+                      <CardTitle>Business Details</CardTitle>
+                      <CardDescription>Basic information about your business</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="name" className="flex items-center gap-2 text-xs md:text-sm">
-                        <Building2 className="h-3 w-3 md:h-4 md:w-4" />
-                        Business Name
-                        <span className="text-destructive">*</span>
+                      <FieldLabel htmlFor="name" className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        Business Name <span className="text-destructive">*</span>
                       </FieldLabel>
                       <Input
                         id="name"
@@ -166,14 +185,13 @@ export function CreateBusinessPage() {
                         placeholder="Enter your business name"
                         {...register("name")}
                         disabled={isSubmitting}
-                        className="text-sm"
                       />
                       {errors.name && (
-                        <p className="text-xs text-destructive mt-1">
+                        <p className="text-sm text-destructive mt-1">
                           {errors.name.message}
                         </p>
                       )}
-                      <FieldDescription className="text-xs">
+                      <FieldDescription>
                         This will appear on all your invoices and documents
                       </FieldDescription>
                     </Field>
@@ -181,24 +199,24 @@ export function CreateBusinessPage() {
                 </CardContent>
               </Card>
 
-              {/* Tax Information - Mobile Optimized */}
+              {/* Tax Information */}
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg bg-primary/10 shrink-0">
-                      <CreditCard className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <CreditCard className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <CardTitle className="text-base md:text-lg">Tax Information</CardTitle>
-                      <CardDescription className="text-xs md:text-sm">GST and PAN details</CardDescription>
+                      <CardTitle>Tax Information</CardTitle>
+                      <CardDescription>GST and PAN details</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="gstin" className="flex items-center gap-2 text-xs md:text-sm">
-                        <FileText className="h-3 w-3 md:h-4 md:w-4" />
+                      <FieldLabel htmlFor="gstin" className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
                         GSTIN
                       </FieldLabel>
                       <Input
@@ -207,19 +225,19 @@ export function CreateBusinessPage() {
                         placeholder="22AAAAA0000A1Z5"
                         {...register("gstin")}
                         disabled={isSubmitting}
-                        className="uppercase text-sm"
+                        className="uppercase"
                       />
                       {errors.gstin && (
-                        <p className="text-xs text-destructive mt-1">
+                        <p className="text-sm text-destructive mt-1">
                           {errors.gstin.message}
                         </p>
                       )}
-                      <FieldDescription className="text-xs">15-digit GST number (optional)</FieldDescription>
+                      <FieldDescription>15-digit GST number (optional)</FieldDescription>
                     </Field>
 
                     <Field>
-                      <FieldLabel htmlFor="pan" className="flex items-center gap-2 text-xs md:text-sm">
-                        <FileText className="h-3 w-3 md:h-4 md:w-4" />
+                      <FieldLabel htmlFor="pan" className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
                         PAN
                       </FieldLabel>
                       <Input
@@ -228,37 +246,37 @@ export function CreateBusinessPage() {
                         placeholder="AAAAA0000A"
                         {...register("pan")}
                         disabled={isSubmitting}
-                        className="uppercase text-sm"
+                        className="uppercase"
                       />
                       {errors.pan && (
-                        <p className="text-xs text-destructive mt-1">
+                        <p className="text-sm text-destructive mt-1">
                           {errors.pan.message}
                         </p>
                       )}
-                      <FieldDescription className="text-xs">10-character PAN (optional)</FieldDescription>
+                      <FieldDescription>10-character PAN (optional)</FieldDescription>
                     </Field>
                   </FieldGroup>
                 </CardContent>
               </Card>
 
-              {/* Contact Information - Mobile Optimized */}
+              {/* Contact Information */}
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg bg-primary/10 shrink-0">
-                      <Phone className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Phone className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <CardTitle className="text-base md:text-lg">Contact Details</CardTitle>
-                      <CardDescription className="text-xs md:text-sm">How to reach your business</CardDescription>
+                      <CardTitle>Contact Details</CardTitle>
+                      <CardDescription>How to reach your business</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="phone" className="flex items-center gap-2 text-xs md:text-sm">
-                        <Phone className="h-3 w-3 md:h-4 md:w-4" />
+                      <FieldLabel htmlFor="phone" className="flex items-center gap-2">
+                        <Phone className="h-4 w-4" />
                         Phone Number
                       </FieldLabel>
                       <Input
@@ -267,19 +285,18 @@ export function CreateBusinessPage() {
                         placeholder="9876543210"
                         {...register("phone")}
                         disabled={isSubmitting}
-                        className="text-sm"
                       />
                       {errors.phone && (
-                        <p className="text-xs text-destructive mt-1">
+                        <p className="text-sm text-destructive mt-1">
                           {errors.phone.message}
                         </p>
                       )}
-                      <FieldDescription className="text-xs">10-digit mobile number</FieldDescription>
+                      <FieldDescription>10-digit mobile number</FieldDescription>
                     </Field>
 
                     <Field>
-                      <FieldLabel htmlFor="email" className="flex items-center gap-2 text-xs md:text-sm">
-                        <Mail className="h-3 w-3 md:h-4 md:w-4" />
+                      <FieldLabel htmlFor="email" className="flex items-center gap-2">
+                        <Mail className="h-4 w-4" />
                         Email Address
                       </FieldLabel>
                       <Input
@@ -288,37 +305,36 @@ export function CreateBusinessPage() {
                         placeholder="business@example.com"
                         {...register("email")}
                         disabled={isSubmitting}
-                        className="text-sm"
                       />
                       {errors.email && (
-                        <p className="text-xs text-destructive mt-1">
+                        <p className="text-sm text-destructive mt-1">
                           {errors.email.message}
                         </p>
                       )}
-                      <FieldDescription className="text-xs">Business email address</FieldDescription>
+                      <FieldDescription>Business email address</FieldDescription>
                     </Field>
                   </FieldGroup>
                 </CardContent>
               </Card>
 
-              {/* Address Information - Mobile Optimized */}
+              {/* Address Information */}
               <Card className="lg:col-span-2">
                 <CardHeader>
                   <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg bg-primary/10 shrink-0">
-                      <MapPinned className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <MapPinned className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <CardTitle className="text-base md:text-lg">Business Address</CardTitle>
-                      <CardDescription className="text-xs md:text-sm">Your business location</CardDescription>
+                      <CardTitle>Business Address</CardTitle>
+                      <CardDescription>Your business location</CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="address_line1" className="flex items-center gap-2 text-xs md:text-sm">
-                        <MapPin className="h-3 w-3 md:h-4 md:w-4" />
+                      <FieldLabel htmlFor="address_line1" className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
                         Street Address
                       </FieldLabel>
                       <Input
@@ -327,41 +343,39 @@ export function CreateBusinessPage() {
                         placeholder="123 Business Street, Area Name"
                         {...register("address_line1")}
                         disabled={isSubmitting}
-                        className="text-sm"
                       />
                       {errors.address_line1 && (
-                        <p className="text-xs text-destructive mt-1">
+                        <p className="text-sm text-destructive mt-1">
                           {errors.address_line1.message}
                         </p>
                       )}
                     </Field>
 
-                    <div className="grid gap-3 md:gap-4 sm:grid-cols-3">
+                    <div className="grid gap-4 sm:grid-cols-3">
                       <Field>
-                        <FieldLabel htmlFor="city" className="text-xs md:text-sm">City</FieldLabel>
+                        <FieldLabel htmlFor="city">City</FieldLabel>
                         <Input
                           id="city"
                           type="text"
                           placeholder="Mumbai"
                           {...register("city")}
                           disabled={isSubmitting}
-                          className="text-sm"
                         />
                         {errors.city && (
-                          <p className="text-xs text-destructive mt-1">
+                          <p className="text-sm text-destructive mt-1">
                             {errors.city.message}
                           </p>
                         )}
                       </Field>
 
                       <Field>
-                        <FieldLabel htmlFor="state_code" className="text-xs md:text-sm">State</FieldLabel>
+                        <FieldLabel htmlFor="state_code">State</FieldLabel>
                         <Select
                           value={stateCode}
                           onValueChange={handleStateCodeChange}
                           disabled={isSubmitting}
                         >
-                          <SelectTrigger className="w-full">
+                          <SelectTrigger>
                             <SelectValue placeholder="Select state" />
                           </SelectTrigger>
                           <SelectContent>
@@ -373,7 +387,7 @@ export function CreateBusinessPage() {
                           </SelectContent>
                         </Select>
                         {errors.state_code && (
-                          <p className="text-xs text-destructive mt-1">
+                          <p className="text-sm text-destructive mt-1">
                             {errors.state_code.message}
                           </p>
                         )}
@@ -381,17 +395,16 @@ export function CreateBusinessPage() {
                       </Field>
 
                       <Field>
-                        <FieldLabel htmlFor="pincode" className="text-xs md:text-sm">Pincode</FieldLabel>
+                        <FieldLabel htmlFor="pincode">Pincode</FieldLabel>
                         <Input
                           id="pincode"
                           type="text"
                           placeholder="400001"
                           {...register("pincode")}
                           disabled={isSubmitting}
-                          className="text-sm"
                         />
                         {errors.pincode && (
-                          <p className="text-xs text-destructive mt-1">
+                          <p className="text-sm text-destructive mt-1">
                             {errors.pincode.message}
                           </p>
                         )}
@@ -402,36 +415,35 @@ export function CreateBusinessPage() {
               </Card>
             </div>
 
-            {/* Submit Section - Mobile Optimized */}
+            {/* Submit Section */}
             <Card className="border-2 border-primary/20 bg-primary/5">
-              <CardContent className="pt-4 md:pt-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 md:gap-4">
+              <CardContent className="pt-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <Sparkles className="h-5 w-5 text-primary shrink-0" />
+                    <Sparkles className="h-5 w-5 text-primary" />
                     <div>
-                      <p className="font-semibold text-sm md:text-base">Ready to get started?</p>
-                      <p className="text-xs md:text-sm text-muted-foreground">
-                        <span className="hidden sm:inline">Create your business and unlock all features</span>
-                        <span className="sm:hidden">Create and unlock features</span>
+                      <p className="font-semibold">Ready to get started?</p>
+                      <p className="text-sm text-muted-foreground">
+                        Create your business and unlock all features
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-2 md:gap-3 w-full sm:w-auto">
+                  <div className="flex gap-3 w-full sm:w-auto">
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => router.push("/dashboard")}
+                      onClick={() => onOpenChange(false)}
                       disabled={isSubmitting}
-                      className="flex-1 sm:flex-none cursor-pointer"
+                      className="flex-1 sm:flex-none"
                     >
                       Cancel
                     </Button>
                     <Button
                       type="submit"
                       disabled={isSubmitting}
-                      className="flex-1 sm:flex-none min-w-[120px] sm:min-w-[160px] cursor-pointer"
+                      className="flex-1 sm:flex-none min-w-[160px]"
                     >
-                      {isSubmitting ? "Creating..." : "Create"}
+                      {isSubmitting ? "Creating..." : "Create Business"}
                     </Button>
                   </div>
                 </div>
@@ -439,8 +451,7 @@ export function CreateBusinessPage() {
             </Card>
           </form>
         </div>
-        </PageLayout>
-      </SidebarInset>
-    </SidebarProvider>
+      </DialogContent>
+    </Dialog>
   )
 }

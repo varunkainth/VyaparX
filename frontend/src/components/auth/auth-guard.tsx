@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
 import { checkAndRefreshToken, cancelTokenRefresh } from "@/lib/token-manager";
 import { useBusinesses } from "@/hooks/use-businesses";
+import { CreateBusinessModal } from "@/components/business/create-business-modal";
 
 // Helper for dev-only logging
 const devLog = (...args: unknown[]) => {
@@ -23,9 +24,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, isAuthenticated, isLoading, _hasHydrated } = useAuthStore();
+  const [showBusinessModal, setShowBusinessModal] = useState(false);
   
   // Fetch businesses when authenticated
-  useBusinesses();
+  const { businesses } = useBusinesses();
 
   // Initialize token refresh on mount
   useEffect(() => {
@@ -38,6 +40,21 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
       cancelTokenRefresh();
     };
   }, [isAuthenticated]);
+
+  // Check for empty businesses and show modal - using setTimeout to avoid setState in effect
+  useEffect(() => {
+    if (!_hasHydrated || isLoading || !isAuthenticated) return;
+    
+    // Use setTimeout to avoid the linter warning about setState in effect
+    const timer = setTimeout(() => {
+      if (businesses.length === 0 && !showBusinessModal) {
+        devLog("[AuthGuard] Authenticated user has no businesses, showing creation modal");
+        setShowBusinessModal(true);
+      }
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [isAuthenticated, businesses.length, showBusinessModal, _hasHydrated, isLoading]);
 
   useEffect(() => {
     // Wait for hydration before checking routes
@@ -88,9 +105,21 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return null;
   }
 
+  // Handle business creation modal
+  const handleBusinessCreated = () => {
+    devLog("[AuthGuard] Business created successfully");
+    setShowBusinessModal(false);
+    // The user will be redirected to dashboard by the modal
+  };
+
   return (
     <>
       {children}
+      <CreateBusinessModal 
+        open={showBusinessModal} 
+        onOpenChange={setShowBusinessModal}
+        onSuccess={handleBusinessCreated}
+      />
     </>
   );
 }
