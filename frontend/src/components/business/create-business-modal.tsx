@@ -50,7 +50,6 @@ interface CreateBusinessModalProps {
 export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBusinessModalProps) {
   const router = useRouter()
   const { addBusiness } = useBusinessStore()
-  const [isMinimized, setIsMinimized] = useState(false)
 
   const {
     register,
@@ -120,18 +119,14 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
   useEffect(() => {
     if (open) {
       reset()
-      // Use setTimeout to avoid setState in effect warning
-      setTimeout(() => {
-        setIsMinimized(false)
-      }, 0)
     }
   }, [open, reset])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
         {/* Modal Header */}
-        <DialogHeader className="p-6 pb-4 border-b sticky top-0 bg-background z-10">
+        <DialogHeader className="p-6 pb-4 border-b shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-primary/10 border-2 border-primary/20">
@@ -155,8 +150,8 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
           </div>
         </DialogHeader>
 
-        {/* Modal Content */}
-        <div className="overflow-y-auto p-6">
+        {/* Modal Content - Scrollable Area */}
+        <div className="flex-1 overflow-y-auto p-6">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid gap-6 lg:grid-cols-2">
               {/* Basic Information */}
