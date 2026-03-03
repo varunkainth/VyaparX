@@ -50,6 +50,7 @@ class EmailService {
             connectionTimeout: 5000, // 5 seconds
             greetingTimeout: 5000,
             socketTimeout: 10000, // 10 seconds
+            family: 4,
         });
         this.isConfigured = true;
 
