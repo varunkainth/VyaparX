@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { getErrorMessage } from "@/lib/error-handler"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { FloatingActionButton } from "@/components/ui/floating-action-button"
@@ -25,7 +26,10 @@ import {
   TrendingUp,
   TrendingDown,
   Download,
-  Eye
+  Eye,
+  MoreVertical,
+  Copy,
+  XCircle
 } from "lucide-react"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { PageLayout } from "@/components/layout/page-layout"
@@ -55,8 +59,18 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { useKeyboardShortcuts, type KeyboardShortcut } from "@/hooks/useKeyboardShortcuts"
 import { KeyboardShortcutsDialog } from "@/components/ui/keyboard-shortcuts-dialog"
 import { useRef } from "react"
@@ -73,11 +87,15 @@ export function InvoicesListPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [invoiceTypeFilter, setInvoiceTypeFilter] = useState<InvoiceType | "all">("all")
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<PaymentStatus | "all">("all")
+  const [lifecycleFilter, setLifecycleFilter] = useState<"all" | "finalized" | "revised" | "cancelled">("all")
   const [includeCancelled, setIncludeCancelled] = useState(false)
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set())
   const [isDownloadingBulk, setIsDownloadingBulk] = useState(false)
   const [showCreateDropdown, setShowCreateDropdown] = useState(false)
+  const [invoiceToCancel, setInvoiceToCancel] = useState<Invoice | null>(null)
+  const [cancelReason, setCancelReason] = useState("")
+  const [isCancelling, setIsCancelling] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -88,7 +106,7 @@ export function InvoicesListPage() {
 
   useEffect(() => {
     filterInvoices()
-  }, [invoices, searchQuery, invoiceTypeFilter, paymentStatusFilter, dateRange])
+  }, [invoices, searchQuery, invoiceTypeFilter, paymentStatusFilter, lifecycleFilter, dateRange])
 
   const fetchInvoices = async () => {
     if (!currentBusiness) return
@@ -130,6 +148,15 @@ export function InvoicesListPage() {
     // Filter by payment status
     if (paymentStatusFilter !== "all") {
       filtered = filtered.filter((invoice) => invoice.payment_status === paymentStatusFilter)
+    }
+
+    // Filter by lifecycle
+    if (lifecycleFilter !== "all") {
+      filtered = filtered.filter((invoice) => {
+        if (lifecycleFilter === "cancelled") return invoice.is_cancelled
+        if (lifecycleFilter === "revised") return !!invoice.reference_invoice_id
+        return !invoice.is_cancelled && !invoice.reference_invoice_id
+      })
     }
 
     // Filter by date range
@@ -291,6 +318,72 @@ export function InvoicesListPage() {
         return <Badge variant="outline">Credit Note</Badge>
       case "debit_note":
         return <Badge variant="outline">Debit Note</Badge>
+    }
+  }
+
+  const getLifecycleCounts = () => ({
+    finalized: invoices.filter((invoice) => !invoice.is_cancelled && !invoice.reference_invoice_id).length,
+    revised: invoices.filter((invoice) => !!invoice.reference_invoice_id).length,
+    cancelled: invoices.filter((invoice) => invoice.is_cancelled).length,
+  })
+
+  const getLifecycleBadge = (invoice: Invoice) => {
+    if (invoice.is_cancelled) {
+      return (
+        <Badge variant="outline" className="text-red-600 border-red-600">
+          <XCircle className="h-3 w-3 mr-1" />
+          Cancelled
+        </Badge>
+      )
+    }
+
+    if (invoice.reference_invoice_id) {
+      return (
+        <Badge variant="outline" className="text-blue-600 border-blue-600">
+          <Copy className="h-3 w-3 mr-1" />
+          Revised
+        </Badge>
+      )
+    }
+
+    return (
+      <Badge variant="outline" className="text-emerald-600 border-emerald-600">
+        Finalized
+      </Badge>
+    )
+  }
+
+  const getRevisionUrl = (invoice: Invoice) => {
+    if (invoice.invoice_type !== "sales" && invoice.invoice_type !== "purchase") return null
+    return `/invoices/create/${invoice.invoice_type}?source_invoice_id=${invoice.id}&mode=revise`
+  }
+
+  const handleReviseInvoice = (invoice: Invoice) => {
+    const revisionUrl = getRevisionUrl(invoice)
+    if (!revisionUrl) {
+      toast.error("This invoice type cannot be revised.")
+      return
+    }
+
+    router.push(revisionUrl)
+  }
+
+  const handleCancelInvoice = async () => {
+    if (!currentBusiness || !invoiceToCancel) return
+
+    setIsCancelling(true)
+    try {
+      await invoiceService.cancelInvoice(currentBusiness.id, invoiceToCancel.id, {
+        cancel_reason: cancelReason || undefined,
+      })
+      toast.success("Invoice cancelled successfully")
+      setInvoiceToCancel(null)
+      setCancelReason("")
+      await fetchInvoices()
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+    } finally {
+      setIsCancelling(false)
     }
   }
 
@@ -487,7 +580,7 @@ export function InvoicesListPage() {
                 <div className="flex items-center gap-2">
                   <Filter className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm font-medium">Filters</span>
-                  {(searchQuery || invoiceTypeFilter !== "all" || paymentStatusFilter !== "all" || dateRange) && (
+                  {(searchQuery || invoiceTypeFilter !== "all" || paymentStatusFilter !== "all" || lifecycleFilter !== "all" || dateRange) && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -495,6 +588,7 @@ export function InvoicesListPage() {
                         setSearchQuery("")
                         setInvoiceTypeFilter("all")
                         setPaymentStatusFilter("all")
+                        setLifecycleFilter("all")
                         setDateRange(undefined)
                       }}
                       className="ml-auto cursor-pointer text-xs"
@@ -503,7 +597,7 @@ export function InvoicesListPage() {
                     </Button>
                   )}
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -550,6 +644,20 @@ export function InvoicesListPage() {
                       <SelectItem value="overdue">Overdue</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select
+                    value={lifecycleFilter}
+                    onValueChange={(value) => setLifecycleFilter(value as "all" | "finalized" | "revised" | "cancelled")}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Lifecycle" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Lifecycle</SelectItem>
+                      <SelectItem value="finalized">Finalized</SelectItem>
+                      <SelectItem value="revised">Revised</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <div className="flex items-center gap-2">
                     <Checkbox
                       id="cancelled"
@@ -571,6 +679,9 @@ export function InvoicesListPage() {
               <CardTitle>All Invoices ({filteredInvoices.length})</CardTitle>
               <CardDescription>
                 Click on an invoice to view details
+                <span className="ml-2 text-xs text-muted-foreground">
+                  Finalized {getLifecycleCounts().finalized} • Revised {getLifecycleCounts().revised} • Cancelled {getLifecycleCounts().cancelled}
+                </span>
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -628,17 +739,17 @@ export function InvoicesListPage() {
                 <EmptyState
                   icon={FileText}
                   title={
-                    searchQuery || invoiceTypeFilter !== "all" || paymentStatusFilter !== "all"
+                    searchQuery || invoiceTypeFilter !== "all" || paymentStatusFilter !== "all" || lifecycleFilter !== "all"
                       ? "No invoices found"
                       : "No invoices yet"
                   }
                   description={
-                    searchQuery || invoiceTypeFilter !== "all" || paymentStatusFilter !== "all"
+                    searchQuery || invoiceTypeFilter !== "all" || paymentStatusFilter !== "all" || lifecycleFilter !== "all"
                       ? "Try adjusting your filters or search query to find what you're looking for."
                       : "Get started by creating your first invoice. You can create sales invoices for customers or purchase invoices for suppliers."
                   }
                   action={
-                    searchQuery || invoiceTypeFilter !== "all" || paymentStatusFilter !== "all"
+                    searchQuery || invoiceTypeFilter !== "all" || paymentStatusFilter !== "all" || lifecycleFilter !== "all"
                       ? undefined
                       : {
                           label: "Create Sales Invoice",
@@ -646,7 +757,7 @@ export function InvoicesListPage() {
                         }
                   }
                   secondaryAction={
-                    searchQuery || invoiceTypeFilter !== "all" || paymentStatusFilter !== "all"
+                    searchQuery || invoiceTypeFilter !== "all" || paymentStatusFilter !== "all" || lifecycleFilter !== "all"
                       ? undefined
                       : {
                           label: "Create Purchase Invoice",
@@ -682,11 +793,7 @@ export function InvoicesListPage() {
                                 <p className="font-medium truncate">{invoice.invoice_number}</p>
                                 {getInvoiceTypeBadge(invoice.invoice_type)}
                                 {getPaymentStatusBadge(invoice.payment_status)}
-                                {invoice.is_cancelled && (
-                                  <Badge variant="outline" className="text-red-600 border-red-600">
-                                    Cancelled
-                                  </Badge>
-                                )}
+                                {getLifecycleBadge(invoice)}
                               </div>
                               <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
                                 <span className="truncate">{invoice.party_name}</span>
@@ -715,6 +822,37 @@ export function InvoicesListPage() {
                             >
                               <Download className="h-4 w-4" />
                             </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="cursor-pointer">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => router.push(`/invoices/${invoice.id}`)}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View
+                                </DropdownMenuItem>
+                                {(invoice.invoice_type === "sales" || invoice.invoice_type === "purchase") && (
+                                  <DropdownMenuItem onClick={() => handleReviseInvoice(invoice)}>
+                                    <Copy className="h-4 w-4 mr-2" />
+                                    {invoice.is_cancelled ? "Create Revised Invoice" : "Revise as New"}
+                                  </DropdownMenuItem>
+                                )}
+                                {!invoice.is_cancelled && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => setInvoiceToCancel(invoice)}
+                                      className="text-red-600"
+                                    >
+                                      <XCircle className="h-4 w-4 mr-2" />
+                                      Cancel Invoice
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </div>
                       </div>
@@ -759,11 +897,7 @@ export function InvoicesListPage() {
                             </div>
                             <div className="flex gap-1.5 flex-shrink-0">
                               {getInvoiceTypeBadge(invoice.invoice_type)}
-                              {invoice.is_cancelled && (
-                                <Badge variant="outline" className="text-red-600 border-red-600 text-xs">
-                                  Cancelled
-                                </Badge>
-                              )}
+                              {getLifecycleBadge(invoice)}
                             </div>
                           </div>
                           <MobileTableCell label="Amount">
@@ -807,7 +941,35 @@ export function InvoicesListPage() {
                               <Download className="h-4 w-4 mr-2" />
                               Download
                             </Button>
+                            {(invoice.invoice_type === "sales" || invoice.invoice_type === "purchase") && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleReviseInvoice(invoice);
+                                }}
+                                className="cursor-pointer flex-1"
+                              >
+                                <Copy className="h-4 w-4 mr-2" />
+                                Revise
+                              </Button>
+                            )}
                           </div>
+                          {!invoice.is_cancelled && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setInvoiceToCancel(invoice);
+                              }}
+                              className="cursor-pointer mt-2 w-full text-red-600"
+                            >
+                              <XCircle className="h-4 w-4 mr-2" />
+                              Cancel Invoice
+                            </Button>
+                          )}
                         </MobileTableRow>
                       </SwipeableItem>
                     ))}
@@ -836,6 +998,41 @@ export function InvoicesListPage() {
         
         {/* Keyboard Shortcuts Dialog */}
         <KeyboardShortcutsDialog shortcuts={shortcuts} />
+        <AlertDialog
+          open={!!invoiceToCancel}
+          onOpenChange={(open) => {
+            if (!open) {
+              setInvoiceToCancel(null)
+              setCancelReason("")
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cancel Invoice</AlertDialogTitle>
+              <AlertDialogDescription>
+                {invoiceToCancel
+                  ? `Cancel ${invoiceToCancel.invoice_number}. This keeps the original invoice in history and marks it as cancelled.`
+                  : "Cancel this invoice."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Reason</label>
+              <Textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Enter cancellation reason"
+                rows={3}
+              />
+            </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Close</AlertDialogCancel>
+              <Button variant="destructive" onClick={handleCancelInvoice} disabled={isCancelling}>
+                {isCancelling ? "Cancelling..." : "Cancel Invoice"}
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         </PageLayout>
       </SidebarInset>
     </SidebarProvider>

@@ -878,6 +878,49 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
             </Card>
           </div>
 
+          {(invoice.reference_invoice || invoice.revised_invoice) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base md:text-lg">Revision History</CardTitle>
+                <CardDescription>
+                  Track how this invoice is connected to its original or revised version.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {invoice.reference_invoice && (
+                  <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Revised From</p>
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/invoices/${invoice.reference_invoice!.id}`)}
+                        className="font-medium text-primary hover:underline cursor-pointer"
+                      >
+                        {invoice.reference_invoice.invoice_number}
+                      </button>
+                    </div>
+                    <Badge variant="outline">{invoice.reference_invoice.invoice_type}</Badge>
+                  </div>
+                )}
+                {invoice.revised_invoice && (
+                  <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Revised To</p>
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/invoices/${invoice.revised_invoice!.id}`)}
+                        className="font-medium text-primary hover:underline cursor-pointer"
+                      >
+                        {invoice.revised_invoice.invoice_number}
+                      </button>
+                    </div>
+                    <Badge variant="outline">{invoice.revised_invoice.invoice_type}</Badge>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Invoice Items - Mobile Optimized */}
           <Card>
             <CardHeader>
