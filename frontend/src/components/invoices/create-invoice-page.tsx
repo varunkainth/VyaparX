@@ -590,7 +590,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                 <FieldGroup>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field className="sm:col-span-2">
-                      <FieldLabel>
+                      <FieldLabel required>
                         {invoiceType === "sales" ? "Customer" : "Supplier"}
                       </FieldLabel>
                       <Select
@@ -615,7 +615,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                     </Field>
 
                     <Field>
-                      <FieldLabel>Invoice Date</FieldLabel>
+                      <FieldLabel required>Invoice Date</FieldLabel>
                       <Input
                         type="date"
                         {...register("invoice_date")}
@@ -636,7 +636,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                     </Field>
 
                     <Field>
-                      <FieldLabel>Place of Supply</FieldLabel>
+                      <FieldLabel required>Place of Supply</FieldLabel>
                       <Select
                         value={watchPlaceOfSupply || ""}
                         onValueChange={(value) => setValue("place_of_supply", value)}
@@ -937,7 +937,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                             </Field>
 
                             <Field className="sm:col-span-2">
-                              <FieldLabel className="text-xs md:text-sm">Item Name</FieldLabel>
+                              <FieldLabel required className="text-xs md:text-sm">Item Name</FieldLabel>
                               <Input
                                 {...register(`items.${index}.item_name`)}
                                 disabled={isSubmitting}
@@ -969,7 +969,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                             </Field>
 
                             <Field>
-                              <FieldLabel className="text-xs md:text-sm">Unit</FieldLabel>
+                              <FieldLabel required className="text-xs md:text-sm">Unit</FieldLabel>
                               <Input
                                 {...register(`items.${index}.unit`)}
                                 disabled={isSubmitting}
@@ -978,7 +978,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                             </Field>
 
                             <Field>
-                              <FieldLabel className="text-xs md:text-sm">Quantity</FieldLabel>
+                              <FieldLabel required className="text-xs md:text-sm">Quantity</FieldLabel>
                               <Input
                                 type="number"
                                 step="0.001"
@@ -1021,7 +1021,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                             </Field>
 
                             <Field>
-                              <FieldLabel className="text-xs md:text-sm">Unit Price</FieldLabel>
+                              <FieldLabel required className="text-xs md:text-sm">Unit Price</FieldLabel>
                               <Input
                                 type="number"
                                 step="0.01"
@@ -1056,7 +1056,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                             </Field>
 
                             <Field>
-                              <FieldLabel className="text-xs md:text-sm">GST Rate %</FieldLabel>
+                              <FieldLabel required className="text-xs md:text-sm">GST Rate %</FieldLabel>
                               <Select
                                 value={watchItems[index]?.gst_rate?.toString() || "18"}
                                 onValueChange={(value) => setValue(`items.${index}.gst_rate`, parseFloat(value))}

@@ -190,9 +190,9 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="name" className="flex items-center gap-2">
+                      <FieldLabel htmlFor="name" required className="flex items-center gap-2">
                         <Building2 className="h-4 w-4" />
-                        Business Name <span className="text-destructive">*</span>
+                        Business Name
                       </FieldLabel>
                       <Input
                         id="name"
@@ -290,7 +290,7 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="phone" className="flex items-center gap-2">
+                      <FieldLabel htmlFor="phone" required className="flex items-center gap-2">
                         <Phone className="h-4 w-4" />
                         Phone Number
                       </FieldLabel>
@@ -310,7 +310,7 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                     </Field>
 
                     <Field>
-                      <FieldLabel htmlFor="email" className="flex items-center gap-2">
+                      <FieldLabel htmlFor="email" required className="flex items-center gap-2">
                         <Mail className="h-4 w-4" />
                         Email Address
                       </FieldLabel>
@@ -348,7 +348,7 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="address_line1" className="flex items-center gap-2">
+                      <FieldLabel htmlFor="address_line1" required className="flex items-center gap-2">
                         <MapPin className="h-4 w-4" />
                         Street Address
                       </FieldLabel>
@@ -368,7 +368,7 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
 
                     <div className="grid gap-4 sm:grid-cols-3">
                       <Field>
-                        <FieldLabel htmlFor="city">City</FieldLabel>
+                        <FieldLabel htmlFor="city" required>City</FieldLabel>
                         <Input
                           id="city"
                           type="text"
@@ -384,7 +384,7 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                       </Field>
 
                       <Field>
-                        <FieldLabel htmlFor="state_code">State</FieldLabel>
+                        <FieldLabel htmlFor="state_code" required>State</FieldLabel>
                         <Select
                           value={stateCode}
                           onValueChange={handleStateCodeChange}
@@ -410,7 +410,7 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                       </Field>
 
                       <Field>
-                        <FieldLabel htmlFor="pincode">Pincode</FieldLabel>
+                        <FieldLabel htmlFor="pincode" required>Pincode</FieldLabel>
                         <Input
                           id="pincode"
                           type="text"

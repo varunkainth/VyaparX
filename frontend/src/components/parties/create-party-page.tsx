@@ -217,8 +217,8 @@ export function CreatePartyPage() {
                   <FieldGroup>
                     <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
                       <Field>
-                        <FieldLabel htmlFor="name" className="text-xs md:text-sm">
-                          Party Name <span className="text-destructive">*</span>
+                        <FieldLabel htmlFor="name" required className="text-xs md:text-sm">
+                          Party Name
                         </FieldLabel>
                         <Input
                           id="name"
@@ -236,8 +236,8 @@ export function CreatePartyPage() {
                       </Field>
 
                       <Field>
-                        <FieldLabel htmlFor="party_type" className="text-xs md:text-sm">
-                          Party Type <span className="text-destructive">*</span>
+                        <FieldLabel htmlFor="party_type" required className="text-xs md:text-sm">
+                          Party Type
                         </FieldLabel>
                         <Select
                           value={partyType}
@@ -384,7 +384,7 @@ export function CreatePartyPage() {
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="address" className="text-xs md:text-sm">Street Address</FieldLabel>
+                      <FieldLabel htmlFor="address" required className="text-xs md:text-sm">Street Address</FieldLabel>
                       <Input
                         id="address"
                         type="text"

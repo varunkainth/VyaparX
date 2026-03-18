@@ -175,10 +175,9 @@ export function CreateBusinessPage() {
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="name" className="flex items-center gap-2 text-xs md:text-sm">
+                      <FieldLabel htmlFor="name" required className="flex items-center gap-2 text-xs md:text-sm">
                         <Building2 className="h-3 w-3 md:h-4 md:w-4" />
                         Business Name
-                        <span className="text-destructive">*</span>
                       </FieldLabel>
                       <Input
                         id="name"
@@ -277,7 +276,7 @@ export function CreateBusinessPage() {
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="phone" className="flex items-center gap-2 text-xs md:text-sm">
+                      <FieldLabel htmlFor="phone" required className="flex items-center gap-2 text-xs md:text-sm">
                         <Phone className="h-3 w-3 md:h-4 md:w-4" />
                         Phone Number
                       </FieldLabel>
@@ -298,7 +297,7 @@ export function CreateBusinessPage() {
                     </Field>
 
                     <Field>
-                      <FieldLabel htmlFor="email" className="flex items-center gap-2 text-xs md:text-sm">
+                      <FieldLabel htmlFor="email" required className="flex items-center gap-2 text-xs md:text-sm">
                         <Mail className="h-3 w-3 md:h-4 md:w-4" />
                         Email Address
                       </FieldLabel>
@@ -337,7 +336,7 @@ export function CreateBusinessPage() {
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="address_line1" className="flex items-center gap-2 text-xs md:text-sm">
+                      <FieldLabel htmlFor="address_line1" required className="flex items-center gap-2 text-xs md:text-sm">
                         <MapPin className="h-3 w-3 md:h-4 md:w-4" />
                         Street Address
                       </FieldLabel>
@@ -358,7 +357,7 @@ export function CreateBusinessPage() {
 
                     <div className="grid gap-3 md:gap-4 sm:grid-cols-3">
                       <Field>
-                        <FieldLabel htmlFor="city" className="text-xs md:text-sm">City</FieldLabel>
+                        <FieldLabel htmlFor="city" required className="text-xs md:text-sm">City</FieldLabel>
                         <Input
                           id="city"
                           type="text"
@@ -375,7 +374,7 @@ export function CreateBusinessPage() {
                       </Field>
 
                       <Field>
-                        <FieldLabel htmlFor="state_code" className="text-xs md:text-sm">State</FieldLabel>
+                        <FieldLabel htmlFor="state_code" required className="text-xs md:text-sm">State</FieldLabel>
                         <Select
                           value={stateCode}
                           onValueChange={handleStateCodeChange}
@@ -401,7 +400,7 @@ export function CreateBusinessPage() {
                       </Field>
 
                       <Field>
-                        <FieldLabel htmlFor="pincode" className="text-xs md:text-sm">Pincode</FieldLabel>
+                        <FieldLabel htmlFor="pincode" required className="text-xs md:text-sm">Pincode</FieldLabel>
                         <Input
                           id="pincode"
                           type="text"

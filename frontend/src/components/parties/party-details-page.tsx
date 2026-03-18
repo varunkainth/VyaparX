@@ -421,8 +421,8 @@ export function PartyDetailsPage({ partyId }: PartyDetailsPageProps) {
                     <FieldGroup>
                       <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
                         <Field>
-                          <FieldLabel htmlFor="name" className="text-xs md:text-sm">
-                            Party Name <span className="text-destructive">*</span>
+                          <FieldLabel htmlFor="name" required className="text-xs md:text-sm">
+                            Party Name
                           </FieldLabel>
                           <Input
                             id="name"
@@ -439,7 +439,7 @@ export function PartyDetailsPage({ partyId }: PartyDetailsPageProps) {
                         </Field>
 
                         <Field>
-                          <FieldLabel htmlFor="party_type" className="text-xs md:text-sm">Party Type</FieldLabel>
+                          <FieldLabel htmlFor="party_type" required className="text-xs md:text-sm">Party Type</FieldLabel>
                           <Select
                             value={partyType}
                             onValueChange={(value) => setValue("party_type", value as "customer" | "supplier" | "both")}
@@ -581,7 +581,7 @@ export function PartyDetailsPage({ partyId }: PartyDetailsPageProps) {
                   <CardContent>
                     <FieldGroup>
                       <Field>
-                        <FieldLabel htmlFor="address" className="text-xs md:text-sm">Street Address</FieldLabel>
+                        <FieldLabel htmlFor="address" required className="text-xs md:text-sm">Street Address</FieldLabel>
                         <Input
                           id="address"
                           type="text"

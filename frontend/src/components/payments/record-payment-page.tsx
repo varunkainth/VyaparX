@@ -393,7 +393,7 @@ export function RecordPaymentPage() {
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel>Payment Type</FieldLabel>
+                      <FieldLabel required>Payment Type</FieldLabel>
                       <Select
                         value={paymentType}
                         onValueChange={(value) => setValue("payment_type", value as "received" | "made")}
@@ -422,7 +422,7 @@ export function RecordPaymentPage() {
                     </Field>
 
                     <Field>
-                      <FieldLabel>Party</FieldLabel>
+                      <FieldLabel required>Party</FieldLabel>
                       <Select
                         value={watch("party_id") || ""}
                         onValueChange={(value) => setValue("party_id", value)}
@@ -521,7 +521,7 @@ export function RecordPaymentPage() {
 
                     <div className="grid gap-4 md:grid-cols-2">
                       <Field>
-                        <FieldLabel>Amount</FieldLabel>
+                        <FieldLabel required>Amount</FieldLabel>
                         <Input
                           type="number"
                           step="0.01"
@@ -541,7 +541,7 @@ export function RecordPaymentPage() {
                       </Field>
 
                       <Field>
-                        <FieldLabel>Payment Date</FieldLabel>
+                        <FieldLabel required>Payment Date</FieldLabel>
                         <Input
                           type="date"
                           {...register("payment_date")}
@@ -564,7 +564,7 @@ export function RecordPaymentPage() {
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel>Mode</FieldLabel>
+                      <FieldLabel required>Mode</FieldLabel>
                       <Select
                         value={paymentMode}
                         onValueChange={(value) => setValue("payment_mode", value as RecordPaymentFormData["payment_mode"])}
@@ -587,7 +587,7 @@ export function RecordPaymentPage() {
 
                     {paymentMode === "upi" && (
                       <Field>
-                        <FieldLabel>UPI Transaction Reference *</FieldLabel>
+                        <FieldLabel required>UPI Transaction Reference</FieldLabel>
                         <Input
                           {...register("upi_ref")}
                           placeholder="Enter UPI transaction ID (e.g., 123456789012)"
@@ -605,7 +605,7 @@ export function RecordPaymentPage() {
                     {paymentMode === "cheque" && (
                       <>
                         <Field>
-                          <FieldLabel>Cheque Number *</FieldLabel>
+                          <FieldLabel required>Cheque Number</FieldLabel>
                           <Input
                             {...register("cheque_no")}
                             placeholder="Enter cheque number"

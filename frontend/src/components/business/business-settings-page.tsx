@@ -374,10 +374,9 @@ export function BusinessSettingsPage() {
                   <CardContent>
                     <FieldGroup>
                       <Field>
-                        <FieldLabel htmlFor="name" className="flex items-center gap-2 text-xs md:text-sm">
+                        <FieldLabel htmlFor="name" required className="flex items-center gap-2 text-xs md:text-sm">
                           <Building2 className="h-3 w-3 md:h-4 md:w-4" />
                           Business Name
-                          <span className="text-destructive">*</span>
                         </FieldLabel>
                         <Input
                           id="name"
@@ -465,7 +464,7 @@ export function BusinessSettingsPage() {
                   <CardContent>
                     <FieldGroup>
                       <Field>
-                        <FieldLabel htmlFor="phone" className="text-xs md:text-sm">Phone Number</FieldLabel>
+                        <FieldLabel htmlFor="phone" required className="text-xs md:text-sm">Phone Number</FieldLabel>
                         <Input
                           id="phone"
                           type="tel"
@@ -482,7 +481,7 @@ export function BusinessSettingsPage() {
                       </Field>
 
                       <Field>
-                        <FieldLabel htmlFor="email" className="text-xs md:text-sm">Email Address</FieldLabel>
+                        <FieldLabel htmlFor="email" required className="text-xs md:text-sm">Email Address</FieldLabel>
                         <Input
                           id="email"
                           type="email"
@@ -517,7 +516,7 @@ export function BusinessSettingsPage() {
                   <CardContent>
                     <FieldGroup>
                       <Field>
-                        <FieldLabel htmlFor="address_line1" className="text-xs md:text-sm">Street Address</FieldLabel>
+                        <FieldLabel htmlFor="address_line1" required className="text-xs md:text-sm">Street Address</FieldLabel>
                         <Input
                           id="address_line1"
                           type="text"
@@ -535,7 +534,7 @@ export function BusinessSettingsPage() {
 
                       <div className="grid gap-3 md:gap-4 sm:grid-cols-3">
                         <Field>
-                          <FieldLabel htmlFor="city" className="text-xs md:text-sm">City</FieldLabel>
+                          <FieldLabel htmlFor="city" required className="text-xs md:text-sm">City</FieldLabel>
                           <Input
                             id="city"
                             type="text"
@@ -552,7 +551,7 @@ export function BusinessSettingsPage() {
                         </Field>
 
                         <Field>
-                          <FieldLabel htmlFor="state_code" className="text-xs md:text-sm">State</FieldLabel>
+                          <FieldLabel htmlFor="state_code" required className="text-xs md:text-sm">State</FieldLabel>
                           <Select
                             value={stateCode}
                             onValueChange={handleStateCodeChange}
@@ -578,7 +577,7 @@ export function BusinessSettingsPage() {
                         </Field>
 
                         <Field>
-                          <FieldLabel htmlFor="pincode" className="text-xs md:text-sm">Pincode</FieldLabel>
+                          <FieldLabel htmlFor="pincode" required className="text-xs md:text-sm">Pincode</FieldLabel>
                           <Input
                             id="pincode"
                             type="text"

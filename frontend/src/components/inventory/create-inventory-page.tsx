@@ -207,8 +207,8 @@ export function CreateInventoryPage() {
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="name">
-                        Item Name <span className="text-destructive">*</span>
+                      <FieldLabel htmlFor="name" required>
+                        Item Name
                       </FieldLabel>
                       <Input
                         id="name"
@@ -310,8 +310,8 @@ export function CreateInventoryPage() {
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="unit">
-                        Unit <span className="text-destructive">*</span>
+                      <FieldLabel htmlFor="unit" required>
+                        Unit
                       </FieldLabel>
                       <Select
                         value={unit}
@@ -337,8 +337,8 @@ export function CreateInventoryPage() {
                     </Field>
 
                     <Field>
-                      <FieldLabel htmlFor="gst_rate">
-                        GST Rate (%) <span className="text-destructive">*</span>
+                      <FieldLabel htmlFor="gst_rate" required>
+                        GST Rate (%)
                       </FieldLabel>
                       <Select
                         value={gstRate?.toString()}
@@ -382,8 +382,8 @@ export function CreateInventoryPage() {
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="purchase_price">
-                        Purchase Price <span className="text-destructive">*</span>
+                      <FieldLabel htmlFor="purchase_price" required>
+                        Purchase Price
                       </FieldLabel>
                       <Input
                         id="purchase_price"
@@ -408,8 +408,8 @@ export function CreateInventoryPage() {
                     </Field>
 
                     <Field>
-                      <FieldLabel htmlFor="selling_price">
-                        Selling Price <span className="text-destructive">*</span>
+                      <FieldLabel htmlFor="selling_price" required>
+                        Selling Price
                       </FieldLabel>
                       <Input
                         id="selling_price"
