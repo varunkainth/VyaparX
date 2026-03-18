@@ -14,6 +14,7 @@ import businessRouter from "./src/routes/business.routes";
 import financeRouter from "./src/routes/finance.routes";
 import inventoryRouter from "./src/routes/inventory.routes";
 import invoiceRouter from "./src/routes/invoice.routes";
+import publicInvoiceRouter from "./src/routes/public-invoice.routes";
 import ledgerRouter from "./src/routes/ledger.routes";
 import paymentRouter from "./src/routes/payment.routes";
 import partyRouter from "./src/routes/party.routes";
@@ -107,6 +108,7 @@ app.get("/docs", (_req, res) => {
 app.use("/auth", authRateLimit, authRouter);
 app.use("/api/v1", passwordResetRouter);
 app.use("/api/v1", emailVerificationRouter);
+app.use("/api/v1", publicInvoiceRouter);
 app.use("/api/v1", financeRouter);
 app.use("/api/v1", invoiceRouter);
 app.use("/api/v1", ledgerRouter);
