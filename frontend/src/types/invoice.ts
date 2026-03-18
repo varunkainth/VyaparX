@@ -88,6 +88,7 @@ export interface CreateInvoiceInput {
   due_date?: string;
   place_of_supply: string;
   is_igst: boolean;
+  round_off?: number;
   items: InvoiceItemInput[];
   notes?: string;
 }

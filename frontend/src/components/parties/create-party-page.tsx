@@ -384,7 +384,7 @@ export function CreatePartyPage() {
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="address" className="text-xs md:text-sm">Street Address</FieldLabel>
+                      <FieldLabel htmlFor="address" className="text-xs md:text-sm">Street Address <span className="text-destructive">*</span></FieldLabel>
                       <Input
                         id="address"
                         type="text"

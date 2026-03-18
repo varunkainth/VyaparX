@@ -280,6 +280,7 @@ export function CreateBusinessPage() {
                       <FieldLabel htmlFor="phone" className="flex items-center gap-2 text-xs md:text-sm">
                         <Phone className="h-3 w-3 md:h-4 md:w-4" />
                         Phone Number
+                        <span className="text-destructive">*</span>
                       </FieldLabel>
                       <Input
                         id="phone"
@@ -301,6 +302,7 @@ export function CreateBusinessPage() {
                       <FieldLabel htmlFor="email" className="flex items-center gap-2 text-xs md:text-sm">
                         <Mail className="h-3 w-3 md:h-4 md:w-4" />
                         Email Address
+                        <span className="text-destructive">*</span>
                       </FieldLabel>
                       <Input
                         id="email"
@@ -340,6 +342,7 @@ export function CreateBusinessPage() {
                       <FieldLabel htmlFor="address_line1" className="flex items-center gap-2 text-xs md:text-sm">
                         <MapPin className="h-3 w-3 md:h-4 md:w-4" />
                         Street Address
+                        <span className="text-destructive">*</span>
                       </FieldLabel>
                       <Input
                         id="address_line1"
@@ -358,7 +361,7 @@ export function CreateBusinessPage() {
 
                     <div className="grid gap-3 md:gap-4 sm:grid-cols-3">
                       <Field>
-                        <FieldLabel htmlFor="city" className="text-xs md:text-sm">City</FieldLabel>
+                        <FieldLabel htmlFor="city" className="text-xs md:text-sm">City <span className="text-destructive">*</span></FieldLabel>
                         <Input
                           id="city"
                           type="text"
@@ -375,7 +378,7 @@ export function CreateBusinessPage() {
                       </Field>
 
                       <Field>
-                        <FieldLabel htmlFor="state_code" className="text-xs md:text-sm">State</FieldLabel>
+                        <FieldLabel htmlFor="state_code" className="text-xs md:text-sm">State <span className="text-destructive">*</span></FieldLabel>
                         <Select
                           value={stateCode}
                           onValueChange={handleStateCodeChange}
@@ -401,7 +404,7 @@ export function CreateBusinessPage() {
                       </Field>
 
                       <Field>
-                        <FieldLabel htmlFor="pincode" className="text-xs md:text-sm">Pincode</FieldLabel>
+                        <FieldLabel htmlFor="pincode" className="text-xs md:text-sm">Pincode <span className="text-destructive">*</span></FieldLabel>
                         <Input
                           id="pincode"
                           type="text"

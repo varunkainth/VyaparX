@@ -31,6 +31,8 @@ export const createInvoiceSchema = z.object({
     .length(2, "Place of supply must be a 2-digit state code"),
   is_igst: z.boolean(),
   price_mode: z.enum(["exclusive", "inclusive"]),
+  round_off_enabled: z.boolean().optional(),
+  round_off: z.number().min(-0.99).max(0.99).optional(),
   items: z.array(invoiceItemSchema).min(1, "At least one item is required"),
   notes: z.string().optional(),
 });

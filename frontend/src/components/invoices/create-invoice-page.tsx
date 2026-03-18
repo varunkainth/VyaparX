@@ -55,6 +55,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { Alert } from "@/components/ui/alert"
 
 interface CreateInvoicePageProps {
@@ -84,6 +85,8 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
       place_of_supply: "",
       is_igst: false,
       price_mode: "exclusive" as const,
+      round_off_enabled: false,
+      round_off: 0,
       items: [
         {
           item_name: "",
@@ -106,6 +109,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
   const watchPartyId = watch("party_id")
   const watchPlaceOfSupply = watch("place_of_supply")
   const watchPriceMode = watch("price_mode")
+  const watchRoundOffEnabled = watch("round_off_enabled")
 
   const fetchParties = useCallback(async () => {
     if (!currentBusiness) return
@@ -301,13 +305,17 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
     totalDiscount = round2(totalDiscount)
     taxableAmount = round2(taxableAmount)
     totalTax = round2(totalTax)
-    const grandTotal = round2(taxableAmount + totalTax)
+    const exactGrandTotal = round2(taxableAmount + totalTax)
+    const roundOff = watchRoundOffEnabled ? round2(Math.round(exactGrandTotal) - exactGrandTotal) : 0
+    const grandTotal = round2(exactGrandTotal + roundOff)
 
     return {
       subtotal,
       totalDiscount,
       taxableAmount,
       totalTax,
+      exactGrandTotal,
+      roundOff,
       grandTotal,
     }
   }
@@ -426,15 +434,19 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
       const taxableAmount = round2(itemsWithCalculations.reduce((sum, item) => sum + item.taxable_value, 0))
       const totalTax = round2(itemsWithCalculations.reduce((sum, item) => 
         sum + item.cgst_amount + item.sgst_amount + item.igst_amount, 0))
-      const grandTotal = round2(itemsWithCalculations.reduce((sum, item) => sum + item.total_amount, 0))
-      
+      const exactGrandTotal = round2(itemsWithCalculations.reduce((sum, item) => sum + item.total_amount, 0))
+      const roundOff = data.round_off_enabled ? round2(Math.round(exactGrandTotal) - exactGrandTotal) : 0
+      const grandTotal = round2(exactGrandTotal + roundOff)
+
+      const { round_off_enabled, ...restData } = data
       const invoiceData = {
-        ...data,
+        ...restData,
         items: itemsWithCalculations,
         subtotal,
         total_discount: totalDiscount,
         taxable_amount: taxableAmount,
         total_tax: totalTax,
+        round_off: roundOff,
         grand_total: grandTotal,
       }
 
@@ -591,7 +603,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <Field className="sm:col-span-2">
                       <FieldLabel>
-                        {invoiceType === "sales" ? "Customer" : "Supplier"}
+                        {invoiceType === "sales" ? "Customer" : "Supplier"} <span className="text-destructive">*</span>
                       </FieldLabel>
                       <Select
                         value={watchPartyId || ""}
@@ -615,7 +627,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                     </Field>
 
                     <Field>
-                      <FieldLabel>Invoice Date</FieldLabel>
+                      <FieldLabel>Invoice Date <span className="text-destructive">*</span></FieldLabel>
                       <Input
                         type="date"
                         {...register("invoice_date")}
@@ -636,7 +648,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                     </Field>
 
                     <Field>
-                      <FieldLabel>Place of Supply</FieldLabel>
+                      <FieldLabel>Place of Supply <span className="text-destructive">*</span></FieldLabel>
                       <Select
                         value={watchPlaceOfSupply || ""}
                         onValueChange={(value) => setValue("place_of_supply", value)}
@@ -658,7 +670,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                     </Field>
 
                     <Field>
-                      <FieldLabel>Price Mode</FieldLabel>
+                      <FieldLabel>Price Mode <span className="text-destructive">*</span></FieldLabel>
                       <Select
                         value={watchPriceMode || "exclusive"}
                         onValueChange={(value) => setValue("price_mode", value as "inclusive" | "exclusive")}
@@ -937,7 +949,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                             </Field>
 
                             <Field className="sm:col-span-2">
-                              <FieldLabel className="text-xs md:text-sm">Item Name</FieldLabel>
+                              <FieldLabel className="text-xs md:text-sm">Item Name <span className="text-destructive">*</span></FieldLabel>
                               <Input
                                 {...register(`items.${index}.item_name`)}
                                 disabled={isSubmitting}
@@ -969,7 +981,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                             </Field>
 
                             <Field>
-                              <FieldLabel className="text-xs md:text-sm">Unit</FieldLabel>
+                              <FieldLabel className="text-xs md:text-sm">Unit <span className="text-destructive">*</span></FieldLabel>
                               <Input
                                 {...register(`items.${index}.unit`)}
                                 disabled={isSubmitting}
@@ -978,7 +990,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                             </Field>
 
                             <Field>
-                              <FieldLabel className="text-xs md:text-sm">Quantity</FieldLabel>
+                              <FieldLabel className="text-xs md:text-sm">Quantity <span className="text-destructive">*</span></FieldLabel>
                               <Input
                                 type="number"
                                 step="0.001"
@@ -1021,7 +1033,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                             </Field>
 
                             <Field>
-                              <FieldLabel className="text-xs md:text-sm">Unit Price</FieldLabel>
+                              <FieldLabel className="text-xs md:text-sm">Unit Price <span className="text-destructive">*</span></FieldLabel>
                               <Input
                                 type="number"
                                 step="0.01"
@@ -1056,7 +1068,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                             </Field>
 
                             <Field>
-                              <FieldLabel className="text-xs md:text-sm">GST Rate %</FieldLabel>
+                              <FieldLabel className="text-xs md:text-sm">GST Rate % <span className="text-destructive">*</span></FieldLabel>
                               <Select
                                 value={watchItems[index]?.gst_rate?.toString() || "18"}
                                 onValueChange={(value) => setValue(`items.${index}.gst_rate`, parseFloat(value))}
@@ -1131,6 +1143,24 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                         <span>• SGST</span>
                         <span>{formatCurrency(totals.totalTax / 2)}</span>
                       </div>
+                    </div>
+                  )}
+                  <Separator />
+                  <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                    <div>
+                      <p className="text-sm font-medium">Round Off</p>
+                      <p className="text-xs text-muted-foreground">Round grand total to nearest rupee</p>
+                    </div>
+                    <Switch
+                      checked={!!watchRoundOffEnabled}
+                      onCheckedChange={(checked) => setValue("round_off_enabled", checked, { shouldDirty: true })}
+                      disabled={isSubmitting}
+                    />
+                  </div>
+                  {totals.roundOff !== 0 && (
+                    <div className="flex justify-between text-sm md:text-base">
+                      <span className="text-muted-foreground">Round Off</span>
+                      <span className="font-medium">{formatCurrency(totals.roundOff)}</span>
                     </div>
                   )}
                   <Separator />

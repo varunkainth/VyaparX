@@ -293,6 +293,7 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                       <FieldLabel htmlFor="phone" className="flex items-center gap-2">
                         <Phone className="h-4 w-4" />
                         Phone Number
+                        <span className="text-destructive">*</span>
                       </FieldLabel>
                       <Input
                         id="phone"
@@ -313,6 +314,7 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                       <FieldLabel htmlFor="email" className="flex items-center gap-2">
                         <Mail className="h-4 w-4" />
                         Email Address
+                        <span className="text-destructive">*</span>
                       </FieldLabel>
                       <Input
                         id="email"
@@ -351,6 +353,7 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                       <FieldLabel htmlFor="address_line1" className="flex items-center gap-2">
                         <MapPin className="h-4 w-4" />
                         Street Address
+                        <span className="text-destructive">*</span>
                       </FieldLabel>
                       <Input
                         id="address_line1"
@@ -368,7 +371,7 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
 
                     <div className="grid gap-4 sm:grid-cols-3">
                       <Field>
-                        <FieldLabel htmlFor="city">City</FieldLabel>
+                        <FieldLabel htmlFor="city">City <span className="text-destructive">*</span></FieldLabel>
                         <Input
                           id="city"
                           type="text"
@@ -384,7 +387,7 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                       </Field>
 
                       <Field>
-                        <FieldLabel htmlFor="state_code">State</FieldLabel>
+                        <FieldLabel htmlFor="state_code">State <span className="text-destructive">*</span></FieldLabel>
                         <Select
                           value={stateCode}
                           onValueChange={handleStateCodeChange}
@@ -410,7 +413,7 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                       </Field>
 
                       <Field>
-                        <FieldLabel htmlFor="pincode">Pincode</FieldLabel>
+                        <FieldLabel htmlFor="pincode">Pincode <span className="text-destructive">*</span></FieldLabel>
                         <Input
                           id="pincode"
                           type="text"

@@ -260,6 +260,12 @@ const renderClassic = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Te
     doc.text(rs(data.invoice.total_tax), totalsX, y, { width: totalsW, align: "right" });
     y += 15;
 
+    if (asNumber(data.invoice.round_off) !== 0) {
+        doc.text("Round Off:", totalsX, y);
+        doc.text(rs(data.invoice.round_off), totalsX, y, { width: totalsW, align: "right" });
+        y += 15;
+    }
+
     doc.moveTo(totalsX, y).lineTo(rightX, y).lineWidth(2).strokeColor("#000000").stroke();
     y += 8;
 
@@ -337,8 +343,9 @@ const renderModern = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Tem
     y += 20;
     const boxW = 220;
     const boxX = rightX - boxW;
+    const summaryBoxHeight = asNumber(data.invoice.round_off) !== 0 ? 105 : 85;
 
-    doc.rect(boxX, y, boxW, 85).lineWidth(1).strokeColor("#E5E7EB").stroke();
+    doc.rect(boxX, y, boxW, summaryBoxHeight).lineWidth(1).strokeColor("#E5E7EB").stroke();
 
     doc.font("Helvetica").fontSize(9).text("Subtotal", boxX + 15, y + 15);
     doc.text(rs(data.invoice.taxable_amount), boxX + 15, y + 15, { width: boxW - 30, align: "right" });
@@ -346,10 +353,16 @@ const renderModern = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Tem
     doc.text("Tax Amount", boxX + 15, y + 35);
     doc.text(rs(data.invoice.total_tax), boxX + 15, y + 35, { width: boxW - 30, align: "right" });
 
+    if (asNumber(data.invoice.round_off) !== 0) {
+        doc.text("Round Off", boxX + 15, y + 55);
+        doc.text(rs(data.invoice.round_off), boxX + 15, y + 55, { width: boxW - 30, align: "right" });
+    }
+
     // Grand Total Highlight Bar
-    doc.rect(boxX, y + 55, boxW, 30).fill(bgColor);
-    doc.fillColor(txtColor).font("Helvetica-Bold").fontSize(11).text("Total Due", boxX + 15, y + 65);
-    doc.text(rs(data.invoice.grand_total), boxX + 15, y + 65, { width: boxW - 30, align: "right" });
+    const totalBarY = asNumber(data.invoice.round_off) !== 0 ? y + 75 : y + 55;
+    doc.rect(boxX, totalBarY, boxW, 30).fill(bgColor);
+    doc.fillColor(txtColor).font("Helvetica-Bold").fontSize(11).text("Total Due", boxX + 15, totalBarY + 10);
+    doc.text(rs(data.invoice.grand_total), boxX + 15, totalBarY + 10, { width: boxW - 30, align: "right" });
 };
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -424,6 +437,12 @@ const renderCompact = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Te
     doc.text("Tax", x, y);
     doc.text(rs(data.invoice.total_tax), x, y, { width, align: "right" });
     y += 15;
+
+    if (asNumber(data.invoice.round_off) !== 0) {
+        doc.text("Round Off", x, y);
+        doc.text(rs(data.invoice.round_off), x, y, { width, align: "right" });
+        y += 15;
+    }
 
     drawDashedLine(y);
     y += 10;
@@ -624,6 +643,7 @@ const renderBillPro = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Te
     if (cgstTotal > 0 || cgstPct > 0) taxes.push([`ADD CGST ${cgstPct.toFixed(1)}%`, cgstTotal]);
     if (sgstTotal > 0 || sgstPct > 0) taxes.push([`ADD SGST ${sgstPct.toFixed(1)}%`, sgstTotal]);
     if (igstTotal > 0 || igstPct > 0) taxes.push([`ADD IGST ${igstPct.toFixed(1)}%`, igstTotal]);
+    if (asNumber(data.invoice.round_off) !== 0) taxes.push(["ROUND OFF", asNumber(data.invoice.round_off)]);
 
     const taxSectionHeight = taxes.length * 16;
 

@@ -22,6 +22,7 @@ import { trackAnalyticsEvent } from "./analytics.service";
 const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 const moneyClose = (left: number, right: number, tolerance = 0.05) =>
     Math.abs(round2(left) - round2(right)) <= tolerance;
+const validateRoundOff = (value: number) => value >= -0.99 && value <= 0.99;
 
 const deriveFinancialYear = (invoiceDate: string): string => {
     const date = new Date(invoiceDate);
@@ -148,12 +149,19 @@ export async function createSaleInvoice(data: CreateInvoiceInput) {
         const sgstAmount = round2(computedItems.reduce((sum, row) => sum + row.sgstAmount, 0));
         const igstAmount = round2(computedItems.reduce((sum, row) => sum + row.igstAmount, 0));
         const totalTax = round2(cgstAmount + sgstAmount + igstAmount);
-        const grandTotal = round2(computedItems.reduce((sum, row) => sum + row.totalAmount, 0));
+        const exactGrandTotal = round2(computedItems.reduce((sum, row) => sum + row.totalAmount, 0));
+        const roundOff = round2(data.round_off ?? 0);
+        const grandTotal = round2(exactGrandTotal + roundOff);
+
+        if (!validateRoundOff(roundOff)) {
+            throw new AppError("Invalid round off amount", 400, ERROR_CODES.BAD_REQUEST);
+        }
 
         if (
             !moneyClose(data.subtotal, subtotal) ||
             !moneyClose(data.taxable_amount, taxableAmount) ||
             !moneyClose(data.total_tax, totalTax) ||
+            !moneyClose(data.round_off ?? 0, roundOff) ||
             !moneyClose(data.grand_total, grandTotal)
         ) {
             throw new AppError(
@@ -201,6 +209,7 @@ export async function createSaleInvoice(data: CreateInvoiceInput) {
             sgst_amount: sgstAmount,
             igst_amount: igstAmount,
             total_tax: totalTax,
+            round_off: roundOff,
             grand_total: grandTotal,
             payment_status: "unpaid",
             created_by: data.created_by,
@@ -353,12 +362,19 @@ export async function createPurchaseInvoice(data: CreateInvoiceInput) {
         const sgstAmount = round2(computedItems.reduce((sum, row) => sum + row.sgstAmount, 0));
         const igstAmount = round2(computedItems.reduce((sum, row) => sum + row.igstAmount, 0));
         const totalTax = round2(cgstAmount + sgstAmount + igstAmount);
-        const grandTotal = round2(computedItems.reduce((sum, row) => sum + row.totalAmount, 0));
+        const exactGrandTotal = round2(computedItems.reduce((sum, row) => sum + row.totalAmount, 0));
+        const roundOff = round2(data.round_off ?? 0);
+        const grandTotal = round2(exactGrandTotal + roundOff);
+
+        if (!validateRoundOff(roundOff)) {
+            throw new AppError("Invalid round off amount", 400, ERROR_CODES.BAD_REQUEST);
+        }
 
         if (
             !moneyClose(data.subtotal, subtotal) ||
             !moneyClose(data.taxable_amount, taxableAmount) ||
             !moneyClose(data.total_tax, totalTax) ||
+            !moneyClose(data.round_off ?? 0, roundOff) ||
             !moneyClose(data.grand_total, grandTotal)
         ) {
             throw new AppError(
@@ -406,6 +422,7 @@ export async function createPurchaseInvoice(data: CreateInvoiceInput) {
             sgst_amount: sgstAmount,
             igst_amount: igstAmount,
             total_tax: totalTax,
+            round_off: roundOff,
             grand_total: grandTotal,
             payment_status: "unpaid",
             created_by: data.created_by,
@@ -565,12 +582,19 @@ export async function createInvoiceNote(data: CreateInvoiceNoteInput) {
         const sgstAmount = round2(computedItems.reduce((sum, row) => sum + row.sgstAmount, 0));
         const igstAmount = round2(computedItems.reduce((sum, row) => sum + row.igstAmount, 0));
         const totalTax = round2(cgstAmount + sgstAmount + igstAmount);
-        const grandTotal = round2(computedItems.reduce((sum, row) => sum + row.totalAmount, 0));
+        const exactGrandTotal = round2(computedItems.reduce((sum, row) => sum + row.totalAmount, 0));
+        const roundOff = round2(data.round_off ?? 0);
+        const grandTotal = round2(exactGrandTotal + roundOff);
+
+        if (!validateRoundOff(roundOff)) {
+            throw new AppError("Invalid round off amount", 400, ERROR_CODES.BAD_REQUEST);
+        }
 
         if (
             !moneyClose(data.subtotal, subtotal) ||
             !moneyClose(data.taxable_amount, taxableAmount) ||
             !moneyClose(data.total_tax, totalTax) ||
+            !moneyClose(data.round_off ?? 0, roundOff) ||
             !moneyClose(data.grand_total, grandTotal)
         ) {
             throw new AppError(
@@ -621,6 +645,7 @@ export async function createInvoiceNote(data: CreateInvoiceNoteInput) {
             sgst_amount: sgstAmount,
             igst_amount: igstAmount,
             total_tax: totalTax,
+            round_off: roundOff,
             grand_total: grandTotal,
             payment_status: "unpaid",
             reference_invoice_id: data.reference_invoice_id,

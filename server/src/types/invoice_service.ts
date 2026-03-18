@@ -25,6 +25,7 @@ export interface CreateInvoiceInput {
     subtotal: number;
     taxable_amount: number;
     total_tax: number;
+    round_off?: number;
     grand_total: number;
     created_by: string;
     idempotency_key?: string;

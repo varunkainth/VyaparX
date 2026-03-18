@@ -33,6 +33,7 @@ const invoiceBaseSchema = z.object({
     subtotal: z.number().nonnegative(),
     taxable_amount: z.number().nonnegative(),
     total_tax: z.number().nonnegative(),
+    round_off: z.number().min(-0.99).max(0.99).optional(),
     grand_total: z.number().nonnegative(),
 });
 
