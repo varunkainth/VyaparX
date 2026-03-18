@@ -26,7 +26,9 @@ export const createInvoiceSchema = z.object({
   party_id: z.string().uuid("Please select a party"),
   invoice_date: z.string().min(1, "Invoice date is required"),
   due_date: z.string().optional(),
-  place_of_supply: z.string().length(2, "Place of supply must be a 2-digit state code"),
+  place_of_supply: z
+    .string()
+    .length(2, "Place of supply must be a 2-digit state code"),
   is_igst: z.boolean(),
   price_mode: z.enum(["exclusive", "inclusive"]),
   items: z.array(invoiceItemSchema).min(1, "At least one item is required"),
