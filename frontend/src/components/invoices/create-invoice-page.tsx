@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useEffect, useState, useCallback } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useForm, useFieldArray, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { createInvoiceSchema, type CreateInvoiceFormData } from "@/validators/invoice.validator"
@@ -63,12 +63,17 @@ interface CreateInvoicePageProps {
 
 export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { currentBusiness } = useBusinessStore()
   const [parties, setParties] = useState<Party[]>([])
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
   const [isLoadingParties, setIsLoadingParties] = useState(true)
   const [isLoadingInventory, setIsLoadingInventory] = useState(true)
   const [selectedPartyState, setSelectedPartyState] = useState<string>("")
+  const [sourceInvoiceNumber, setSourceInvoiceNumber] = useState<string | null>(null)
+  const [isLoadingSourceInvoice, setIsLoadingSourceInvoice] = useState(false)
+  const sourceInvoiceId = searchParams.get("source_invoice_id")
+  const isRevisionMode = searchParams.get("mode") === "revise"
 
   const {
     register,
@@ -76,6 +81,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
     formState: { errors, isSubmitting },
     watch,
     setValue,
+    reset,
     control,
   } = useForm<CreateInvoiceFormData>({
     resolver: zodResolver(createInvoiceSchema),
@@ -156,6 +162,76 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
       }
     }
   }, [currentBusiness, fetchInventory, fetchParties, setValue])
+
+  useEffect(() => {
+    if (!currentBusiness || !sourceInvoiceId) {
+      setSourceInvoiceNumber(null)
+      return
+    }
+
+    let isMounted = true
+
+    const loadSourceInvoice = async () => {
+      setIsLoadingSourceInvoice(true)
+      try {
+        const sourceInvoice = await invoiceService.getInvoice(currentBusiness.id, sourceInvoiceId)
+
+        if (!isMounted) return
+
+        if (sourceInvoice.invoice_type !== invoiceType) {
+          toast.error(`This ${sourceInvoice.invoice_type} invoice cannot be loaded in the ${invoiceType} invoice form.`)
+          router.replace(`/invoices/${sourceInvoice.id}`)
+          return
+        }
+
+        reset({
+          party_id: sourceInvoice.party_id,
+          invoice_date: new Date().toISOString().split("T")[0],
+          due_date: sourceInvoice.due_date || "",
+          place_of_supply: sourceInvoice.place_of_supply,
+          is_igst: sourceInvoice.is_igst,
+          price_mode: sourceInvoice.items[0]?.price_mode || "exclusive",
+          notes: sourceInvoice.notes || "",
+          items: sourceInvoice.items.length > 0
+            ? sourceInvoice.items.map((item) => ({
+                item_id: item.item_id || undefined,
+                item_name: item.item_name,
+                description: item.description || "",
+                hsn_code: item.hsn_code || "",
+                unit: item.unit,
+                quantity: item.quantity,
+                unit_price: item.unit_price,
+                discount_pct: item.discount_pct || 0,
+                gst_rate: item.gst_rate,
+              }))
+            : [
+                {
+                  item_name: "",
+                  unit: "PCS",
+                  quantity: 1,
+                  unit_price: 0,
+                  discount_pct: 0,
+                  gst_rate: 18,
+                },
+              ],
+        })
+        setSourceInvoiceNumber(sourceInvoice.invoice_number)
+      } catch (error) {
+        if (!isMounted) return
+        toast.error(`Failed to load source invoice: ${getErrorMessage(error)}`)
+      } finally {
+        if (isMounted) {
+          setIsLoadingSourceInvoice(false)
+        }
+      }
+    }
+
+    void loadSourceInvoice()
+
+    return () => {
+      isMounted = false
+    }
+  }, [currentBusiness, invoiceType, reset, router, sourceInvoiceId])
 
   useEffect(() => {
     // Update IGST flag when place of supply changes
@@ -604,11 +680,17 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
               </div>
               <div>
                 <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight">
-                  Create {invoiceType === "sales" ? "Sales" : "Purchase"}
+                  {isRevisionMode ? "Revise" : "Create"} {invoiceType === "sales" ? "Sales" : "Purchase"}
                 </h1>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
-                  <span className="hidden sm:inline">Add items and generate invoice</span>
-                  <span className="sm:hidden">Add items</span>
+                  <span className="hidden sm:inline">
+                    {sourceInvoiceNumber
+                      ? `Prefilled from invoice ${sourceInvoiceNumber}`
+                      : "Add items and generate invoice"}
+                  </span>
+                  <span className="sm:hidden">
+                    {sourceInvoiceNumber ? `From ${sourceInvoiceNumber}` : "Add items"}
+                  </span>
                 </p>
               </div>
             </div>
@@ -619,6 +701,24 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4 md:space-y-6">
+            {sourceInvoiceNumber && (
+              <Alert className="border-l-4 border-l-blue-500 bg-blue-950/20 border-blue-900/30">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-blue-200">
+                      {isRevisionMode ? "Revising invoice" : "Copied from invoice"} {sourceInvoiceNumber}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Review the details, update anything needed, and save as a new invoice.
+                    </p>
+                  </div>
+                  {isLoadingSourceInvoice && (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
+                  )}
+                </div>
+              </Alert>
+            )}
+
             {/* Invoice Details - Mobile Optimized */}
             <Card>
               <CardHeader>

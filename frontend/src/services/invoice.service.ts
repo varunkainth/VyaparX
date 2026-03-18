@@ -110,13 +110,6 @@ export const invoiceService = {
     return transformInvoiceWithItems(response.data.data);
   },
 
-  async duplicateInvoice(businessId: string, invoiceId: string): Promise<InvoiceWithItems> {
-    const response = await apiClient.post<ApiResponse<any>>(
-      `/api/v1/businesses/${businessId}/invoices/${invoiceId}/duplicate`
-    );
-    return transformInvoiceWithItems(response.data.data);
-  },
-
   async cancelInvoice(
     businessId: string,
     invoiceId: string,

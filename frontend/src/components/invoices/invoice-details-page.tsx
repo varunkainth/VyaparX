@@ -52,14 +52,12 @@ import {
 import { Separator } from "@/components/ui/separator"
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {
   Dialog,
@@ -107,7 +105,7 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { isSubmitting },
   } = useForm<CancelInvoiceFormData>({
     resolver: zodResolver(cancelInvoiceSchema),
   })
@@ -146,7 +144,7 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
       
       setInvoice({ ...invoice, ...updatedInvoice })
       setShowCancelDialog(false)
-      toast.success("Invoice cancelled successfully!")
+      toast.success("Invoice cancelled successfully. You can now create a revised invoice.")
     } catch (error) {
       const errorMessage = getErrorMessage(error)
       toast.error(errorMessage)
@@ -197,20 +195,21 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
     toast.success("Link copied to clipboard!")
   }
 
-  const handleDuplicateInvoice = async () => {
-    if (!currentBusiness || !invoice) return
+  const getRevisionUrl = () => {
+    if (!invoice) return null
+    if (invoice.invoice_type !== "sales" && invoice.invoice_type !== "purchase") return null
+    return `/invoices/create/${invoice.invoice_type}?source_invoice_id=${invoice.id}&mode=revise`
+  }
+
+  const handleDuplicateInvoice = () => {
+    const revisionUrl = getRevisionUrl()
+    if (!revisionUrl) {
+      toast.error("This invoice type cannot be revised from here.")
+      return
+    }
 
     setIsDuplicating(true)
-    try {
-      const duplicated = await invoiceService.duplicateInvoice(currentBusiness.id, invoice.id)
-      toast.success("Invoice duplicated successfully!")
-      router.push(`/invoices/${duplicated.id}`)
-    } catch (error) {
-      const errorMessage = getErrorMessage(error)
-      toast.error(errorMessage)
-    } finally {
-      setIsDuplicating(false)
-    }
+    router.push(revisionUrl)
   }
 
   const handleRecordPayment = () => {
@@ -398,6 +397,17 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
               )}
 
               <div className="grid grid-cols-2 gap-2">
+                {invoice.is_cancelled && (invoice.invoice_type === "sales" || invoice.invoice_type === "purchase") && (
+                  <Button
+                    onClick={handleDuplicateInvoice}
+                    disabled={isDuplicating}
+                    className="col-span-2 cursor-pointer"
+                  >
+                    <Copy className="h-4 w-4 mr-2" />
+                    {isDuplicating ? "Opening..." : "Create Revised Invoice"}
+                  </Button>
+                )}
+
                 <Button
                   variant="outline"
                   onClick={handleDownloadPdf}
@@ -439,7 +449,11 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
                   <DropdownMenuContent align="end" className="w-48">
                     <DropdownMenuItem onClick={handleDuplicateInvoice} disabled={isDuplicating}>
                       <Copy className="h-4 w-4 mr-2" />
-                      {isDuplicating ? "Duplicating..." : "Duplicate"}
+                      {isDuplicating
+                        ? "Opening..."
+                        : invoice.is_cancelled
+                        ? "Create Revised Invoice"
+                        : "Revise as New Invoice"}
                     </DropdownMenuItem>
                     
                     {!invoice.is_cancelled && invoice.invoice_type !== "credit_note" && invoice.invoice_type !== "debit_note" && (
@@ -491,6 +505,13 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
                 </Button>
               )}
 
+              {invoice.is_cancelled && (invoice.invoice_type === "sales" || invoice.invoice_type === "purchase") && (
+                <Button onClick={handleDuplicateInvoice} disabled={isDuplicating} className="cursor-pointer">
+                  <Copy className="h-4 w-4 mr-2" />
+                  {isDuplicating ? "Opening..." : "Create Revised Invoice"}
+                </Button>
+              )}
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="cursor-pointer">
@@ -519,7 +540,11 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
                   
                   <DropdownMenuItem onClick={handleDuplicateInvoice} disabled={isDuplicating}>
                     <Copy className="h-4 w-4 mr-2" />
-                    {isDuplicating ? "Duplicating..." : "Duplicate"}
+                    {isDuplicating
+                      ? "Opening..."
+                      : invoice.is_cancelled
+                      ? "Create Revised Invoice"
+                      : "Revise as New Invoice"}
                   </DropdownMenuItem>
                   
                   {!invoice.is_cancelled && invoice.invoice_type !== "credit_note" && invoice.invoice_type !== "debit_note" && (

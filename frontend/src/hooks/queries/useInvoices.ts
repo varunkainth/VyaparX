@@ -81,19 +81,3 @@ export function useCancelInvoice() {
     },
   });
 }
-
-export function useDuplicateInvoice() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ businessId, invoiceId }: { businessId: string; invoiceId: string }) => 
-      invoiceService.duplicateInvoice(businessId, invoiceId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: invoiceKeys.lists() });
-      toast.success("Invoice duplicated successfully");
-    },
-    onError: (error) => {
-      toast.error(getErrorMessage(error));
-    },
-  });
-}
