@@ -142,33 +142,33 @@ export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
   const partyEmail = typeof party?.email === "string" ? party.email : party?.email ? String(party.email) : ""
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] px-4 py-8">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <div className="flex flex-col gap-4 rounded-3xl border bg-white/90 p-6 shadow-sm backdrop-blur sm:flex-row sm:items-start sm:justify-between">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] px-3 py-4 sm:px-4 sm:py-8">
+      <div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
+        <div className="flex flex-col gap-4 rounded-3xl border bg-white/90 p-4 shadow-sm backdrop-blur sm:p-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Badge variant="outline">Digital Bill</Badge>
               {invoice.is_cancelled && <Badge variant="destructive">Cancelled</Badge>}
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">{String(business?.name || "Business")}</h1>
-            <p className="text-sm text-muted-foreground">
+            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{String(business?.name || "Business")}</h1>
+            <p className="text-xs text-muted-foreground sm:text-sm">
               Invoice {invoice.invoice_number} • {formatDate(invoice.invoice_date)}
             </p>
           </div>
 
           <div className="flex flex-col gap-2 sm:items-end">
-            <div className="text-right">
+            <div className="sm:text-right">
               <p className="text-sm text-muted-foreground">Final Total</p>
-              <p className="text-3xl font-bold text-primary">{formatCurrency(invoice.grand_total)}</p>
+              <p className="text-2xl font-bold text-primary sm:text-3xl">{formatCurrency(invoice.grand_total)}</p>
             </div>
-            <Button onClick={handleDownload} className="cursor-pointer">
+            <Button onClick={handleDownload} className="cursor-pointer w-full sm:w-auto">
               <Download className="mr-2 h-4 w-4" />
               Download PDF
             </Button>
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-[1.4fr_0.8fr]">
           <Card className="border-0 shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -199,39 +199,69 @@ export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
 
               <Separator />
 
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Item</TableHead>
-                    <TableHead className="text-right">Qty</TableHead>
-                    <TableHead className="text-right">Rate</TableHead>
-                    <TableHead className="text-right">GST</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {invoice.items.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{item.item_name}</p>
-                          <p className="text-xs text-muted-foreground">{item.unit}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">{item.quantity}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
-                      <TableCell className="text-right">{item.gst_rate}%</TableCell>
-                      <TableCell className="text-right">{formatCurrency(item.total_amount)}</TableCell>
+              <div className="space-y-3 md:hidden">
+                {invoice.items.map((item) => (
+                  <div key={item.id} className="rounded-2xl border bg-slate-50/70 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-medium">{item.item_name}</p>
+                        <p className="text-xs text-muted-foreground">{item.quantity} {item.unit}</p>
+                      </div>
+                      <p className="text-sm font-semibold">{formatCurrency(item.total_amount)}</p>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-muted-foreground">
+                      <div>
+                        <p>Rate</p>
+                        <p className="mt-1 text-sm font-medium text-foreground">{formatCurrency(item.unit_price)}</p>
+                      </div>
+                      <div>
+                        <p>GST</p>
+                        <p className="mt-1 text-sm font-medium text-foreground">{item.gst_rate}%</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between rounded-2xl bg-primary/5 px-4 py-3 text-sm font-semibold">
+                  <span>Final Total</span>
+                  <span>{formatCurrency(invoice.grand_total)}</span>
+                </div>
+              </div>
+
+              <div className="hidden md:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                      <TableHead className="text-right">Rate</TableHead>
+                      <TableHead className="text-right">GST</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-                <TableFooter>
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-right">Final Total</TableCell>
-                    <TableCell className="text-right font-bold">{formatCurrency(invoice.grand_total)}</TableCell>
-                  </TableRow>
-                </TableFooter>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {invoice.items.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{item.item_name}</p>
+                            <p className="text-xs text-muted-foreground">{item.unit}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">{item.quantity}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
+                        <TableCell className="text-right">{item.gst_rate}%</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.total_amount)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                  <TableFooter>
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-right">Final Total</TableCell>
+                      <TableCell className="text-right font-bold">{formatCurrency(invoice.grand_total)}</TableCell>
+                    </TableRow>
+                  </TableFooter>
+                </Table>
+              </div>
             </CardContent>
           </Card>
 

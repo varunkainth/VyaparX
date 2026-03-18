@@ -105,6 +105,18 @@ export interface InvoiceRecord {
 
 export interface InvoiceDetail extends InvoiceRecord {
     items: InvoiceItemRecord[];
+    reference_invoice?: {
+        id: string;
+        invoice_number: string;
+        invoice_type: string;
+        is_cancelled: boolean;
+    } | null;
+    revised_invoice?: {
+        id: string;
+        invoice_number: string;
+        invoice_type: string;
+        is_cancelled: boolean;
+    } | null;
 }
 
 export interface InvoicePdfData {

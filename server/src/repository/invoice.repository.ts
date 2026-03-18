@@ -201,6 +201,34 @@ export const invoiceRepository = {
         return result.rows;
     },
 
+    async getInvoiceSummary(businessId: string, invoiceId: string) {
+        const result = await pool.query(
+            `
+            SELECT id, invoice_number, invoice_type, is_cancelled
+            FROM invoices
+            WHERE business_id = $1
+              AND id = $2
+            `,
+            [businessId, invoiceId]
+        );
+        return result.rows[0] ?? null;
+    },
+
+    async getFirstReferencingInvoice(businessId: string, referenceInvoiceId: string) {
+        const result = await pool.query(
+            `
+            SELECT id, invoice_number, invoice_type, is_cancelled
+            FROM invoices
+            WHERE business_id = $1
+              AND reference_invoice_id = $2
+            ORDER BY created_at DESC
+            LIMIT 1
+            `,
+            [businessId, referenceInvoiceId]
+        );
+        return result.rows[0] ?? null;
+    },
+
     async lockInvoiceForCancel(client: PoolClient, businessId: string, invoiceId: string) {
         const result = await client.query(
             `

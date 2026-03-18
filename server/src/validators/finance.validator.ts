@@ -29,6 +29,7 @@ const invoiceBaseSchema = z.object({
     invoice_date: dateString,
     place_of_supply: z.string().length(2),
     is_igst: z.boolean(),
+    reference_invoice_id: z.string().uuid().optional(),
     items: z.array(invoiceItemSchema).min(1),
     subtotal: z.number().nonnegative(),
     taxable_amount: z.number().nonnegative(),

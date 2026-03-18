@@ -536,6 +536,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
       
       const invoiceData = {
         ...data,
+        ...(isRevisionMode && sourceInvoiceId ? { reference_invoice_id: sourceInvoiceId } : {}),
         items: itemsWithCalculations,
         subtotal,
         total_discount: totalDiscount,

@@ -55,6 +55,7 @@ export interface Invoice {
   notes: string | null;
   template_id: string;
   pdf_url: string | null;
+  reference_invoice_id?: string | null;
   is_cancelled: boolean;
   cancelled_at: string | null;
   cancelled_by: string | null;
@@ -67,6 +68,18 @@ export interface Invoice {
 
 export interface InvoiceWithItems extends Invoice {
   items: InvoiceItem[];
+  reference_invoice?: {
+    id: string;
+    invoice_number: string;
+    invoice_type: InvoiceType;
+    is_cancelled: boolean;
+  } | null;
+  revised_invoice?: {
+    id: string;
+    invoice_number: string;
+    invoice_type: InvoiceType;
+    is_cancelled: boolean;
+  } | null;
 }
 
 export interface InvoiceItemInput {
@@ -88,6 +101,7 @@ export interface CreateInvoiceInput {
   due_date?: string;
   place_of_supply: string;
   is_igst: boolean;
+  reference_invoice_id?: string;
   items: InvoiceItemInput[];
   notes?: string;
   subtotal?: number;

@@ -245,6 +245,7 @@ export async function createSaleInvoice(data: CreateInvoiceInput) {
             round_off: roundOff,
             grand_total: grandTotal,
             payment_status: "unpaid",
+            reference_invoice_id: data.reference_invoice_id ?? null,
             created_by: data.created_by,
         });
 
@@ -455,6 +456,7 @@ export async function createPurchaseInvoice(data: CreateInvoiceInput) {
             round_off: roundOff,
             grand_total: grandTotal,
             payment_status: "unpaid",
+            reference_invoice_id: data.reference_invoice_id ?? null,
             created_by: data.created_by,
         });
 
@@ -876,8 +878,20 @@ export async function getInvoiceById(businessId: string, invoiceId: string) {
         throw new AppError("Invoice not found", 404, ERROR_CODES.INVOICE_NOT_FOUND);
     }
 
-    const items = (await invoiceRepository.getInvoiceItems(invoiceId)) as InvoiceItemRecord[];
-    return { ...invoice, items } as InvoiceDetail;
+    const [items, referenceInvoice, revisedInvoice] = await Promise.all([
+        invoiceRepository.getInvoiceItems(invoiceId),
+        invoice.reference_invoice_id
+            ? invoiceRepository.getInvoiceSummary(businessId, invoice.reference_invoice_id)
+            : Promise.resolve(null),
+        invoiceRepository.getFirstReferencingInvoice(businessId, invoiceId),
+    ]);
+
+    return {
+        ...invoice,
+        items: items as InvoiceItemRecord[],
+        reference_invoice: referenceInvoice,
+        revised_invoice: revisedInvoice,
+    } as InvoiceDetail;
 }
 
 export async function cancelInvoice(args: CancelInvoiceInput) {

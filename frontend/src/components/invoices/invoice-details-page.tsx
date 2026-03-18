@@ -32,7 +32,8 @@ import {
   Share2,
   Copy,
   Wallet,
-  MoreVertical
+  MoreVertical,
+  GitBranch
 } from "lucide-react"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { PageLayout } from "@/components/layout/page-layout"
@@ -765,6 +766,38 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
                     </p>
                   </div>
                 </div>
+
+                {invoice.reference_invoice && (
+                  <div className="flex items-center gap-3">
+                    <GitBranch className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs md:text-sm text-muted-foreground">Revised From</p>
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/invoices/${invoice.reference_invoice!.id}`)}
+                        className="font-medium text-sm md:text-base text-primary hover:underline cursor-pointer"
+                      >
+                        {invoice.reference_invoice.invoice_number}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {invoice.revised_invoice && (
+                  <div className="flex items-center gap-3">
+                    <GitBranch className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs md:text-sm text-muted-foreground">Revised To</p>
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/invoices/${invoice.revised_invoice!.id}`)}
+                        className="font-medium text-sm md:text-base text-primary hover:underline cursor-pointer"
+                      >
+                        {invoice.revised_invoice.invoice_number}
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {invoice.notes && (
                   <div>
