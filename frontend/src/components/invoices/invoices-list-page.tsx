@@ -88,7 +88,7 @@ export function InvoicesListPage() {
   const [invoiceTypeFilter, setInvoiceTypeFilter] = useState<InvoiceType | "all">("all")
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<PaymentStatus | "all">("all")
   const [lifecycleFilter, setLifecycleFilter] = useState<"all" | "finalized" | "revised" | "cancelled">("all")
-  const [includeCancelled, setIncludeCancelled] = useState(false)
+  const [includeCancelled, setIncludeCancelled] = useState(true)
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set())
   const [isDownloadingBulk, setIsDownloadingBulk] = useState(false)
@@ -171,6 +171,14 @@ export function InvoicesListPage() {
         return invoiceDate >= fromDate && invoiceDate <= toDate
       })
     }
+
+    filtered = [...filtered].sort((a, b) => {
+      if (a.is_cancelled !== b.is_cancelled) {
+        return a.is_cancelled ? 1 : -1
+      }
+
+      return new Date(b.invoice_date).getTime() - new Date(a.invoice_date).getTime()
+    })
 
     setFilteredInvoices(filtered)
   }
@@ -377,6 +385,8 @@ export function InvoicesListPage() {
         cancel_reason: cancelReason || undefined,
       })
       toast.success("Invoice cancelled successfully")
+      setIncludeCancelled(true)
+      setLifecycleFilter("all")
       setInvoiceToCancel(null)
       setCancelReason("")
       await fetchInvoices()
@@ -665,7 +675,7 @@ export function InvoicesListPage() {
                       onCheckedChange={(checked) => setIncludeCancelled(checked as boolean)}
                     />
                     <label htmlFor="cancelled" className="text-sm cursor-pointer">
-                      Include Cancelled
+                      Show Cancelled
                     </label>
                   </div>
                 </div>
@@ -772,7 +782,11 @@ export function InvoicesListPage() {
                     {filteredInvoices.map((invoice) => (
                       <div
                         key={invoice.id}
-                        className="flex items-center gap-3 p-4 border rounded-lg hover:bg-accent/50 transition-colors"
+                        className={`flex items-center gap-3 p-4 border rounded-lg transition-colors ${
+                          invoice.is_cancelled
+                            ? "border-red-200 bg-red-50/60 dark:border-red-900/40 dark:bg-red-950/20"
+                            : "hover:bg-accent/50"
+                        }`}
                       >
                         <div onClick={(e) => e.stopPropagation()}>
                           <Checkbox
@@ -785,17 +799,31 @@ export function InvoicesListPage() {
                           className="flex items-center justify-between flex-1 cursor-pointer gap-3"
                         >
                           <div className="flex items-center gap-4 flex-1 min-w-0">
-                            <div className="p-2 rounded-full bg-primary/10 flex-shrink-0">
+                            <div
+                              className={`p-2 rounded-full flex-shrink-0 ${
+                                invoice.is_cancelled
+                                  ? "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300"
+                                  : "bg-primary/10 text-primary"
+                              }`}
+                            >
                               <FileText className="h-5 w-5 text-primary" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
-                                <p className="font-medium truncate">{invoice.invoice_number}</p>
+                                <p
+                                  className={`font-medium truncate ${
+                                    invoice.is_cancelled
+                                      ? "text-red-700 line-through decoration-red-400/70 dark:text-red-300"
+                                      : ""
+                                  }`}
+                                >
+                                  {invoice.invoice_number}
+                                </p>
                                 {getInvoiceTypeBadge(invoice.invoice_type)}
                                 {getPaymentStatusBadge(invoice.payment_status)}
                                 {getLifecycleBadge(invoice)}
                               </div>
-                              <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
+                              <div className={`flex items-center gap-4 mt-1 text-sm ${invoice.is_cancelled ? "text-red-600/80 dark:text-red-300/80" : "text-muted-foreground"}`}>
                                 <span className="truncate">{invoice.party_name}</span>
                                 <span>{formatDate(invoice.invoice_date)}</span>
                                 {invoice.due_date && (
@@ -806,7 +834,9 @@ export function InvoicesListPage() {
                           </div>
                           <div className="flex items-center gap-4 flex-shrink-0">
                             <div className="text-right">
-                              <p className="font-semibold">{formatCurrency(invoice.grand_total)}</p>
+                              <p className={`font-semibold ${invoice.is_cancelled ? "text-red-700 dark:text-red-300" : ""}`}>
+                                {formatCurrency(invoice.grand_total)}
+                              </p>
                               {invoice.balance_due > 0 && (
                                 <p className="text-xs text-orange-600">
                                   Due: {formatCurrency(invoice.balance_due)}
@@ -883,6 +913,11 @@ export function InvoicesListPage() {
                         ]}
                       >
                         <MobileTableRow>
+                          {invoice.is_cancelled && (
+                            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300">
+                              This invoice is cancelled and kept for history.
+                            </div>
+                          )}
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center gap-2 flex-1 min-w-0">
                               <Checkbox
@@ -891,7 +926,15 @@ export function InvoicesListPage() {
                                 onClick={(e) => e.stopPropagation()}
                               />
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm truncate">{invoice.invoice_number}</p>
+                                <p
+                                  className={`font-medium text-sm truncate ${
+                                    invoice.is_cancelled
+                                      ? "text-red-700 line-through decoration-red-400/70 dark:text-red-300"
+                                      : ""
+                                  }`}
+                                >
+                                  {invoice.invoice_number}
+                                </p>
                                 <p className="text-xs text-muted-foreground truncate mt-0.5">{invoice.party_name}</p>
                               </div>
                             </div>

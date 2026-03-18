@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Download, FileText, ExternalLink } from "lucide-react"
+import { useTheme } from "next-themes"
 
 interface PublicInvoicePageProps {
   invoiceId: string
@@ -24,6 +25,7 @@ interface PublicInvoicePageProps {
 
 export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
   const searchParams = useSearchParams()
+  const { resolvedTheme } = useTheme()
   const [data, setData] = useState<PublicInvoicePayload | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -140,20 +142,39 @@ export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
   const partyAddress = typeof party?.address === "string" ? party.address : party?.address ? String(party.address) : ""
   const partyPhone = typeof party?.phone === "string" ? party.phone : party?.phone ? String(party.phone) : ""
   const partyEmail = typeof party?.email === "string" ? party.email : party?.email ? String(party.email) : ""
+  const businessLogo = typeof business?.logo_url === "string" ? business.logo_url : ""
+  const isDark = resolvedTheme === "dark"
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] px-3 py-4 sm:px-4 sm:py-8">
+    <div
+      className={`min-h-screen px-3 py-4 sm:px-4 sm:py-8 ${
+        isDark
+          ? "bg-[linear-gradient(180deg,#020617_0%,#111827_100%)] text-slate-50"
+          : "bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] text-slate-950"
+      }`}
+    >
       <div className="mx-auto max-w-5xl space-y-4 sm:space-y-6">
-        <div className="flex flex-col gap-4 rounded-3xl border bg-white/90 p-4 shadow-sm backdrop-blur sm:p-6 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-4 rounded-3xl border border-border bg-card/90 p-4 text-card-foreground shadow-sm backdrop-blur sm:p-6 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Badge variant="outline">Digital Bill</Badge>
               {invoice.is_cancelled && <Badge variant="destructive">Cancelled</Badge>}
             </div>
-            <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{String(business?.name || "Business")}</h1>
-            <p className="text-xs text-muted-foreground sm:text-sm">
-              Invoice {invoice.invoice_number} • {formatDate(invoice.invoice_date)}
-            </p>
+            <div className="flex items-center gap-3">
+              {businessLogo ? (
+                <img
+                  src={businessLogo}
+                  alt={`${String(business?.name || "Business")} logo`}
+                  className="h-12 w-12 rounded-2xl border border-border object-cover"
+                />
+              ) : null}
+              <div>
+                <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{String(business?.name || "Business")}</h1>
+                <p className="text-xs text-muted-foreground sm:text-sm">
+                  Invoice {invoice.invoice_number} • {formatDate(invoice.invoice_date)}
+                </p>
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col gap-2 sm:items-end">
@@ -169,7 +190,7 @@ export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
         </div>
 
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-[1.4fr_0.8fr]">
-          <Card className="border-0 shadow-sm">
+          <Card className="border shadow-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
@@ -201,7 +222,7 @@ export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
 
               <div className="space-y-3 md:hidden">
                 {invoice.items.map((item) => (
-                  <div key={item.id} className="rounded-2xl border bg-slate-50/70 p-4">
+                  <div key={item.id} className="rounded-2xl border border-border bg-muted/40 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="font-medium">{item.item_name}</p>
@@ -221,7 +242,7 @@ export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
                     </div>
                   </div>
                 ))}
-                <div className="flex items-center justify-between rounded-2xl bg-primary/5 px-4 py-3 text-sm font-semibold">
+                <div className="flex items-center justify-between rounded-2xl bg-primary/10 px-4 py-3 text-sm font-semibold">
                   <span>Final Total</span>
                   <span>{formatCurrency(invoice.grand_total)}</span>
                 </div>
@@ -266,7 +287,7 @@ export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
           </Card>
 
           <div className="space-y-6">
-            <Card className="border-0 shadow-sm">
+            <Card className="border shadow-sm">
               <CardHeader>
                 <CardTitle>Totals</CardTitle>
               </CardHeader>
@@ -295,7 +316,7 @@ export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
               </CardContent>
             </Card>
 
-            <Card className="border-0 shadow-sm">
+            <Card className="border shadow-sm">
               <CardHeader>
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
