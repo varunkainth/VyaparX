@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { invoiceService, type PublicInvoicePayload } from "@/services/invoice.service"
+import type { PublicInvoicePayload } from "@/services/invoice.service"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -21,8 +21,6 @@ import { Download, FileText, ExternalLink } from "lucide-react"
 interface PublicInvoicePageProps {
   invoiceId: string
 }
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"
 
 export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
   const searchParams = useSearchParams()
@@ -46,13 +44,26 @@ export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
       setError(null)
 
       try {
-        const response = await invoiceService.getPublicInvoice(invoiceId, token)
-        if (isMounted) {
-          setData(response)
+        const response = await fetch(`/api/public/invoices/${invoiceId}?token=${encodeURIComponent(token)}`, {
+          cache: "no-store",
+        })
+
+        const payload = await response.json().catch(() => null)
+
+        if (!response.ok) {
+          throw new Error(
+            payload?.error?.message ||
+            payload?.message ||
+            "Unable to load this digital bill right now."
+          )
         }
-      } catch {
+
         if (isMounted) {
-          setError("This digital bill link is invalid or has expired.")
+          setData(payload.data as PublicInvoicePayload)
+        }
+      } catch (error) {
+        if (isMounted) {
+          setError(error instanceof Error ? error.message : "Unable to load this digital bill right now.")
         }
       } finally {
         if (isMounted) {
@@ -86,7 +97,7 @@ export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
   const handleDownload = () => {
     if (!token) return
     window.open(
-      `${API_BASE_URL}/api/v1/public/invoices/${invoiceId}/pdf?token=${encodeURIComponent(token)}`,
+      `/api/public/invoices/${invoiceId}/pdf?token=${encodeURIComponent(token)}`,
       "_blank",
       "noopener,noreferrer"
     )
