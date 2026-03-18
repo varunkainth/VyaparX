@@ -16,6 +16,7 @@ const devLog = (...args: unknown[]) => {
 
 // Routes that don't require authentication
 const PUBLIC_ROUTES = ["/", "/login", "/signup", "/forgot-password", "/reset-password", "/verify-email"];
+const PUBLIC_ROUTE_PREFIXES = ["/shared/invoice"];
 
 // Routes that authenticated users shouldn't access (will redirect to dashboard)
 const AUTH_REDIRECT_ROUTES = ["/login", "/signup"];
@@ -26,6 +27,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isLoading, _hasHydrated } = useAuthStore();
   const [showBusinessModal, setShowBusinessModal] = useState(false);
   
+  const isPublicRoute = (path: string) => {
+    return PUBLIC_ROUTES.includes(path) || PUBLIC_ROUTE_PREFIXES.some((prefix) => path.startsWith(prefix));
+  };
+
   // Fetch businesses when authenticated
   const { businesses } = useBusinesses();
 
@@ -60,14 +65,14 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     // Wait for hydration before checking routes
     if (!_hasHydrated || isLoading) return;
 
-    const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
+    const isCurrentRoutePublic = isPublicRoute(pathname);
     const isAuthRedirectRoute = AUTH_REDIRECT_ROUTES.includes(pathname);
 
     devLog("[AuthGuard] Checking route:", pathname);
     devLog("[AuthGuard] isAuthenticated:", isAuthenticated);
     devLog("[AuthGuard] isLoading:", isLoading);
     devLog("[AuthGuard] _hasHydrated:", _hasHydrated);
-    devLog("[AuthGuard] isPublicRoute:", isPublicRoute);
+    devLog("[AuthGuard] isPublicRoute:", isCurrentRoutePublic);
 
     // If user is authenticated and trying to access login/signup, redirect to dashboard
     if (isAuthenticated && isAuthRedirectRoute) {
@@ -77,7 +82,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     }
 
     // If user is not authenticated and trying to access protected route, redirect to login
-    if (!isAuthenticated && !isPublicRoute) {
+    if (!isAuthenticated && !isCurrentRoutePublic) {
       devLog("[AuthGuard] Redirecting to login (not authenticated)");
       router.push("/login");
       return;
@@ -94,8 +99,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   }
 
   // For protected routes, don't render until authenticated
-  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
-  if (!isPublicRoute && !isAuthenticated) {
+  const isCurrentRoutePublic = isPublicRoute(pathname);
+  if (!isCurrentRoutePublic && !isAuthenticated) {
     return null;
   }
 
