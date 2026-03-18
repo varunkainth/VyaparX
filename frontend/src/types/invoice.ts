@@ -90,6 +90,11 @@ export interface CreateInvoiceInput {
   is_igst: boolean;
   items: InvoiceItemInput[];
   notes?: string;
+  subtotal?: number;
+  taxable_amount?: number;
+  total_tax?: number;
+  round_off?: number;
+  grand_total?: number;
 }
 
 export interface ListInvoicesQuery {

@@ -37,6 +37,7 @@ export interface RecentInvoice {
     invoice_number: string;
     invoice_type: "sales" | "purchase";
     party_name: string;
+    round_off: number;
     grand_total: number;
     payment_status: "unpaid" | "partial" | "paid" | "overdue";
     invoice_date: string;

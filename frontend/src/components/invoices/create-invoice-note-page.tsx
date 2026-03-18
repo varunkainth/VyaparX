@@ -49,6 +49,19 @@ export function CreateInvoiceNotePage({ invoiceId }: CreateInvoiceNotePageProps)
     return (item.taxable_value + item.discount_amount) / item.quantity;
   };
 
+  const calculateRoundOff = (amount: number) => {
+    const round2 = (num: number) => Math.round(num * 100) / 100;
+    const totalBeforeRounding = round2(amount);
+    const grandTotal = round2(Math.round(totalBeforeRounding));
+    const roundOff = round2(grandTotal - totalBeforeRounding);
+
+    return {
+      totalBeforeRounding,
+      roundOff,
+      grandTotal,
+    };
+  };
+
   useEffect(() => {
     const fetchInvoice = async () => {
       if (!currentBusiness?.id) return;
@@ -92,7 +105,8 @@ export function CreateInvoiceNotePage({ invoiceId }: CreateInvoiceNotePageProps)
         (sum, item) => sum + item.cgst_amount + item.sgst_amount + item.igst_amount,
         0
       );
-      const grandTotal = invoice.items.reduce((sum, item) => sum + item.total_amount, 0);
+      const totalBeforeRounding = invoice.items.reduce((sum, item) => sum + item.total_amount, 0);
+      const { roundOff, grandTotal } = calculateRoundOff(totalBeforeRounding);
 
       const noteData: any = {
         party_id: invoice.party_id,
@@ -121,6 +135,7 @@ export function CreateInvoiceNotePage({ invoiceId }: CreateInvoiceNotePageProps)
         subtotal,
         taxable_amount: taxableAmount,
         total_tax: totalTax,
+        round_off: roundOff,
         grand_total: grandTotal,
         note_type: noteType,
         note_reason: noteReason || undefined,
@@ -174,6 +189,8 @@ export function CreateInvoiceNotePage({ invoiceId }: CreateInvoiceNotePageProps)
       </div>
     );
   }
+
+  const roundedTotals = calculateRoundOff(invoice.taxable_amount + invoice.total_tax);
 
   return (
     <div className="space-y-6">
@@ -283,10 +300,10 @@ export function CreateInvoiceNotePage({ invoiceId }: CreateInvoiceNotePageProps)
                 <TableFooter>
                   <TableRow>
                     <TableCell colSpan={4} className="text-right font-medium">
-                      Grand Total
+                      Final Total
                     </TableCell>
                     <TableCell className="text-right font-bold">
-                      ₹{invoice.grand_total.toFixed(2)}
+                      ₹{roundedTotals.grandTotal.toFixed(2)}
                     </TableCell>
                   </TableRow>
                 </TableFooter>
@@ -316,8 +333,16 @@ export function CreateInvoiceNotePage({ invoiceId }: CreateInvoiceNotePageProps)
                 </p>
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Amount</p>
-                <p className="font-medium">₹{invoice.grand_total.toFixed(2)}</p>
+                <p className="text-sm text-muted-foreground">Total Before Rounding</p>
+                <p className="font-medium">₹{roundedTotals.totalBeforeRounding.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Round Off</p>
+                <p className="font-medium">₹{roundedTotals.roundOff.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Final Total</p>
+                <p className="font-medium">₹{roundedTotals.grandTotal.toFixed(2)}</p>
               </div>
             </CardContent>
           </Card>

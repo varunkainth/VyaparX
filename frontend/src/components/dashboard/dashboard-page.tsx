@@ -421,7 +421,18 @@ export function DashboardPage() {
                         {invoice.party_name} • {formatDate(invoice.invoice_date)}
                       </p>
                     </div>
-                    <div className="text-sm font-medium shrink-0">{formatCurrency(invoice.grand_total)}</div>
+                    <div className="shrink-0 text-right">
+                      <div className="text-sm font-medium">{formatCurrency(invoice.grand_total)}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        Final Total
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        Before: {formatCurrency(invoice.grand_total - invoice.round_off)}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground">
+                        Round Off: {formatCurrency(invoice.round_off)}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>

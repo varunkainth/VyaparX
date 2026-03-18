@@ -23,6 +23,38 @@ const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 1
 const moneyClose = (left: number, right: number, tolerance = 0.05) =>
     Math.abs(round2(left) - round2(right)) <= tolerance;
 
+const calculateRoundOff = (value: number) => {
+    const totalBeforeRounding = round2(value);
+    const grandTotal = round2(Math.round(totalBeforeRounding));
+    const roundOff = round2(grandTotal - totalBeforeRounding);
+
+    return {
+        totalBeforeRounding,
+        roundOff,
+        grandTotal,
+    };
+};
+
+const computeInvoiceTotals = (computedItems: ComputedInvoiceItem[]) => {
+    const subtotal = round2(computedItems.reduce((sum, row) => sum + row.baseAmount, 0));
+    const taxableAmount = round2(computedItems.reduce((sum, row) => sum + row.taxableValue, 0));
+    const cgstAmount = round2(computedItems.reduce((sum, row) => sum + row.cgstAmount, 0));
+    const sgstAmount = round2(computedItems.reduce((sum, row) => sum + row.sgstAmount, 0));
+    const igstAmount = round2(computedItems.reduce((sum, row) => sum + row.igstAmount, 0));
+    const totalTax = round2(cgstAmount + sgstAmount + igstAmount);
+    const roundedTotals = calculateRoundOff(computedItems.reduce((sum, row) => sum + row.totalAmount, 0));
+
+    return {
+        subtotal,
+        taxableAmount,
+        cgstAmount,
+        sgstAmount,
+        igstAmount,
+        totalTax,
+        ...roundedTotals,
+    };
+};
+
 const deriveFinancialYear = (invoiceDate: string): string => {
     const date = new Date(invoiceDate);
     if (Number.isNaN(date.getTime())) {
@@ -142,18 +174,22 @@ export async function createSaleInvoice(data: CreateInvoiceInput) {
         const financialYear = deriveFinancialYear(data.invoice_date);
         const computedItems = data.items.map((item) => computeLine(item, data.is_igst));
 
-        const subtotal = round2(computedItems.reduce((sum, row) => sum + row.baseAmount, 0));
-        const taxableAmount = round2(computedItems.reduce((sum, row) => sum + row.taxableValue, 0));
-        const cgstAmount = round2(computedItems.reduce((sum, row) => sum + row.cgstAmount, 0));
-        const sgstAmount = round2(computedItems.reduce((sum, row) => sum + row.sgstAmount, 0));
-        const igstAmount = round2(computedItems.reduce((sum, row) => sum + row.igstAmount, 0));
-        const totalTax = round2(cgstAmount + sgstAmount + igstAmount);
-        const grandTotal = round2(computedItems.reduce((sum, row) => sum + row.totalAmount, 0));
+        const {
+            subtotal,
+            taxableAmount,
+            cgstAmount,
+            sgstAmount,
+            igstAmount,
+            totalTax,
+            roundOff,
+            grandTotal,
+        } = computeInvoiceTotals(computedItems);
 
         if (
             !moneyClose(data.subtotal, subtotal) ||
             !moneyClose(data.taxable_amount, taxableAmount) ||
             !moneyClose(data.total_tax, totalTax) ||
+            (typeof data.round_off === "number" && !moneyClose(data.round_off, roundOff)) ||
             !moneyClose(data.grand_total, grandTotal)
         ) {
             throw new AppError(
@@ -201,6 +237,7 @@ export async function createSaleInvoice(data: CreateInvoiceInput) {
             sgst_amount: sgstAmount,
             igst_amount: igstAmount,
             total_tax: totalTax,
+            round_off: roundOff,
             grand_total: grandTotal,
             payment_status: "unpaid",
             created_by: data.created_by,
@@ -347,18 +384,22 @@ export async function createPurchaseInvoice(data: CreateInvoiceInput) {
         const financialYear = deriveFinancialYear(data.invoice_date);
         const computedItems = data.items.map((item) => computeLine(item, data.is_igst));
 
-        const subtotal = round2(computedItems.reduce((sum, row) => sum + row.baseAmount, 0));
-        const taxableAmount = round2(computedItems.reduce((sum, row) => sum + row.taxableValue, 0));
-        const cgstAmount = round2(computedItems.reduce((sum, row) => sum + row.cgstAmount, 0));
-        const sgstAmount = round2(computedItems.reduce((sum, row) => sum + row.sgstAmount, 0));
-        const igstAmount = round2(computedItems.reduce((sum, row) => sum + row.igstAmount, 0));
-        const totalTax = round2(cgstAmount + sgstAmount + igstAmount);
-        const grandTotal = round2(computedItems.reduce((sum, row) => sum + row.totalAmount, 0));
+        const {
+            subtotal,
+            taxableAmount,
+            cgstAmount,
+            sgstAmount,
+            igstAmount,
+            totalTax,
+            roundOff,
+            grandTotal,
+        } = computeInvoiceTotals(computedItems);
 
         if (
             !moneyClose(data.subtotal, subtotal) ||
             !moneyClose(data.taxable_amount, taxableAmount) ||
             !moneyClose(data.total_tax, totalTax) ||
+            (typeof data.round_off === "number" && !moneyClose(data.round_off, roundOff)) ||
             !moneyClose(data.grand_total, grandTotal)
         ) {
             throw new AppError(
@@ -406,6 +447,7 @@ export async function createPurchaseInvoice(data: CreateInvoiceInput) {
             sgst_amount: sgstAmount,
             igst_amount: igstAmount,
             total_tax: totalTax,
+            round_off: roundOff,
             grand_total: grandTotal,
             payment_status: "unpaid",
             created_by: data.created_by,
@@ -559,18 +601,22 @@ export async function createInvoiceNote(data: CreateInvoiceNoteInput) {
         const financialYear = deriveFinancialYear(data.invoice_date);
         const computedItems = data.items.map((item) => computeLine(item, data.is_igst));
 
-        const subtotal = round2(computedItems.reduce((sum, row) => sum + row.baseAmount, 0));
-        const taxableAmount = round2(computedItems.reduce((sum, row) => sum + row.taxableValue, 0));
-        const cgstAmount = round2(computedItems.reduce((sum, row) => sum + row.cgstAmount, 0));
-        const sgstAmount = round2(computedItems.reduce((sum, row) => sum + row.sgstAmount, 0));
-        const igstAmount = round2(computedItems.reduce((sum, row) => sum + row.igstAmount, 0));
-        const totalTax = round2(cgstAmount + sgstAmount + igstAmount);
-        const grandTotal = round2(computedItems.reduce((sum, row) => sum + row.totalAmount, 0));
+        const {
+            subtotal,
+            taxableAmount,
+            cgstAmount,
+            sgstAmount,
+            igstAmount,
+            totalTax,
+            roundOff,
+            grandTotal,
+        } = computeInvoiceTotals(computedItems);
 
         if (
             !moneyClose(data.subtotal, subtotal) ||
             !moneyClose(data.taxable_amount, taxableAmount) ||
             !moneyClose(data.total_tax, totalTax) ||
+            (typeof data.round_off === "number" && !moneyClose(data.round_off, roundOff)) ||
             !moneyClose(data.grand_total, grandTotal)
         ) {
             throw new AppError(
@@ -621,6 +667,7 @@ export async function createInvoiceNote(data: CreateInvoiceNoteInput) {
             sgst_amount: sgstAmount,
             igst_amount: igstAmount,
             total_tax: totalTax,
+            round_off: roundOff,
             grand_total: grandTotal,
             payment_status: "unpaid",
             reference_invoice_id: data.reference_invoice_id,

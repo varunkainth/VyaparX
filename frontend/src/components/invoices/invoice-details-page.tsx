@@ -277,6 +277,11 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
     }
   }
 
+  const getTotalBeforeRounding = () => {
+    if (!invoice) return 0
+    return invoice.grand_total - invoice.round_off
+  }
+
   if (!currentBusiness) {
     return (
       <SidebarProvider>
@@ -783,15 +788,17 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
                   <span className="text-muted-foreground">Total Tax</span>
                   <span className="font-medium">{formatCurrency(invoice.total_tax)}</span>
                 </div>
-                {invoice.round_off !== 0 && (
-                  <div className="flex justify-between text-sm md:text-base">
-                    <span className="text-muted-foreground">Round Off</span>
-                    <span className="font-medium">{formatCurrency(invoice.round_off)}</span>
-                  </div>
-                )}
+                <div className="flex justify-between text-sm md:text-base">
+                  <span className="text-muted-foreground">Total Before Rounding</span>
+                  <span className="font-medium">{formatCurrency(getTotalBeforeRounding())}</span>
+                </div>
+                <div className="flex justify-between text-sm md:text-base">
+                  <span className="text-muted-foreground">Round Off</span>
+                  <span className="font-medium">{formatCurrency(invoice.round_off)}</span>
+                </div>
                 <Separator />
                 <div className="flex justify-between text-base md:text-lg">
-                  <span className="font-semibold">Grand Total</span>
+                  <span className="font-semibold">Final Total</span>
                   <span className="font-bold">{formatCurrency(invoice.grand_total)}</span>
                 </div>
               </CardContent>
@@ -859,7 +866,7 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
                   <TableFooter>
                     <TableRow>
                       <TableCell colSpan={6} className="text-right font-bold">
-                        Grand Total
+                        Final Total
                       </TableCell>
                       <TableCell className="text-right font-bold">
                         {formatCurrency(invoice.grand_total)}
@@ -921,7 +928,7 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
                 <Card className="bg-primary/5">
                   <CardContent className="p-4">
                     <div className="flex justify-between items-center">
-                      <span className="font-bold">Grand Total</span>
+                      <span className="font-bold">Final Total</span>
                       <span className="text-lg font-bold">{formatCurrency(invoice.grand_total)}</span>
                     </div>
                   </CardContent>

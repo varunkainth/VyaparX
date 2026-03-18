@@ -12,6 +12,8 @@ const asNumber = (value: unknown): number => {
     return Number.isFinite(n) ? n : 0;
 };
 
+const round2 = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
+
 const money = (value: unknown): string => asNumber(value).toFixed(2);
 const getDisplayRate = (item: {
     quantity: unknown;
@@ -49,6 +51,18 @@ const formatIndianNumber = (num: number): string => {
 
 // Use "Rs." since PDFKit's default Helvetica font supports it natively
 const rs = (value: unknown): string => `Rs. ${formatIndianNumber(asNumber(value))}`;
+
+const getInvoiceRoundedTotals = (invoice: InvoicePdfData["invoice"]) => {
+    const finalTotal = asNumber(invoice.grand_total);
+    const roundOff = asNumber(invoice.round_off);
+    const totalBeforeRounding = round2(finalTotal - roundOff);
+
+    return {
+        totalBeforeRounding,
+        roundOff,
+        finalTotal,
+    };
+};
 
 // Robust Date Formatter to strictly output DD/MM/YYYY
 const formatDate = (dateValue: unknown): string => {
@@ -251,6 +265,7 @@ const renderClassic = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Te
     y += 10;
     const totalsX = x + 250;
     const totalsW = rightX - totalsX;
+    const roundedTotals = getInvoiceRoundedTotals(data.invoice);
 
     doc.font("Helvetica").text("Taxable Amount:", totalsX, y);
     doc.text(rs(data.invoice.taxable_amount), totalsX, y, { width: totalsW, align: "right" });
@@ -260,11 +275,19 @@ const renderClassic = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Te
     doc.text(rs(data.invoice.total_tax), totalsX, y, { width: totalsW, align: "right" });
     y += 15;
 
+    doc.text("Total Before Rounding:", totalsX, y);
+    doc.text(rs(roundedTotals.totalBeforeRounding), totalsX, y, { width: totalsW, align: "right" });
+    y += 15;
+
+    doc.text("Round Off:", totalsX, y);
+    doc.text(rs(roundedTotals.roundOff), totalsX, y, { width: totalsW, align: "right" });
+    y += 15;
+
     doc.moveTo(totalsX, y).lineTo(rightX, y).lineWidth(2).strokeColor("#000000").stroke();
     y += 8;
 
-    doc.font("Helvetica-Bold").fontSize(11).text("Grand Total:", totalsX, y);
-    doc.text(rs(data.invoice.grand_total), totalsX, y, { width: totalsW, align: "right" });
+    doc.font("Helvetica-Bold").fontSize(11).text("Final Total:", totalsX, y);
+    doc.text(rs(roundedTotals.finalTotal), totalsX, y, { width: totalsW, align: "right" });
 };
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -337,8 +360,9 @@ const renderModern = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Tem
     y += 20;
     const boxW = 220;
     const boxX = rightX - boxW;
+    const roundedTotals = getInvoiceRoundedTotals(data.invoice);
 
-    doc.rect(boxX, y, boxW, 85).lineWidth(1).strokeColor("#E5E7EB").stroke();
+    doc.rect(boxX, y, boxW, 115).lineWidth(1).strokeColor("#E5E7EB").stroke();
 
     doc.font("Helvetica").fontSize(9).text("Subtotal", boxX + 15, y + 15);
     doc.text(rs(data.invoice.taxable_amount), boxX + 15, y + 15, { width: boxW - 30, align: "right" });
@@ -346,10 +370,16 @@ const renderModern = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Tem
     doc.text("Tax Amount", boxX + 15, y + 35);
     doc.text(rs(data.invoice.total_tax), boxX + 15, y + 35, { width: boxW - 30, align: "right" });
 
+    doc.text("Before Rounding", boxX + 15, y + 55);
+    doc.text(rs(roundedTotals.totalBeforeRounding), boxX + 15, y + 55, { width: boxW - 30, align: "right" });
+
+    doc.text("Round Off", boxX + 15, y + 75);
+    doc.text(rs(roundedTotals.roundOff), boxX + 15, y + 75, { width: boxW - 30, align: "right" });
+
     // Grand Total Highlight Bar
-    doc.rect(boxX, y + 55, boxW, 30).fill(bgColor);
-    doc.fillColor(txtColor).font("Helvetica-Bold").fontSize(11).text("Total Due", boxX + 15, y + 65);
-    doc.text(rs(data.invoice.grand_total), boxX + 15, y + 65, { width: boxW - 30, align: "right" });
+    doc.rect(boxX, y + 95, boxW, 20).fill(bgColor);
+    doc.fillColor(txtColor).font("Helvetica-Bold").fontSize(11).text("Final Total", boxX + 15, y + 101);
+    doc.text(rs(roundedTotals.finalTotal), boxX + 15, y + 101, { width: boxW - 30, align: "right" });
 };
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -417,6 +447,7 @@ const renderCompact = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Te
 
     // Totals
     doc.font("Helvetica").fontSize(9);
+    const roundedTotals = getInvoiceRoundedTotals(data.invoice);
     doc.text("Subtotal", x, y);
     doc.text(rs(data.invoice.taxable_amount), x, y, { width, align: "right" });
     y += 15;
@@ -425,12 +456,20 @@ const renderCompact = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Te
     doc.text(rs(data.invoice.total_tax), x, y, { width, align: "right" });
     y += 15;
 
+    doc.text("Before Rounding", x, y);
+    doc.text(rs(roundedTotals.totalBeforeRounding), x, y, { width, align: "right" });
+    y += 15;
+
+    doc.text("Round Off", x, y);
+    doc.text(rs(roundedTotals.roundOff), x, y, { width, align: "right" });
+    y += 15;
+
     drawDashedLine(y);
     y += 10;
 
     doc.font("Helvetica-Bold").fontSize(12);
-    doc.text("TOTAL", x, y);
-    doc.text(rs(data.invoice.grand_total), x, y, { width, align: "right" });
+    doc.text("FINAL TOTAL", x, y);
+    doc.text(rs(roundedTotals.finalTotal), x, y, { width, align: "right" });
 
     y += 30;
     doc.font("Helvetica-Oblique").fontSize(8).fillColor("#777777")
@@ -624,6 +663,9 @@ const renderBillPro = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Te
     if (cgstTotal > 0 || cgstPct > 0) taxes.push([`ADD CGST ${cgstPct.toFixed(1)}%`, cgstTotal]);
     if (sgstTotal > 0 || sgstPct > 0) taxes.push([`ADD SGST ${sgstPct.toFixed(1)}%`, sgstTotal]);
     if (igstTotal > 0 || igstPct > 0) taxes.push([`ADD IGST ${igstPct.toFixed(1)}%`, igstTotal]);
+    const roundedTotals = getInvoiceRoundedTotals(data.invoice);
+    taxes.push(["Total Before Rounding", roundedTotals.totalBeforeRounding]);
+    taxes.push(["Round Off", roundedTotals.roundOff]);
 
     const taxSectionHeight = taxes.length * 16;
 
@@ -653,8 +695,8 @@ const renderBillPro = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Te
     // 6. TOTAL ROW
     // ════════════════════════════════════
     doc.font("Helvetica-Bold").fontSize(10);
-    doc.text("Total", x + 4, currentY + 4);
-    doc.text(rs(data.invoice.grand_total), tColX[5]! + 4, currentY + 4, { width: tColW[5]! - 14, align: "right" });
+    doc.text("Final Total", x + 4, currentY + 4);
+    doc.text(rs(roundedTotals.finalTotal), tColX[5]! + 4, currentY + 4, { width: tColW[5]! - 14, align: "right" });
 
     currentY += 20;
     doc.moveTo(x, currentY).lineTo(totalX, currentY).stroke("#000000");
@@ -671,7 +713,7 @@ const renderBillPro = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Te
     // Left side: Words
     doc.font("Helvetica").fontSize(7).text("Amount Chargeable (in words)", x + 4, currentY + 4);
     doc.font("Helvetica-Bold").fontSize(8).text(
-        numberToWords(asNumber(data.invoice.grand_total)).toUpperCase(),
+        numberToWords(roundedTotals.finalTotal).toUpperCase(),
         x + 4, currentY + 16,
         { width: signX - x - 8 }
     );

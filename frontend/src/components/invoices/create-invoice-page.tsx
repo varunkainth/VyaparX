@@ -176,17 +176,39 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
     }
   }, [watchPartyId, parties])
 
+  const getInventoryItemUnitPrice = useCallback((item: InventoryItem) => {
+    return invoiceType === "sales" ? item.selling_price : item.purchase_price
+  }, [invoiceType])
+
+  const applyInventoryItemToForm = useCallback((index: number, item: InventoryItem) => {
+    setValue(`items.${index}.item_id`, item.id, { shouldDirty: true, shouldValidate: true })
+    setValue(`items.${index}.item_name`, item.name, { shouldDirty: true, shouldValidate: true })
+    setValue(`items.${index}.hsn_code`, item.hsn_code || "", { shouldDirty: true })
+    setValue(`items.${index}.unit`, item.unit, { shouldDirty: true, shouldValidate: true })
+    setValue(`items.${index}.unit_price`, getInventoryItemUnitPrice(item), {
+      shouldDirty: true,
+      shouldValidate: true,
+    })
+    setValue(`items.${index}.gst_rate`, item.gst_rate, { shouldDirty: true, shouldValidate: true })
+  }, [getInventoryItemUnitPrice, setValue])
+
   const handleItemSelect = (index: number, itemId: string) => {
     const item = inventoryItems.find(i => i.id === itemId)
     if (item) {
-      setValue(`items.${index}.item_id`, item.id)
-      setValue(`items.${index}.item_name`, item.name)
-      setValue(`items.${index}.hsn_code`, item.hsn_code || "")
-      setValue(`items.${index}.unit`, item.unit)
-      setValue(`items.${index}.unit_price`, invoiceType === "sales" ? item.selling_price : item.purchase_price)
-      setValue(`items.${index}.gst_rate`, item.gst_rate)
+      applyInventoryItemToForm(index, item)
     }
   }
+
+  useEffect(() => {
+    watchItems.forEach((invoiceItem, index) => {
+      if (!invoiceItem?.item_id || invoiceItem.unit_price > 0) return
+
+      const inventoryItem = inventoryItems.find((item) => item.id === invoiceItem.item_id)
+      if (!inventoryItem) return
+
+      applyInventoryItemToForm(index, inventoryItem)
+    })
+  }, [applyInventoryItemToForm, inventoryItems, watchItems])
 
   const handleAddToMasterInventory = async (index: number) => {
     if (!currentBusiness) return
@@ -261,6 +283,19 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
     return round2(taxableValue + cgstAmount + sgstAmount + igstAmount)
   }
 
+  const calculateRoundOff = (amount: number) => {
+    const round2 = (num: number) => Math.round(num * 100) / 100
+    const totalBeforeRounding = round2(amount)
+    const grandTotal = round2(Math.round(totalBeforeRounding))
+    const roundOff = round2(grandTotal - totalBeforeRounding)
+
+    return {
+      totalBeforeRounding,
+      roundOff,
+      grandTotal,
+    }
+  }
+
   const calculateTotals = () => {
     const round2 = (num: number) => Math.round(num * 100) / 100
     const priceMode = watchPriceMode || "exclusive"
@@ -301,14 +336,14 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
     totalDiscount = round2(totalDiscount)
     taxableAmount = round2(taxableAmount)
     totalTax = round2(totalTax)
-    const grandTotal = round2(taxableAmount + totalTax)
+    const roundedTotals = calculateRoundOff(taxableAmount + totalTax)
 
     return {
       subtotal,
       totalDiscount,
       taxableAmount,
       totalTax,
-      grandTotal,
+      ...roundedTotals,
     }
   }
 
@@ -357,7 +392,6 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
     }
 
     try {
-      const totals = calculateTotals()
       const isIgst = data.is_igst
       const priceMode = data.price_mode || "exclusive"
 
@@ -426,7 +460,10 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
       const taxableAmount = round2(itemsWithCalculations.reduce((sum, item) => sum + item.taxable_value, 0))
       const totalTax = round2(itemsWithCalculations.reduce((sum, item) => 
         sum + item.cgst_amount + item.sgst_amount + item.igst_amount, 0))
-      const grandTotal = round2(itemsWithCalculations.reduce((sum, item) => sum + item.total_amount, 0))
+      const totalBeforeRounding = round2(
+        itemsWithCalculations.reduce((sum, item) => sum + item.total_amount, 0)
+      )
+      const { roundOff, grandTotal } = calculateRoundOff(totalBeforeRounding)
       
       const invoiceData = {
         ...data,
@@ -435,6 +472,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
         total_discount: totalDiscount,
         taxable_amount: taxableAmount,
         total_tax: totalTax,
+        round_off: roundOff,
         grand_total: grandTotal,
       }
 
@@ -781,7 +819,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                               item_name: item.name,
                               unit: item.unit,
                               quantity: 1,
-                              unit_price: invoiceType === "sales" ? item.selling_price : item.purchase_price,
+                              unit_price: getInventoryItemUnitPrice(item),
                               discount_pct: 0,
                               gst_rate: item.gst_rate,
                               hsn_code: item.hsn_code || "",
@@ -896,6 +934,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                             <Field className="sm:col-span-2">
                               <FieldLabel className="text-xs md:text-sm">Select from Inventory</FieldLabel>
                               <Select
+                                value={watchItems[index]?.item_id || undefined}
                                 onValueChange={(value) => handleItemSelect(index, value)}
                                 disabled={isLoadingInventory}
                               >
@@ -1134,8 +1173,17 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                     </div>
                   )}
                   <Separator />
+                  <div className="flex justify-between text-sm md:text-base">
+                    <span className="text-muted-foreground">Total Before Rounding</span>
+                    <span className="font-medium">{formatCurrency(totals.totalBeforeRounding)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm md:text-base">
+                    <span className="text-muted-foreground">Round Off</span>
+                    <span className="font-medium">{formatCurrency(totals.roundOff)}</span>
+                  </div>
+                  <Separator />
                   <div className="flex justify-between text-base md:text-lg">
-                    <span className="font-bold">Grand Total</span>
+                    <span className="font-bold">Final Total</span>
                     <span className="font-bold text-primary">
                       {formatCurrency(totals.grandTotal)}
                     </span>

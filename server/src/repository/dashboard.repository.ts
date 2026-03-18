@@ -133,6 +133,7 @@ export const dashboardRepository = {
                 i.invoice_number,
                 i.invoice_type,
                 p.name as party_name,
+                i.round_off,
                 i.grand_total,
                 i.payment_status,
                 i.invoice_date

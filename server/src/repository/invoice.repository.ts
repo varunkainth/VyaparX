@@ -40,6 +40,7 @@ export const invoiceRepository = {
             sgst_amount: number;
             igst_amount: number;
             total_tax: number;
+            round_off?: number;
             grand_total: number;
             payment_status?: "unpaid" | "partial" | "paid" | "overdue";
             created_by: string;
@@ -52,9 +53,9 @@ export const invoiceRepository = {
             `
             INSERT INTO invoices (
                 business_id,party_id,invoice_type,invoice_number,financial_year,invoice_date,place_of_supply,is_igst,
-                subtotal,taxable_amount,cgst_amount,sgst_amount,igst_amount,total_tax,grand_total,balance_due,payment_status,reference_invoice_id,note_reason,created_by
+                subtotal,taxable_amount,cgst_amount,sgst_amount,igst_amount,total_tax,round_off,grand_total,balance_due,payment_status,reference_invoice_id,note_reason,created_by
             )
-            VALUES ($1,$2,$3::invoice_type,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17::payment_status,$18,$19,$20)
+            VALUES ($1,$2,$3::invoice_type,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18::payment_status,$19,$20,$21)
             RETURNING id
             `,
             [
@@ -72,6 +73,7 @@ export const invoiceRepository = {
                 values.sgst_amount,
                 values.igst_amount,
                 values.total_tax,
+                values.round_off ?? 0,
                 values.grand_total,
                 values.grand_total,
                 paymentStatus,

@@ -90,8 +90,10 @@ export interface InvoiceRecord {
     invoice_date: string;
     due_date?: string | null;
     payment_status: "unpaid" | "partial" | "paid" | "overdue";
+    subtotal?: string | number;
     taxable_amount: string | number;
     total_tax: string | number;
+    round_off?: string | number;
     grand_total: string | number;
     amount_paid?: string | number;
     balance_due?: string | number;
