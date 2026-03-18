@@ -43,6 +43,7 @@ export function CreateInvoiceNotePage({ invoiceId }: CreateInvoiceNotePageProps)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [noteType, setNoteType] = useState<NoteType>("credit_note");
   const [noteReason, setNoteReason] = useState("");
+  const round2 = (num: number) => Math.round((num + Number.EPSILON) * 100) / 100;
 
   const getDisplayRate = (item: InvoiceWithItems["items"][number]) => {
     if (!item.quantity) return 0;
@@ -50,7 +51,6 @@ export function CreateInvoiceNotePage({ invoiceId }: CreateInvoiceNotePageProps)
   };
 
   const calculateRoundOff = (amount: number) => {
-    const round2 = (num: number) => Math.round(num * 100) / 100;
     const totalBeforeRounding = round2(amount);
     const grandTotal = round2(Math.round(totalBeforeRounding));
     const roundOff = round2(grandTotal - totalBeforeRounding);
@@ -95,7 +95,8 @@ export function CreateInvoiceNotePage({ invoiceId }: CreateInvoiceNotePageProps)
 
       // Calculate totals from items
       const subtotal = invoice.items.reduce((sum, item) => {
-        const baseAmount = item.quantity * item.unit_price;
+        const roundedUnitPrice = round2(item.unit_price);
+        const baseAmount = round2(item.quantity * roundedUnitPrice);
         const divisor = item.price_mode === "inclusive" ? 1 + item.gst_rate / 100 : 1;
         return sum + (baseAmount / divisor);
       }, 0);
@@ -119,7 +120,7 @@ export function CreateInvoiceNotePage({ invoiceId }: CreateInvoiceNotePageProps)
           hsn_code: item.hsn_code ? item.hsn_code : undefined,
           unit: item.unit,
           quantity: item.quantity,
-          unit_price: item.unit_price,
+          unit_price: round2(item.unit_price),
           discount_pct: item.discount_pct,
           price_mode: item.price_mode,
           taxable_value: item.taxable_value,

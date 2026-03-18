@@ -82,16 +82,21 @@ const computeLine = (item: InvoiceItemInput, isIgst: boolean): ComputedInvoiceIt
         );
     }
 
-    const priceMode: PriceMode = item.price_mode === "inclusive" ? "inclusive" : "exclusive";
-    const grossAmount = round2(item.quantity * item.unit_price);
-    const divisor = 1 + item.gst_rate / 100;
+    const normalizedItem: InvoiceItemInput = {
+        ...item,
+        unit_price: round2(item.unit_price),
+    };
+
+    const priceMode: PriceMode = normalizedItem.price_mode === "inclusive" ? "inclusive" : "exclusive";
+    const grossAmount = round2(normalizedItem.quantity * normalizedItem.unit_price);
+    const divisor = 1 + normalizedItem.gst_rate / 100;
     const exclusiveBase = priceMode === "inclusive" ? round2(grossAmount / divisor) : grossAmount;
     const discountAmount = round2(exclusiveBase * (discountPct / 100));
     const taxableValue = round2(exclusiveBase - discountAmount);
 
-    const cgstRate = isIgst ? 0 : round2(item.gst_rate / 2);
-    const sgstRate = isIgst ? 0 : round2(item.gst_rate / 2);
-    const igstRate = isIgst ? round2(item.gst_rate) : 0;
+    const cgstRate = isIgst ? 0 : round2(normalizedItem.gst_rate / 2);
+    const sgstRate = isIgst ? 0 : round2(normalizedItem.gst_rate / 2);
+    const igstRate = isIgst ? round2(normalizedItem.gst_rate) : 0;
 
     const cgstAmount = round2((taxableValue * cgstRate) / 100);
     const sgstAmount = round2((taxableValue * sgstRate) / 100);
@@ -100,7 +105,7 @@ const computeLine = (item: InvoiceItemInput, isIgst: boolean): ComputedInvoiceIt
 
     return {
         price_mode: priceMode,
-        item,
+        item: normalizedItem,
         discountAmount,
         taxableValue,
         cgstRate,

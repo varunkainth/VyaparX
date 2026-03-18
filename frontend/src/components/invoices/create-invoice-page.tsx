@@ -74,6 +74,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
   const [isLoadingSourceInvoice, setIsLoadingSourceInvoice] = useState(false)
   const sourceInvoiceId = searchParams.get("source_invoice_id")
   const isRevisionMode = searchParams.get("mode") === "revise"
+  const round2 = useCallback((value: number) => Math.round((value + Number.EPSILON) * 100) / 100, [])
 
   const {
     register,
@@ -200,7 +201,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                 hsn_code: item.hsn_code || "",
                 unit: item.unit,
                 quantity: item.quantity,
-                unit_price: item.unit_price,
+                unit_price: round2(item.unit_price),
                 discount_pct: item.discount_pct || 0,
                 gst_rate: item.gst_rate,
               }))
@@ -231,7 +232,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
     return () => {
       isMounted = false
     }
-  }, [currentBusiness, invoiceType, reset, router, sourceInvoiceId])
+  }, [currentBusiness, invoiceType, reset, router, round2, sourceInvoiceId])
 
   useEffect(() => {
     // Update IGST flag when place of supply changes
@@ -253,8 +254,8 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
   }, [watchPartyId, parties])
 
   const getInventoryItemUnitPrice = useCallback((item: InventoryItem) => {
-    return invoiceType === "sales" ? item.selling_price : item.purchase_price
-  }, [invoiceType])
+    return round2(invoiceType === "sales" ? item.selling_price : item.purchase_price)
+  }, [invoiceType, round2])
 
   const applyInventoryItemToForm = useCallback((index: number, item: InventoryItem) => {
     setValue(`items.${index}.item_id`, item.id, { shouldDirty: true, shouldValidate: true })
@@ -334,12 +335,10 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
     if (!item) return 0
 
     const quantity = item.quantity || 0
-    const unitPrice = item.unit_price || 0
+    const unitPrice = round2(item.unit_price || 0)
     const discountPct = item.discount_pct || 0
     const gstRate = item.gst_rate || 0
     const priceMode = watchPriceMode || "exclusive"
-
-    const round2 = (num: number) => Math.round(num * 100) / 100
 
     // Match backend logic exactly
     const grossAmount = round2(quantity * unitPrice)
@@ -360,7 +359,6 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
   }
 
   const calculateRoundOff = (amount: number) => {
-    const round2 = (num: number) => Math.round(num * 100) / 100
     const totalBeforeRounding = round2(amount)
     const grandTotal = round2(Math.round(totalBeforeRounding))
     const roundOff = round2(grandTotal - totalBeforeRounding)
@@ -373,7 +371,6 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
   }
 
   const calculateTotals = () => {
-    const round2 = (num: number) => Math.round(num * 100) / 100
     const priceMode = watchPriceMode || "exclusive"
     
     let subtotal = 0
@@ -383,7 +380,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
 
     watchItems.forEach((item) => {
       const quantity = item.quantity || 0
-      const unitPrice = item.unit_price || 0
+      const unitPrice = round2(item.unit_price || 0)
       const discountPct = item.discount_pct || 0
       const gstRate = item.gst_rate || 0
 
@@ -474,12 +471,9 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
       // Calculate detailed fields for each item using BACKEND LOGIC
       const itemsWithCalculations = data.items.map((item) => {
         const quantity = item.quantity || 0
-        const unitPrice = item.unit_price || 0
+        const unitPrice = round2(item.unit_price || 0)
         const discountPct = item.discount_pct || 0
         const gstRate = item.gst_rate || 0
-
-        // Backend logic: round2 helper
-        const round2 = (num: number) => Math.round(num * 100) / 100
 
         // Step 1: Calculate gross amount
         const grossAmount = round2(quantity * unitPrice)
@@ -509,6 +503,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
 
         return {
           ...item,
+          unit_price: unitPrice,
           price_mode: priceMode,
           discount_amount: discountAmount,
           taxable_value: taxableValue,
@@ -523,8 +518,6 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
       })
 
       // Recalculate totals from the computed items
-      const round2 = (num: number) => Math.round(num * 100) / 100
-      
       const subtotal = round2(itemsWithCalculations.reduce((sum, item) => {
         const grossAmount = round2(item.quantity * item.unit_price)
         const divisor = 1 + item.gst_rate / 100
@@ -1167,6 +1160,14 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                                 min="0"
                                 {...register(`items.${index}.unit_price`, { valueAsNumber: true })}
                                 disabled={isSubmitting}
+                                onBlur={(e) => {
+                                  const value = Number(e.target.value)
+                                  if (Number.isNaN(value)) return
+                                  setValue(`items.${index}.unit_price`, round2(value), {
+                                    shouldDirty: true,
+                                    shouldValidate: true,
+                                  })
+                                }}
                                 onKeyDown={(e) => {
                                   if (e.key === '-' || e.key === 'e' || e.key === 'E') {
                                     e.preventDefault();
