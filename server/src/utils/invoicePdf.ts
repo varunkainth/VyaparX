@@ -13,6 +13,21 @@ const asNumber = (value: unknown): number => {
 };
 
 const money = (value: unknown): string => asNumber(value).toFixed(2);
+const getDisplayRate = (item: {
+    quantity: unknown;
+    unit_price: unknown;
+    taxable_value?: unknown;
+    discount_amount?: unknown;
+}): number => {
+    const quantity = asNumber(item.quantity);
+    if (quantity <= 0) return asNumber(item.unit_price);
+
+    const taxableValue = asNumber(item.taxable_value);
+    const discountAmount = asNumber(item.discount_amount);
+    const computedRate = (taxableValue + discountAmount) / quantity;
+
+    return Number.isFinite(computedRate) ? computedRate : asNumber(item.unit_price);
+};
 
 // Custom Indian number formatter that prevents the PDFKit wrapping/glyph bug
 const formatIndianNumber = (num: number): string => {
@@ -152,7 +167,7 @@ const renderItems = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Temp
     doc.moveDown(0.2);
     for (const item of data.invoice.items) {
         doc.text(
-            `${item.item_name} | ${item.quantity} ${item.unit} | ${money(item.unit_price)} | ${item.gst_rate} | ${money(item.total_amount)}`
+            `${item.item_name} | ${item.quantity} ${item.unit} | ${money(getDisplayRate(item))} | ${item.gst_rate} | ${money(item.total_amount)}`
         );
     }
 };
@@ -224,7 +239,7 @@ const renderClassic = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Te
 
         doc.text(name, colX[0]!, y, { width: 200 });
         doc.text(`${item.quantity} ${item.unit}`, colX[1]!, y, { width: colX[2]! - colX[1]!, align: "center" });
-        doc.text(rs(item.unit_price), colX[2]!, y, { width: colX[3]! - colX[2]!, align: "right" });
+        doc.text(rs(getDisplayRate(item)), colX[2]!, y, { width: colX[3]! - colX[2]!, align: "right" });
         doc.text(rs(item.taxable_value ?? item.total_amount), colX[3]!, y, { width: colX[4]! - colX[3]!, align: "right" });
 
         y += itemH + 10;
@@ -312,7 +327,7 @@ const renderModern = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Tem
 
         doc.text(name, colX[0]!, y, { width: 220 });
         doc.text(`${item.quantity} ${item.unit}`, colX[1]!, y, { width: colX[2]! - colX[1]!, align: "center" });
-        doc.text(rs(item.unit_price), colX[2]!, y, { width: colX[3]! - colX[2]!, align: "right" });
+        doc.text(rs(getDisplayRate(item)), colX[2]!, y, { width: colX[3]! - colX[2]!, align: "right" });
         doc.text(rs(item.taxable_value ?? item.total_amount), colX[3]!, y, { width: colX[4]! - colX[3]!, align: "right" });
 
         y += itemH + 15;
@@ -391,7 +406,7 @@ const renderCompact = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Te
         y += doc.heightOfString(name, { width: width - 60 }) + 2;
 
         doc.fillColor("#777777").fontSize(8);
-        doc.text(`${item.quantity} x ${rs(item.unit_price)}`, x, y);
+        doc.text(`${item.quantity} x ${rs(getDisplayRate(item))}`, x, y);
         doc.fillColor("#000000").fontSize(9);
         y += 15;
     });
@@ -589,7 +604,7 @@ const renderBillPro = (doc: PDFKit.PDFDocument, data: InvoicePdfData, config: Te
         doc.text(String(asNumber(item.quantity).toFixed(item.unit?.toLowerCase() === "pcs" ? 0 : 3)), tColX[2]! + 4, iy, { width: tColW[2]! - 8, align: "center" });
         doc.text(getText(item.unit).toUpperCase(), tColX[3]! + 4, iy, { width: tColW[3]! - 8, align: "center" });
 
-        doc.text(rs(item.unit_price), tColX[4]! + 4, iy, { width: tColW[4]! - 14, align: "right" });
+        doc.text(rs(getDisplayRate(item)), tColX[4]! + 4, iy, { width: tColW[4]! - 14, align: "right" });
         doc.text(rs(item.taxable_value ?? item.total_amount), tColX[5]! + 4, iy, { width: tColW[5]! - 14, align: "right" });
 
         iy += Math.max(textH, 15) + 12;

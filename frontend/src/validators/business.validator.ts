@@ -4,6 +4,7 @@ import { z } from "zod";
 export const createBusinessSchema = z.object({
   name: z
     .string()
+    .trim()
     .min(2, "Business name must be at least 2 characters")
     .max(200, "Business name is too long"),
   gstin: z
@@ -18,38 +19,32 @@ export const createBusinessSchema = z.object({
     .or(z.literal("")),
   address_line1: z
     .string()
+    .trim()
     .min(3, "Address is required")
     .max(500, "Address is too long"),
   city: z
-    .string()
-    .max(100, "City name is too long")
-    .optional()
-    .or(z.literal("")),
+    .string({ required_error: "City is required" })
+    .trim()
+    .min(2, "City is required")
+    .max(100, "City name is too long"),
   state: z
-    .string()
-    .max(100, "State name is too long")
-    .optional()
-    .or(z.literal("")),
+    .string({ required_error: "State is required" })
+    .trim()
+    .min(2, "State is required")
+    .max(100, "State name is too long"),
   state_code: z
-    .string()
-    .length(2, "State code must be 2 digits")
-    .optional()
-    .or(z.literal("")),
+    .string({ required_error: "State is required" })
+    .length(2, "State code must be 2 digits"),
   pincode: z
-    .string()
-    .regex(/^[0-9]{6}$/, "Pincode must be 6 digits")
-    .optional()
-    .or(z.literal("")),
+    .string({ required_error: "Pincode is required" })
+    .regex(/^[0-9]{6}$/, "Pincode must be 6 digits"),
   phone: z
-    .string()
-    .regex(/^[0-9]{10}$/, "Phone number must be 10 digits")
-    .optional()
-    .or(z.literal("")),
+    .string({ required_error: "Phone number is required" })
+    .regex(/^[0-9]{10}$/, "Phone number must be 10 digits"),
   email: z
-    .string()
-    .email("Invalid email address")
-    .optional()
-    .or(z.literal("")),
+    .string({ required_error: "Email is required" })
+    .trim()
+    .email("Invalid email address"),
 });
 
 // Update business validation schema (all fields optional)

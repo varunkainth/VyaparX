@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useEffect, useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { useForm, useFieldArray } from "react-hook-form"
+import { useForm, useFieldArray, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { createInvoiceSchema, type CreateInvoiceFormData } from "@/validators/invoice.validator"
 import { invoiceService } from "@/services/invoice.service"
@@ -484,6 +484,26 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
     }
   }
 
+  const extractFirstErrorMessage = (value: unknown): string | undefined => {
+    if (!value || typeof value !== "object") return undefined
+    const maybeError = value as { message?: unknown }
+    if (typeof maybeError.message === "string" && maybeError.message.trim().length > 0) {
+      return maybeError.message
+    }
+
+    for (const nested of Object.values(value as Record<string, unknown>)) {
+      const message = extractFirstErrorMessage(nested)
+      if (message) return message
+    }
+
+    return undefined
+  }
+
+  const onInvalid = (formErrors: FieldErrors<CreateInvoiceFormData>) => {
+    const firstError = extractFirstErrorMessage(formErrors)
+    toast.error(firstError ?? "Please fill all mandatory fields correctly")
+  }
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
@@ -560,7 +580,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
             </Button>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 md:space-y-6">
+          <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4 md:space-y-6">
             {/* Invoice Details - Mobile Optimized */}
             <Card>
               <CardHeader>

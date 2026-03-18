@@ -224,6 +224,11 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
     }).format(amount)
   }
 
+  const getDisplayRate = (item: InvoiceWithItems["items"][number]) => {
+    if (!item.quantity) return 0
+    return (item.taxable_value + item.discount_amount) / item.quantity
+  }
+
   const formatDate = (dateString: string) => {
     return new Intl.DateTimeFormat("en-IN", {
       dateStyle: "medium",
@@ -834,7 +839,7 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
                           {item.quantity} {item.unit}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(item.unit_price)}
+                          {formatCurrency(getDisplayRate(item))}
                         </TableCell>
                         <TableCell className="text-right">
                           {item.discount_amount > 0 ? formatCurrency(item.discount_amount) : "-"}
@@ -889,7 +894,7 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
                         </div>
                         <div className="text-right">
                           <span className="text-muted-foreground">Price:</span>
-                          <span className="ml-1 font-medium">{formatCurrency(item.unit_price)}</span>
+                          <span className="ml-1 font-medium">{formatCurrency(getDisplayRate(item))}</span>
                         </div>
                         {item.discount_amount > 0 && (
                           <div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { useForm } from "react-hook-form"
+import { useForm, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { createPartySchema, type CreatePartyFormData } from "@/validators/party.validator"
 import { partyService } from "@/services/party.service"
@@ -114,6 +114,26 @@ export function CreatePartyPage() {
     }
   }
 
+  const extractFirstErrorMessage = (value: unknown): string | undefined => {
+    if (!value || typeof value !== "object") return undefined
+    const maybeError = value as { message?: unknown }
+    if (typeof maybeError.message === "string" && maybeError.message.trim().length > 0) {
+      return maybeError.message
+    }
+
+    for (const nested of Object.values(value as Record<string, unknown>)) {
+      const message = extractFirstErrorMessage(nested)
+      if (message) return message
+    }
+
+    return undefined
+  }
+
+  const onInvalid = (formErrors: FieldErrors<CreatePartyFormData>) => {
+    const firstError = extractFirstErrorMessage(formErrors)
+    toast.error(firstError ?? "Please fill all mandatory fields correctly")
+  }
+
   if (!currentBusiness) {
     return (
       <SidebarProvider>
@@ -178,7 +198,7 @@ export function CreatePartyPage() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 md:space-y-6">
+          <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-4 md:space-y-6">
             <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
               {/* Basic Information - Mobile Optimized */}
               <Card className="lg:col-span-2">

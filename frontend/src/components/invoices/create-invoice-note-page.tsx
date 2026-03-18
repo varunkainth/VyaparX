@@ -44,6 +44,11 @@ export function CreateInvoiceNotePage({ invoiceId }: CreateInvoiceNotePageProps)
   const [noteType, setNoteType] = useState<NoteType>("credit_note");
   const [noteReason, setNoteReason] = useState("");
 
+  const getDisplayRate = (item: InvoiceWithItems["items"][number]) => {
+    if (!item.quantity) return 0;
+    return (item.taxable_value + item.discount_amount) / item.quantity;
+  };
+
   useEffect(() => {
     const fetchInvoice = async () => {
       if (!currentBusiness?.id) return;
@@ -266,7 +271,7 @@ export function CreateInvoiceNotePage({ invoiceId }: CreateInvoiceNotePageProps)
                         {item.quantity} {item.unit}
                       </TableCell>
                       <TableCell className="text-right">
-                        ₹{item.unit_price.toFixed(2)}
+                        ₹{getDisplayRate(item).toFixed(2)}
                       </TableCell>
                       <TableCell className="text-right">{item.gst_rate}%</TableCell>
                       <TableCell className="text-right">
