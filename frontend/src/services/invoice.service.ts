@@ -21,6 +21,11 @@ interface PaginatedResponse<T> {
   limit: number;
 }
 
+interface InvoiceCreateResponse {
+  success: boolean;
+  invoice_id: string;
+}
+
 // Transform API response to ensure numeric fields are numbers
 function transformInvoice(invoice: any): Invoice {
   return {
@@ -94,27 +99,24 @@ export const invoiceService = {
     return transformInvoiceWithItems(response.data.data);
   },
 
-  async createSalesInvoice(data: CreateInvoiceInput): Promise<InvoiceWithItems> {
-    const response = await apiClient.post<ApiResponse<any>>(
+  async createSalesInvoice(data: CreateInvoiceInput): Promise<InvoiceCreateResponse> {
+    const response = await apiClient.post<ApiResponse<InvoiceCreateResponse>>(
       `/api/v1/invoices/sales`,
       data
     );
-    return transformInvoiceWithItems(response.data.data);
+    return response.data.data;
   },
 
-  async createPurchaseInvoice(data: CreateInvoiceInput): Promise<InvoiceWithItems> {
-    const response = await apiClient.post<ApiResponse<any>>(
+  async createPurchaseInvoice(data: CreateInvoiceInput): Promise<InvoiceCreateResponse> {
+    const response = await apiClient.post<ApiResponse<InvoiceCreateResponse>>(
       `/api/v1/invoices/purchase`,
       data
     );
-    return transformInvoiceWithItems(response.data.data);
+    return response.data.data;
   },
 
-  async duplicateInvoice(businessId: string, invoiceId: string): Promise<InvoiceWithItems> {
-    const response = await apiClient.post<ApiResponse<any>>(
-      `/api/v1/businesses/${businessId}/invoices/${invoiceId}/duplicate`
-    );
-    return transformInvoiceWithItems(response.data.data);
+  async duplicateInvoice(_businessId: string, _invoiceId: string): Promise<InvoiceWithItems> {
+    throw new Error("Invoice duplicate API is not available yet.");
   },
 
   async cancelInvoice(
@@ -158,22 +160,19 @@ export const invoiceService = {
     return response.data.data;
   },
 
-  async getShareLink(businessId: string, invoiceId: string): Promise<{ share_url: string; expires_at: string }> {
-    const response = await apiClient.post<ApiResponse<{ share_url: string; expires_at: string }>>(
-      `/api/v1/businesses/${businessId}/invoices/${invoiceId}/share`
-    );
-    return response.data.data;
+  async getShareLink(_businessId: string, _invoiceId: string): Promise<{ share_url: string; expires_at: string }> {
+    throw new Error("Invoice share-link API is not available yet.");
   },
 
   async createInvoiceNote(
     businessId: string,
     invoiceId: string,
     data: CreateInvoiceNoteInput
-  ): Promise<InvoiceWithItems> {
-    const response = await apiClient.post<ApiResponse<any>>(
+  ): Promise<InvoiceCreateResponse> {
+    const response = await apiClient.post<ApiResponse<InvoiceCreateResponse>>(
       `/api/v1/businesses/${businessId}/invoices/${invoiceId}/notes`,
       data
     );
-    return transformInvoiceWithItems(response.data.data);
+    return response.data.data;
   },
 };

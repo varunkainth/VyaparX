@@ -135,7 +135,7 @@ export function CreateInvoiceNotePage({ invoiceId }: CreateInvoiceNotePageProps)
       toast.success(
         `${noteType === "credit_note" ? "Credit" : "Debit"} note created successfully`
       );
-      router.push(`/invoices/${result.id}`);
+      router.push(`/invoices/${result.invoice_id}`);
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
