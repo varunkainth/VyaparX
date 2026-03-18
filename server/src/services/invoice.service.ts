@@ -68,6 +68,15 @@ const deriveFinancialYear = (invoiceDate: string): string => {
     return `${startYear}-${startYear + 1}`;
 };
 
+const deriveInvoiceNumberYear = (invoiceDate: string): string => {
+    const date = new Date(invoiceDate);
+    if (Number.isNaN(date.getTime())) {
+        throw new AppError("Invalid invoice_date", 400, ERROR_CODES.BAD_REQUEST);
+    }
+
+    return String(date.getUTCFullYear());
+};
+
 const computeLine = (item: InvoiceItemInput, isIgst: boolean): ComputedInvoiceItem => {
     if (item.quantity <= 0) {
         throw new AppError(`Invalid quantity for item ${item.item_name}`, 400, ERROR_CODES.BAD_REQUEST);
@@ -179,6 +188,7 @@ export async function createSaleInvoice(data: CreateInvoiceInput) {
         }
 
         const financialYear = deriveFinancialYear(data.invoice_date);
+        const invoiceNumberYear = deriveInvoiceNumberYear(data.invoice_date);
         const computedItems = data.items.map((item) => computeLine(item, data.is_igst));
 
         const {
@@ -227,7 +237,7 @@ export async function createSaleInvoice(data: CreateInvoiceInput) {
             financialYear,
             "sales"
         );
-        const invoiceNumber = `INV-${financialYear.split("-")[0]}-${String(sequenceNo).padStart(3, "0")}`;
+        const invoiceNumber = `INV-${invoiceNumberYear}-${String(sequenceNo).padStart(3, "0")}`;
 
         const invoiceId = await invoiceRepository.insertInvoice(client, {
             business_id: data.business_id,
@@ -424,6 +434,7 @@ export async function createPurchaseInvoice(data: CreateInvoiceInput) {
         }
 
         const financialYear = deriveFinancialYear(data.invoice_date);
+        const invoiceNumberYear = deriveInvoiceNumberYear(data.invoice_date);
         const computedItems = data.items.map((item) => computeLine(item, data.is_igst));
 
         const {
@@ -472,7 +483,7 @@ export async function createPurchaseInvoice(data: CreateInvoiceInput) {
             financialYear,
             "purchase"
         );
-        const invoiceNumber = `PINV-${financialYear.split("-")[0]}-${String(sequenceNo).padStart(3, "0")}`;
+        const invoiceNumber = `PINV-${invoiceNumberYear}-${String(sequenceNo).padStart(3, "0")}`;
 
         const invoiceId = await invoiceRepository.insertInvoice(client, {
             business_id: data.business_id,
@@ -677,6 +688,7 @@ export async function createInvoiceNote(data: CreateInvoiceNoteInput) {
         }
 
         const financialYear = deriveFinancialYear(data.invoice_date);
+        const invoiceNumberYear = deriveInvoiceNumberYear(data.invoice_date);
         const computedItems = data.items.map((item) => computeLine(item, data.is_igst));
 
         const {
@@ -728,7 +740,7 @@ export async function createInvoiceNote(data: CreateInvoiceNoteInput) {
             sequenceType
         );
         const prefix = data.note_type === "credit_note" ? "CN" : "DN";
-        const invoiceNumber = `${prefix}-${financialYear.split("-")[0]}-${String(sequenceNo).padStart(3, "0")}`;
+        const invoiceNumber = `${prefix}-${invoiceNumberYear}-${String(sequenceNo).padStart(3, "0")}`;
 
         const invoiceId = await invoiceRepository.insertInvoice(client, {
             business_id: data.business_id,
