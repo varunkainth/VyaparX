@@ -611,12 +611,27 @@ export function InvoiceDetailsPage({ invoiceId }: InvoiceDetailsPageProps) {
                   </Button>
                 ) : (
                   <div className="space-y-3">
+                    <div className="flex justify-center rounded-2xl border bg-muted/30 p-4">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(shareLink)}`}
+                        alt={`QR code for invoice ${invoice.invoice_number}`}
+                        className="h-44 w-44 rounded-lg"
+                      />
+                    </div>
                     <div className="flex items-center gap-2">
                       <Input value={shareLink} readOnly className="flex-1" />
                       <Button variant="outline" size="icon" onClick={handleCopyShareLink}>
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => window.open(shareLink, "_blank", "noopener,noreferrer")}
+                    >
+                      <Share2 className="mr-2 h-4 w-4" />
+                      Open Digital Bill
+                    </Button>
                     <p className="text-xs text-muted-foreground">
                       This link will expire in 7 days
                     </p>

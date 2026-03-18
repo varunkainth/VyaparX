@@ -111,6 +111,18 @@ export const businessRepository = {
         return result.rows[0] ?? null;
     },
 
+    async getBusinessById(businessId: string) {
+        const result = await pool.query(
+            `
+            SELECT *
+            FROM businesses
+            WHERE id = $1
+            `,
+            [businessId]
+        );
+        return result.rows[0] ?? null;
+    },
+
     async updateBusiness(businessId: string, patch: Record<string, unknown>) {
         const fields = Object.keys(patch);
         const setSql = fields.map((f, i) => `${f} = $${i + 1}`).concat("updated_at = now()").join(", ");

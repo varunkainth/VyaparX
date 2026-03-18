@@ -1,4 +1,6 @@
 import type { Request, Response } from "express";
+import jwt from "jsonwebtoken";
+import env from "../config/env";
 import { ERROR_CODES } from "../constants/errorCodes";
 import { businessRepository } from "../repository/business.repository";
 import { partyRepository } from "../repository/party.repository";
@@ -27,6 +29,47 @@ const getInvoiceId = (req: Request<InvoiceParams>): string => {
         throw new AppError("Invoice ID missing in route", 400, ERROR_CODES.BAD_REQUEST);
     }
     return invoiceId;
+};
+
+type InvoiceShareTokenPayload = {
+    business_id: string;
+    invoice_id: string;
+};
+
+const invoiceShareSecret = `${env.JWT_ACCESS_SECRET}:invoice-share`;
+
+const createInvoiceShareToken = (payload: InvoiceShareTokenPayload) => {
+    return jwt.sign(payload, invoiceShareSecret, {
+        expiresIn: "7d",
+    });
+};
+
+const verifyInvoiceShareToken = (token: string, invoiceId: string): InvoiceShareTokenPayload => {
+    try {
+        const decoded = jwt.verify(token, invoiceShareSecret) as InvoiceShareTokenPayload;
+        if (!decoded?.business_id || decoded.invoice_id !== invoiceId) {
+            throw new AppError("Invalid invoice share token", 401, ERROR_CODES.UNAUTHORIZED);
+        }
+        return decoded;
+    } catch {
+        throw new AppError("Invalid or expired invoice share token", 401, ERROR_CODES.UNAUTHORIZED);
+    }
+};
+
+const buildInvoicePublicData = async (businessId: string, invoiceId: string) => {
+    const invoice = await getInvoiceById(businessId, invoiceId);
+    const [business, party, invoiceSettings] = await Promise.all([
+        businessRepository.getBusinessById(businessId),
+        partyRepository.getPartyById(businessId, String(invoice.party_id)),
+        invoiceSettingsRepository.getOrCreate(businessId),
+    ]);
+
+    return {
+        invoice,
+        business: business ?? null,
+        party: party ?? null,
+        invoice_settings: invoiceSettings,
+    };
 };
 
 export const listInvoicesHandler = async (
@@ -156,4 +199,104 @@ export const downloadInvoicePdfHandler = async (
     pdfDoc.pipe(res);
     pdfDoc.end();
     return;
+};
+
+export const createInvoiceShareLinkHandler = async (req: Request<InvoiceParams>, res: Response) => {
+    const businessId = getBusinessId(req);
+    const invoiceId = getInvoiceId(req);
+
+    await getInvoiceById(businessId, invoiceId);
+
+    const token = createInvoiceShareToken({
+        business_id: businessId,
+        invoice_id: invoiceId,
+    });
+
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const shareUrl = `${frontendUrl}/shared/invoice/${invoiceId}?token=${encodeURIComponent(token)}`;
+
+    return sendSuccess(res, {
+        message: "Invoice share link generated",
+        data: {
+            share_url: shareUrl,
+            expires_at: expiresAt,
+        },
+    });
+};
+
+export const getPublicInvoiceHandler = async (
+    req: Request<InvoiceParams, unknown, unknown, { token?: string }>,
+    res: Response
+) => {
+    const invoiceId = getInvoiceId(req);
+    const token = req.query.token;
+
+    if (!token) {
+        throw new AppError("Share token is required", 400, ERROR_CODES.BAD_REQUEST);
+    }
+
+    const { business_id: businessId } = verifyInvoiceShareToken(token, invoiceId);
+    const data = await buildInvoicePublicData(businessId, invoiceId);
+
+    return sendSuccess(res, {
+        message: "Public invoice fetched",
+        data,
+    });
+};
+
+export const downloadPublicInvoicePdfHandler = async (
+    req: Request<InvoiceParams, unknown, unknown, InvoicePdfQueryRaw & { token?: string }>,
+    res: Response
+) => {
+    const parsed = invoicePdfQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+        throw new AppError("Validation failed", 400, ERROR_CODES.VALIDATION_ERROR, parsed.error.issues);
+    }
+
+    const invoiceId = getInvoiceId(req);
+    const token = req.query.token;
+
+    if (!token) {
+        throw new AppError("Share token is required", 400, ERROR_CODES.BAD_REQUEST);
+    }
+
+    const { business_id: businessId } = verifyInvoiceShareToken(token, invoiceId);
+    const { invoice, business, party, invoice_settings } = await buildInvoicePublicData(businessId, invoiceId);
+
+    const templateMap: Record<string, InvoicePdfTemplate> = {
+        default: "bill_pro",
+        modern: "modern",
+        classic: "classic",
+        minimal: "compact",
+    };
+
+    const template = parsed.data.template || templateMap[invoice_settings.default_template] || "bill_pro";
+
+    const pdfDoc = createInvoicePdfDocument({
+        businessName: business?.name ?? "Business",
+        partyName: party?.name ?? "Party",
+        invoice,
+        template,
+        business: (business as Record<string, unknown> | null) ?? undefined,
+        party: (party as Record<string, unknown> | null) ?? undefined,
+    });
+
+    const safeInvoiceNo = String(invoice.invoice_number || invoice.id).replace(/[^a-zA-Z0-9-_]/g, "_");
+    const fileName = `invoice-${safeInvoiceNo}-${template}.pdf`;
+    res.status(200);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=\"${fileName}\"`);
+    pdfDoc.on("error", (error) => {
+        if (!res.headersSent) {
+            res.status(500).json({
+                success: false,
+                error: { code: ERROR_CODES.INTERNAL_ERROR, message: "Failed to generate PDF" },
+            });
+            return;
+        }
+        res.destroy(error);
+    });
+    pdfDoc.pipe(res);
+    pdfDoc.end();
 };

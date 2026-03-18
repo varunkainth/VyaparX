@@ -21,6 +21,13 @@ interface PaginatedResponse<T> {
   limit: number;
 }
 
+export interface PublicInvoicePayload {
+  invoice: InvoiceWithItems;
+  business: Record<string, unknown> | null;
+  party: Record<string, unknown> | null;
+  invoice_settings: Record<string, unknown> | null;
+}
+
 // Transform API response to ensure numeric fields are numbers
 function transformInvoice(invoice: any): Invoice {
   return {
@@ -156,6 +163,17 @@ export const invoiceService = {
       `/api/v1/businesses/${businessId}/invoices/${invoiceId}/share`
     );
     return response.data.data;
+  },
+
+  async getPublicInvoice(invoiceId: string, token: string): Promise<PublicInvoicePayload> {
+    const response = await apiClient.get<ApiResponse<any>>(
+      `/api/v1/public/invoices/${invoiceId}?token=${encodeURIComponent(token)}`
+    );
+
+    return {
+      ...response.data.data,
+      invoice: transformInvoiceWithItems(response.data.data.invoice),
+    };
   },
 
   async createInvoiceNote(
