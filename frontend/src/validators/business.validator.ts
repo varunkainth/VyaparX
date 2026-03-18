@@ -23,26 +23,26 @@ export const createBusinessSchema = z.object({
     .min(3, "Address is required")
     .max(500, "Address is too long"),
   city: z
-    .string({ required_error: "City is required" })
+    .string({ error: "City is required" })
     .trim()
     .min(2, "City is required")
     .max(100, "City name is too long"),
   state: z
-    .string({ required_error: "State is required" })
+    .string({ error: "State is required" })
     .trim()
     .min(2, "State is required")
     .max(100, "State name is too long"),
   state_code: z
-    .string({ required_error: "State is required" })
+    .string({ error: "State is required" })
     .length(2, "State code must be 2 digits"),
   pincode: z
-    .string({ required_error: "Pincode is required" })
+    .string({ error: "Pincode is required" })
     .regex(/^[0-9]{6}$/, "Pincode must be 6 digits"),
   phone: z
-    .string({ required_error: "Phone number is required" })
+    .string({ error: "Phone number is required" })
     .regex(/^[0-9]{10}$/, "Phone number must be 10 digits"),
   email: z
-    .string({ required_error: "Email is required" })
+    .string({ error: "Email is required" })
     .trim()
     .email("Invalid email address"),
 });

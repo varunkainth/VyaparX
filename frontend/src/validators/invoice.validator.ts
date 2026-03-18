@@ -7,18 +7,18 @@ export const invoiceItemSchema = z.object({
   hsn_code: z.string().max(8).optional(),
   unit: z.string().trim().min(1, "Unit is required"),
   quantity: z
-    .number({ invalid_type_error: "Quantity is required" })
+    .number({ error: "Quantity is required" })
     .positive("Quantity must be greater than 0"),
   unit_price: z
-    .number({ invalid_type_error: "Unit price is required" })
+    .number({ error: "Unit price is required" })
     .min(0, "Unit price must be 0 or greater"),
   discount_pct: z
-    .number({ invalid_type_error: "Discount must be a valid number" })
+    .number({ error: "Discount must be a valid number" })
     .min(0, "Discount cannot be negative")
     .max(100, "Discount cannot exceed 100%")
     .optional(),
   gst_rate: z
-    .number({ invalid_type_error: "GST rate is required" })
+    .number({ error: "GST rate is required" })
     .min(0, "GST rate must be 0 or greater"),
 });
 

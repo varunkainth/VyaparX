@@ -9,7 +9,7 @@ export const createPartySchema = z.object({
   pan: z.string().length(10, "PAN must be 10 characters").optional().or(z.literal("")),
   state_code: z.string().length(2, "State code must be 2 characters").optional().or(z.literal("")),
   state: z.string().max(100).optional().or(z.literal("")),
-  address: z.string({ required_error: "Address is required" }).trim().min(1, "Address is required"),
+  address: z.string({ error: "Address is required" }).trim().min(1, "Address is required"),
   city: z.string().max(100).optional().or(z.literal("")),
   pincode: z.string().regex(/^\d{6}$/, "Pincode must be 6 digits").optional().or(z.literal("")),
   phone: z.string().regex(/^\d{10}$/, "Phone must be 10 digits").optional().or(z.literal("")),
