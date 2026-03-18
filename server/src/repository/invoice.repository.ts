@@ -103,7 +103,7 @@ export const invoiceRepository = {
     async lockItemStock(client: PoolClient, itemId: string) {
         const result = await client.query(
             `
-            SELECT current_stock
+            SELECT id, business_id, name, unit, current_stock, low_stock_threshold
             FROM inventory_items
             WHERE id = $1
             FOR UPDATE

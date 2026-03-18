@@ -25,6 +25,7 @@ import dashboardRouter from "./src/routes/dashboard.routes";
 import analyticsDashboardRouter from "./src/routes/analytics-dashboard.routes";
 import invoiceSettingsRouter from "./src/routes/invoice-settings.routes";
 import emailRouter from "./src/routes/email.routes";
+import notificationRouter from "./src/routes/notification.routes";
 import { errorHandler } from "./src/utils/errorHandler";
 import { sendSuccess } from "./src/utils/responseHandler";
 
@@ -123,6 +124,7 @@ app.use("/api/v1", dashboardRouter);
 app.use("/api/v1", analyticsDashboardRouter);
 app.use("/api/v1", invoiceSettingsRouter);
 app.use("/api/v1", emailRouter);
+app.use("/api/v1", notificationRouter);
 
 app.use((req, res) => {
     res.status(404).json({

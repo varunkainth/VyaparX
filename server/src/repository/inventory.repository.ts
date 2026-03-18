@@ -136,7 +136,7 @@ export const inventoryRepository = {
         const db = getDb(client);
         const result = await db.query(
             `
-            SELECT id, current_stock
+            SELECT id, business_id, name, unit, current_stock, low_stock_threshold
             FROM inventory_items
             WHERE business_id = $1
               AND id = $2

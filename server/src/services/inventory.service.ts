@@ -4,9 +4,11 @@ import { inventoryRepository } from "../repository/inventory.repository";
 import type { AdjustInventoryStockInput, CreateInventoryInput } from "../types/inventory";
 import { AppError } from "../utils/appError";
 import { trackAnalyticsEvent } from "./analytics.service";
+import { handleLowStockTransition, maybeSendLowStockEmail } from "./notification.service";
 
 export async function createInventoryItem(input: CreateInventoryInput) {
     const client = await pool.connect();
+    const pendingEmails: Array<Parameters<typeof maybeSendLowStockEmail>[0]> = [];
     try {
         await client.query("BEGIN");
 
@@ -29,7 +31,40 @@ export async function createInventoryItem(input: CreateInventoryInput) {
             );
         }
 
+        const threshold = Number(item.low_stock_threshold ?? 0);
+        const currentStock = Number(item.current_stock ?? 0);
+        const lowStockResult = await handleLowStockTransition(
+            {
+                businessId: input.business_id,
+                itemId: item.id,
+                itemName: String(item.name),
+                itemUnit: item.unit ? String(item.unit) : null,
+                threshold,
+                previousStock: threshold + 1,
+                currentStock,
+                actorUserId: input.created_by,
+            },
+            client
+        );
+
+        if (lowStockResult.shouldSendEmail) {
+            pendingEmails.push({
+                businessId: input.business_id,
+                itemId: item.id,
+                itemName: String(item.name),
+                itemUnit: item.unit ? String(item.unit) : null,
+                threshold,
+                previousStock: threshold + 1,
+                currentStock,
+                actorUserId: input.created_by,
+            });
+        }
+
         await client.query("COMMIT");
+
+        await Promise.all(
+            pendingEmails.map((context) => maybeSendLowStockEmail(context, true))
+        );
 
         void trackAnalyticsEvent({
             business_id: input.business_id,
@@ -71,9 +106,40 @@ export async function updateInventoryItem(
         throw new AppError("No updates provided", 400, ERROR_CODES.BAD_REQUEST);
     }
 
+    const current = await inventoryRepository.getItemById(businessId, itemId);
+    if (!current) {
+        return null;
+    }
+
     const updated = await inventoryRepository.updateItem(businessId, itemId, patch);
 
     if (updated) {
+        const threshold = Number(updated.low_stock_threshold ?? 0);
+        const previousStock = Number(current.current_stock ?? 0);
+        const currentStock = Number(updated.current_stock ?? 0);
+        const lowStockResult = await handleLowStockTransition({
+            businessId,
+            itemId: updated.id,
+            itemName: String(updated.name),
+            itemUnit: updated.unit ? String(updated.unit) : null,
+            threshold,
+            previousStock,
+            currentStock,
+        });
+
+        await maybeSendLowStockEmail(
+            {
+                businessId,
+                itemId: updated.id,
+                itemName: String(updated.name),
+                itemUnit: updated.unit ? String(updated.unit) : null,
+                threshold,
+                previousStock,
+                currentStock,
+            },
+            lowStockResult.shouldSendEmail
+        );
+
         void trackAnalyticsEvent({
             business_id: businessId,
             event_type: "inventory_item_updated",
@@ -105,6 +171,8 @@ export async function deactivateInventoryItem(businessId: string, itemId: string
 
 export async function adjustInventoryStock(args: AdjustInventoryStockInput) {
     const client = await pool.connect();
+    let emailContext: Parameters<typeof maybeSendLowStockEmail>[0] | null = null;
+    let shouldSendEmail = false;
     try {
         await client.query("BEGIN");
 
@@ -141,7 +209,38 @@ export async function adjustInventoryStock(args: AdjustInventoryStockInput) {
             client
         );
 
+        const threshold = Number(item.low_stock_threshold ?? 0);
+        const lowStockResult = await handleLowStockTransition(
+            {
+                businessId: args.businessId,
+                itemId: args.itemId,
+                itemName: String(item.name),
+                itemUnit: item.unit ? String(item.unit) : null,
+                threshold,
+                previousStock: currentStock,
+                currentStock: nextStock,
+                actorUserId: args.created_by,
+            },
+            client
+        );
+
+        shouldSendEmail = lowStockResult.shouldSendEmail;
+        emailContext = {
+            businessId: args.businessId,
+            itemId: args.itemId,
+            itemName: String(item.name),
+            itemUnit: item.unit ? String(item.unit) : null,
+            threshold,
+            previousStock: currentStock,
+            currentStock: nextStock,
+            actorUserId: args.created_by,
+        };
+
         await client.query("COMMIT");
+
+        if (emailContext) {
+            await maybeSendLowStockEmail(emailContext, shouldSendEmail);
+        }
 
         void trackAnalyticsEvent({
             business_id: args.businessId,

@@ -18,6 +18,7 @@ import type {
     PriceMode,
 } from "../types/invoice";
 import { trackAnalyticsEvent } from "./analytics.service";
+import { handleLowStockTransition, maybeSendLowStockEmail } from "./notification.service";
 
 const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 const moneyClose = (left: number, right: number, tolerance = 0.05) =>
@@ -162,6 +163,7 @@ const formatNoteDescription = (noteType: InvoiceNoteType, originalInvoiceNumber:
 
 export async function createSaleInvoice(data: CreateInvoiceInput) {
     const client = await pool.connect();
+    const pendingLowStockEmails: Array<Parameters<typeof maybeSendLowStockEmail>[0]> = [];
 
     try {
         if (!data?.business_id || !data.party_id || !data.invoice_date || !data.created_by) {
@@ -287,6 +289,7 @@ export async function createSaleInvoice(data: CreateInvoiceInput) {
                     );
                 }
 
+                const nextStock = round2(currentStock - row.item.quantity);
                 await invoiceRepository.decrementItemStock(client, row.item.item_id, row.item.quantity);
                 await invoiceRepository.insertStockMovement(client, [
                     data.business_id,
@@ -299,6 +302,34 @@ export async function createSaleInvoice(data: CreateInvoiceInput) {
                     data.created_by,
                     null,
                 ]);
+
+                const threshold = Number(stockRow.low_stock_threshold ?? 0);
+                const lowStockResult = await handleLowStockTransition(
+                    {
+                        businessId: data.business_id,
+                        itemId: row.item.item_id,
+                        itemName: String(stockRow.name ?? row.item.item_name),
+                        itemUnit: stockRow.unit ? String(stockRow.unit) : null,
+                        threshold,
+                        previousStock: currentStock,
+                        currentStock: nextStock,
+                        actorUserId: data.created_by,
+                    },
+                    client
+                );
+
+                if (lowStockResult.shouldSendEmail) {
+                    pendingLowStockEmails.push({
+                        businessId: data.business_id,
+                        itemId: row.item.item_id,
+                        itemName: String(stockRow.name ?? row.item.item_name),
+                        itemUnit: stockRow.unit ? String(stockRow.unit) : null,
+                        threshold,
+                        previousStock: currentStock,
+                        currentStock: nextStock,
+                        actorUserId: data.created_by,
+                    });
+                }
             }
         }
 
@@ -335,6 +366,10 @@ export async function createSaleInvoice(data: CreateInvoiceInput) {
         });
 
         await client.query("COMMIT");
+
+        await Promise.all(
+            pendingLowStockEmails.map((context) => maybeSendLowStockEmail(context, true))
+        );
 
         void trackAnalyticsEvent({
             business_id: data.business_id,
@@ -373,6 +408,7 @@ export async function createSaleInvoice(data: CreateInvoiceInput) {
 
 export async function createPurchaseInvoice(data: CreateInvoiceInput) {
     const client = await pool.connect();
+    const pendingLowStockEmails: Array<Parameters<typeof maybeSendLowStockEmail>[0]> = [];
 
     try {
         if (!data?.business_id || !data.party_id || !data.invoice_date || !data.created_by) {
@@ -489,6 +525,8 @@ export async function createPurchaseInvoice(data: CreateInvoiceInput) {
                     throw new AppError(`Inventory item not found: ${row.item.item_id}`, 404, ERROR_CODES.NOT_FOUND);
                 }
 
+                const currentStock = Number(stockRow.current_stock);
+                const nextStock = round2(currentStock + row.item.quantity);
                 await invoiceRepository.incrementItemStock(client, row.item.item_id, row.item.quantity);
                 await invoiceRepository.insertStockMovement(client, [
                     data.business_id,
@@ -501,6 +539,34 @@ export async function createPurchaseInvoice(data: CreateInvoiceInput) {
                     data.created_by,
                     row.item.item_name,
                 ]);
+
+                const threshold = Number(stockRow.low_stock_threshold ?? 0);
+                const lowStockResult = await handleLowStockTransition(
+                    {
+                        businessId: data.business_id,
+                        itemId: row.item.item_id,
+                        itemName: String(stockRow.name ?? row.item.item_name),
+                        itemUnit: stockRow.unit ? String(stockRow.unit) : null,
+                        threshold,
+                        previousStock: currentStock,
+                        currentStock: nextStock,
+                        actorUserId: data.created_by,
+                    },
+                    client
+                );
+
+                if (lowStockResult.shouldSendEmail) {
+                    pendingLowStockEmails.push({
+                        businessId: data.business_id,
+                        itemId: row.item.item_id,
+                        itemName: String(stockRow.name ?? row.item.item_name),
+                        itemUnit: stockRow.unit ? String(stockRow.unit) : null,
+                        threshold,
+                        previousStock: currentStock,
+                        currentStock: nextStock,
+                        actorUserId: data.created_by,
+                    });
+                }
             }
         }
 
@@ -537,6 +603,10 @@ export async function createPurchaseInvoice(data: CreateInvoiceInput) {
         });
 
         await client.query("COMMIT");
+
+        await Promise.all(
+            pendingLowStockEmails.map((context) => maybeSendLowStockEmail(context, true))
+        );
 
         void trackAnalyticsEvent({
             business_id: data.business_id,
@@ -575,6 +645,7 @@ export async function createPurchaseInvoice(data: CreateInvoiceInput) {
 
 export async function createInvoiceNote(data: CreateInvoiceNoteInput) {
     const client = await pool.connect();
+    const pendingLowStockEmails: Array<Parameters<typeof maybeSendLowStockEmail>[0]> = [];
 
     try {
         if (!data?.business_id || !data.party_id || !data.invoice_date || !data.created_by) {
@@ -729,6 +800,12 @@ export async function createInvoiceNote(data: CreateInvoiceNoteInput) {
                     await invoiceRepository.decrementItemStock(client, row.item.item_id, row.item.quantity);
                 }
 
+                const previousStock = Number(stockRow.current_stock);
+                const nextStock =
+                    effect.stockDirection === "in"
+                        ? round2(previousStock + row.item.quantity)
+                        : round2(previousStock - row.item.quantity);
+
                 await invoiceRepository.insertStockMovement(client, [
                     data.business_id,
                     row.item.item_id,
@@ -740,6 +817,34 @@ export async function createInvoiceNote(data: CreateInvoiceNoteInput) {
                     data.created_by,
                     data.note_reason ?? `${data.note_type} generated`,
                 ]);
+
+                const threshold = Number(stockRow.low_stock_threshold ?? 0);
+                const lowStockResult = await handleLowStockTransition(
+                    {
+                        businessId: data.business_id,
+                        itemId: row.item.item_id,
+                        itemName: String(stockRow.name ?? row.item.item_name),
+                        itemUnit: stockRow.unit ? String(stockRow.unit) : null,
+                        threshold,
+                        previousStock,
+                        currentStock: nextStock,
+                        actorUserId: data.created_by,
+                    },
+                    client
+                );
+
+                if (lowStockResult.shouldSendEmail) {
+                    pendingLowStockEmails.push({
+                        businessId: data.business_id,
+                        itemId: row.item.item_id,
+                        itemName: String(stockRow.name ?? row.item.item_name),
+                        itemUnit: stockRow.unit ? String(stockRow.unit) : null,
+                        threshold,
+                        previousStock,
+                        currentStock: nextStock,
+                        actorUserId: data.created_by,
+                    });
+                }
             }
         }
 
@@ -776,6 +881,10 @@ export async function createInvoiceNote(data: CreateInvoiceNoteInput) {
         });
 
         await client.query("COMMIT");
+
+        await Promise.all(
+            pendingLowStockEmails.map((context) => maybeSendLowStockEmail(context, true))
+        );
 
         void trackAnalyticsEvent({
             business_id: data.business_id,
@@ -896,6 +1005,7 @@ export async function getInvoiceById(businessId: string, invoiceId: string) {
 
 export async function cancelInvoice(args: CancelInvoiceInput) {
     const client = await pool.connect();
+    const pendingLowStockEmails: Array<Parameters<typeof maybeSendLowStockEmail>[0]> = [];
     try {
         await client.query("BEGIN");
 
@@ -941,6 +1051,36 @@ export async function cancelInvoice(args: CancelInvoiceInput) {
                     args.cancelled_by,
                     args.cancel_reason || "Invoice cancelled",
                 ]);
+
+                const previousStock = Number(locked.current_stock);
+                const nextStock = round2(previousStock + Number(row.quantity));
+                const threshold = Number(locked.low_stock_threshold ?? 0);
+                const lowStockResult = await handleLowStockTransition(
+                    {
+                        businessId: args.business_id,
+                        itemId: row.item_id,
+                        itemName: String(locked.name ?? row.item_name),
+                        itemUnit: locked.unit ? String(locked.unit) : null,
+                        threshold,
+                        previousStock,
+                        currentStock: nextStock,
+                        actorUserId: args.cancelled_by,
+                    },
+                    client
+                );
+
+                if (lowStockResult.shouldSendEmail) {
+                    pendingLowStockEmails.push({
+                        businessId: args.business_id,
+                        itemId: row.item_id,
+                        itemName: String(locked.name ?? row.item_name),
+                        itemUnit: locked.unit ? String(locked.unit) : null,
+                        threshold,
+                        previousStock,
+                        currentStock: nextStock,
+                        actorUserId: args.cancelled_by,
+                    });
+                }
             }
 
             const partyRow = await invoiceRepository.lockPartyBalance(client, invoice.party_id);
@@ -988,6 +1128,36 @@ export async function cancelInvoice(args: CancelInvoiceInput) {
                     args.cancelled_by,
                     args.cancel_reason || "Purchase invoice cancelled",
                 ]);
+
+                const previousStock = Number(locked.current_stock);
+                const nextStock = round2(previousStock - Number(row.quantity));
+                const threshold = Number(locked.low_stock_threshold ?? 0);
+                const lowStockResult = await handleLowStockTransition(
+                    {
+                        businessId: args.business_id,
+                        itemId: row.item_id,
+                        itemName: String(locked.name ?? row.item_name),
+                        itemUnit: locked.unit ? String(locked.unit) : null,
+                        threshold,
+                        previousStock,
+                        currentStock: nextStock,
+                        actorUserId: args.cancelled_by,
+                    },
+                    client
+                );
+
+                if (lowStockResult.shouldSendEmail) {
+                    pendingLowStockEmails.push({
+                        businessId: args.business_id,
+                        itemId: row.item_id,
+                        itemName: String(locked.name ?? row.item_name),
+                        itemUnit: locked.unit ? String(locked.unit) : null,
+                        threshold,
+                        previousStock,
+                        currentStock: nextStock,
+                        actorUserId: args.cancelled_by,
+                    });
+                }
             }
 
             const partyRow = await invoiceRepository.lockPartyBalance(client, invoice.party_id);
@@ -1017,6 +1187,10 @@ export async function cancelInvoice(args: CancelInvoiceInput) {
         await invoiceRepository.markCancelled(client, args.cancelled_by, args.cancel_reason ?? null, args.invoice_id);
 
         await client.query("COMMIT");
+
+        await Promise.all(
+            pendingLowStockEmails.map((context) => maybeSendLowStockEmail(context, true))
+        );
 
         void trackAnalyticsEvent({
             business_id: args.business_id,
