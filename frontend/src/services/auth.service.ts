@@ -32,13 +32,25 @@ interface SwitchBusinessResponse {
   tokens: Tokens;
 }
 
+const assertTokensPresent = (tokens: Tokens | undefined, operation: string): Tokens => {
+  if (!tokens?.accessToken || !tokens?.refreshToken) {
+    throw new Error(
+      `Backend auth response missing tokens during ${operation}. The backend deployment may be out of date.`
+    );
+  }
+  return tokens;
+};
+
 export const authService = {
   async signup(data: SignupInput): Promise<AuthResponse> {
     const response = await apiClient.post<ApiResponse<AuthResponse>>(
       "/auth/signup",
       data
     );
-    return response.data.data;
+    return {
+      ...response.data.data,
+      tokens: assertTokensPresent(response.data.data.tokens, "signup"),
+    };
   },
 
   async login(data: LoginInput): Promise<AuthResponse> {
@@ -46,7 +58,10 @@ export const authService = {
       "/auth/login",
       data
     );
-    return response.data.data;
+    return {
+      ...response.data.data,
+      tokens: assertTokensPresent(response.data.data.tokens, "login"),
+    };
   },
 
   async refreshToken(refreshToken: string): Promise<Tokens> {
@@ -84,7 +99,10 @@ export const authService = {
       "/auth/switch-business",
       data
     );
-    return response.data.data;
+    return {
+      ...response.data.data,
+      tokens: assertTokensPresent(response.data.data.tokens, "switch-business"),
+    };
   },
 
   async logout(): Promise<void> {

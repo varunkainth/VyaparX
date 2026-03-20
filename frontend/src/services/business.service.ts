@@ -23,13 +23,25 @@ interface CreateBusinessResponse {
   tokens: Tokens;
 }
 
+const assertTokensPresent = (tokens: Tokens | undefined, operation: string): Tokens => {
+  if (!tokens?.accessToken || !tokens?.refreshToken) {
+    throw new Error(
+      `Backend business response missing tokens during ${operation}. The backend deployment may be out of date.`
+    );
+  }
+  return tokens;
+};
+
 export const businessService = {
   async createBusiness(data: CreateBusinessInput): Promise<CreateBusinessResponse> {
     const response = await apiClient.post<ApiResponse<CreateBusinessResponse>>(
       "/api/v1/businesses",
       data
     );
-    return response.data.data;
+    return {
+      ...response.data.data,
+      tokens: assertTokensPresent(response.data.data.tokens, "create-business"),
+    };
   },
 
   async listBusinesses(): Promise<BusinessWithRole[]> {
