@@ -25,7 +25,7 @@ const AUTH_REDIRECT_ROUTES = ["/login", "/signup"];
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, isLoading, _hasHydrated, setAuth, clearAuth, setLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, _hasHydrated, tokens, setAuth, clearAuth, setLoading } = useAuthStore();
   const [showBusinessModal, setShowBusinessModal] = useState(false);
   
   const isPublicRoute = (path: string) => {
@@ -36,7 +36,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { businesses } = useBusinesses();
 
   useEffect(() => {
-    if (!_hasHydrated || isAuthenticated) return;
+    if (!_hasHydrated || isAuthenticated || !tokens?.accessToken) return;
 
     let isMounted = true;
     setLoading(true);
@@ -44,7 +44,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     void authService.getMe()
       .then((response) => {
         if (!isMounted) return;
-        setAuth(response.user, response.session);
+        setAuth(response.user, tokens, response.session);
       })
       .catch(() => {
         if (!isMounted) return;
@@ -58,7 +58,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return () => {
       isMounted = false;
     };
-  }, [_hasHydrated, isAuthenticated, setAuth, clearAuth, setLoading]);
+  }, [_hasHydrated, isAuthenticated, tokens, setAuth, clearAuth, setLoading]);
 
   // Initialize token refresh on mount
   useEffect(() => {

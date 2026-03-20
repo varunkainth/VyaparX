@@ -9,7 +9,7 @@ import type {
   UpdateMemberStatusInput,
   BusinessMember,
 } from "@/types/business";
-import type { Session } from "@/types/auth";
+import type { Session, Tokens } from "@/types/auth";
 
 interface ApiResponse<T> {
   success: boolean;
@@ -20,6 +20,7 @@ interface ApiResponse<T> {
 interface CreateBusinessResponse {
   business: Business;
   session: Session;
+  tokens: Tokens;
 }
 
 export const businessService = {

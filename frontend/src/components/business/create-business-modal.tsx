@@ -99,7 +99,7 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
       addBusiness(businessWithRole)
       
       // Update session with new business context
-      updateBusinessContext(response.session, businessWithRole)
+      updateBusinessContext(response.tokens, response.session, businessWithRole)
       
       toast.success("Business created successfully! Welcome to VyaparX!")
       

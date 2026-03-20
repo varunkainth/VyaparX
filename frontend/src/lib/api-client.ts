@@ -14,7 +14,6 @@ function generateRequestKey(config: InternalAxiosRequestConfig): string {
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -25,9 +24,15 @@ const apiClient: AxiosInstance = axios.create({
 let isRefreshing = false;
 let refreshPromise: Promise<void> | null = null;
 
-// Request interceptor to handle deduplication
+// Request interceptor to add auth token and handle deduplication
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    const { tokens } = useAuthStore.getState();
+
+    if (tokens?.accessToken) {
+      config.headers.Authorization = `Bearer ${tokens.accessToken}`;
+    }
+
     // Request deduplication for GET requests
     if (config.method?.toLowerCase() === 'get') {
       const requestKey = generateRequestKey(config);
@@ -100,21 +105,26 @@ apiClient.interceptors.response.use(
 
       // Start new refresh
       isRefreshing = true;
-      const { clearAuth } = useAuthStore.getState();
+      const { tokens, setTokens, clearAuth } = useAuthStore.getState();
+
+      if (!tokens?.refreshToken) {
+        clearAuth();
+        return Promise.reject(error);
+      }
 
       // Create refresh promise
       refreshPromise = (async () => {
         try {
-          await axios.post(
-            `${API_BASE_URL}/auth/refresh`,
+          const newTokens = await apiClient.post<{ data: { tokens: { accessToken: string; refreshToken: string } } }>(
+            "/auth/refresh",
             {},
             {
-              withCredentials: true,
               headers: {
-                "Content-Type": "application/json",
+                Authorization: `Bearer ${tokens.refreshToken}`,
               },
             }
           );
+          setTokens(newTokens.data.data.tokens);
         } catch (refreshError: any) {
           console.error("[API] Session refresh failed:", refreshError?.message);
           clearAuth();

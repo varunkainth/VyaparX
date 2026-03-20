@@ -46,7 +46,7 @@ export function BusinessSwitcher() {
       const response = await authService.switchBusiness({ business_id: businessId })
       
       // Update session and current business
-      updateBusinessContext(response.session, business)
+      updateBusinessContext(response.tokens, response.session, business)
       
       toast.success(`Switched to ${business.name}`)
     } catch (error) {

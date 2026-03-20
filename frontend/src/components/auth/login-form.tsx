@@ -45,7 +45,7 @@ export function LoginForm({
 
     try {
       const response = await authService.login(data);
-      setAuth(response.user, response.session);
+      setAuth(response.user, response.tokens, response.session);
       toast.success("Login successful!");
       router.push("/dashboard");
     } catch (error: any) {

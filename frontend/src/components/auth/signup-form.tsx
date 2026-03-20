@@ -48,7 +48,7 @@ export function SignupForm({
       // Remove confirmPassword before sending to API
       const { confirmPassword, ...signupData } = data;
       const response = await authService.signup(signupData);
-      setAuth(response.user, response.session);
+      setAuth(response.user, response.tokens, response.session);
       toast.success("Account created successfully!");
       router.push("/dashboard");
     } catch (error: any) {

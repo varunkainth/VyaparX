@@ -1,7 +1,7 @@
 import { useAuthStore } from "@/store/useAuthStore";
 import { useBusinessStore } from "@/store/useBusinessStore";
 import { scheduleTokenRefresh } from "@/lib/token-manager";
-import type { Session } from "@/types/auth";
+import type { Session, Tokens } from "@/types/auth";
 import type { BusinessWithRole } from "@/types/business";
 
 // Helper for dev-only logging
@@ -12,15 +12,18 @@ const devLog = (...args: unknown[]) => {
 };
 
 /**
- * Update session after business context change
+ * Update tokens and session after business context change
  * Used when switching businesses or creating new business
  */
 export function updateBusinessContext(
+  tokens: Tokens,
   session: Session,
   business?: BusinessWithRole
 ) {
-  const { setSession } = useAuthStore.getState();
+  const { setTokens, setSession } = useAuthStore.getState();
   const { setCurrentBusiness } = useBusinessStore.getState();
+
+  setTokens(tokens);
 
   // Update session
   setSession(session);

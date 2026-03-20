@@ -69,7 +69,7 @@ export function useBusinesses(options?: { forceRefetch?: boolean }) {
         try {
           // Call switch business to update the server-backed session context
           const response = await authService.switchBusiness({ business_id: data[0].id });
-          updateBusinessContext(response.session, data[0]);
+          updateBusinessContext(response.tokens, response.session, data[0]);
           devLog("[useBusinesses] Business context updated");
         } catch (switchError) {
           console.error("[useBusinesses] Failed to switch business:", switchError);

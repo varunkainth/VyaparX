@@ -71,6 +71,7 @@ export const signup = async (req: Request<{}, unknown, SignupInput>, res: Respon
         message: "Signup successful",
         data: {
             user,
+            tokens,
             session: {
                 business_id: null,
                 role: null,
@@ -106,6 +107,7 @@ export const login = async (req: Request<{}, unknown, LoginInput>, res: Response
         message: "Login successful",
         data: {
             user: publicUser,
+            tokens,
             session: {
                 business_id: business_id ?? null,
                 role: business_id ? (await userRepository.getBusinessMemberRole(business_id, user.id)) ?? null : null,
@@ -124,7 +126,7 @@ export const refreshToken = async (req: Request, res: Response) => {
 
     return sendSuccess(res, {
         message: "Token refreshed",
-        data: null,
+        data: { tokens },
     });
 };
 
@@ -232,6 +234,7 @@ export const switchBusiness = async (req: Request<{}, unknown, SwitchBusinessInp
     return sendSuccess(res, {
         message: "Business switched successfully",
         data: {
+            tokens,
             session: { business_id, role },
         },
     });

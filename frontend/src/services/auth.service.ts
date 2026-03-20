@@ -6,6 +6,7 @@ import type {
   ChangePasswordInput,
   SwitchBusinessInput,
   User,
+  Tokens,
   Session,
 } from "@/types/auth";
 
@@ -17,6 +18,7 @@ interface ApiResponse<T> {
 
 interface AuthResponse {
   user: User;
+  tokens: Tokens;
   session: Session;
 }
 
@@ -27,6 +29,7 @@ interface MeResponse {
 
 interface SwitchBusinessResponse {
   session: Session;
+  tokens: Tokens;
 }
 
 export const authService = {
@@ -46,8 +49,17 @@ export const authService = {
     return response.data.data;
   },
 
-  async refreshToken(): Promise<void> {
-    await apiClient.post("/auth/refresh");
+  async refreshToken(refreshToken: string): Promise<Tokens> {
+    const response = await apiClient.post<ApiResponse<{ tokens: Tokens }>>(
+      "/auth/refresh",
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${refreshToken}`,
+        },
+      }
+    );
+    return response.data.data.tokens;
   },
 
   async getMe(): Promise<MeResponse> {

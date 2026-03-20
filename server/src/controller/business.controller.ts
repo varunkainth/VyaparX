@@ -68,6 +68,7 @@ export const createBusiness = async (req: Request<{}, unknown, CreateBusinessBod
         message: "Business created",
         data: {
             business,
+            tokens,
             session: {
                 business_id: business.id,
                 role: "owner",
