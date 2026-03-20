@@ -10,11 +10,6 @@ export interface User {
   updated_at: string;
 }
 
-export interface Tokens {
-  accessToken: string;
-  refreshToken: string;
-}
-
 export interface Session {
   business_id: string | null;
   role: "owner" | "admin" | "staff" | "viewer" | "accountant" | null;
@@ -22,7 +17,6 @@ export interface Session {
 
 export interface AuthState {
   user: User | null;
-  tokens: Tokens | null;
   session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;

@@ -13,7 +13,6 @@ if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
     console.log("=== Auth Store ===");
     console.log("User:", state.user);
     console.log("Is Authenticated:", state.isAuthenticated);
-    console.log("Tokens:", state.tokens ? "Present" : "Missing");
     console.log("Session:", state.session);
     return state;
   };
@@ -34,7 +33,6 @@ if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
     
     // Check localStorage
     console.log("\n=== LocalStorage ===");
-    console.log("auth-storage:", localStorage.getItem("auth-storage"));
     console.log("business-storage:", localStorage.getItem("business-storage"));
   };
 

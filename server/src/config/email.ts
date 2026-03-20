@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import type { Transporter } from "nodemailer";
+import type SMTPPool from "nodemailer/lib/smtp-pool";
 
 interface EmailConfig {
     host: string;
@@ -41,7 +42,7 @@ class EmailService {
             },
         };
 
-        this.transporter = nodemailer.createTransport({
+        const transportConfig: SMTPPool.Options = {
             ...config,
             // Add connection pooling and timeout settings
             pool: true,
@@ -50,8 +51,9 @@ class EmailService {
             connectionTimeout: 5000, // 5 seconds
             greetingTimeout: 5000,
             socketTimeout: 10000, // 10 seconds
-            family: 4,
-        });
+        };
+
+        this.transporter = nodemailer.createTransport(transportConfig);
         this.isConfigured = true;
 
         // Verify connection (don't block initialization)

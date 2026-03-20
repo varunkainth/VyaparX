@@ -22,6 +22,9 @@ const optionalEnvVars = [
     "RATE_LIMIT_MAX_REQUESTS",
     "AUTH_RATE_LIMIT_WINDOW_MS",
     "AUTH_RATE_LIMIT_MAX_REQUESTS",
+    "COOKIE_SECURE",
+    "COOKIE_SAME_SITE",
+    "COOKIE_DOMAIN",
     // Add more optional env vars here
 ] as const
 
@@ -59,6 +62,12 @@ const env = {
     AUTH_RATE_LIMIT_MAX_REQUESTS: process.env.AUTH_RATE_LIMIT_MAX_REQUESTS
         ? parseInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS)
         : 50,
+    COOKIE_SECURE:
+        process.env.COOKIE_SECURE !== undefined
+            ? process.env.COOKIE_SECURE === "true"
+            : process.env.NODE_ENV === "production",
+    COOKIE_SAME_SITE: process.env.COOKIE_SAME_SITE || "lax",
+    COOKIE_DOMAIN: process.env.COOKIE_DOMAIN || "",
 
     // JWT
     JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET as string,

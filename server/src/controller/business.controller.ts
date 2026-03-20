@@ -14,6 +14,7 @@ import {
     updateBusiness,
 } from "../services/business.service";
 import { AppError } from "../utils/appError";
+import { setAuthCookies } from "../utils/authCookies";
 import { sendSuccess } from "../utils/responseHandler";
 import type {
     BusinessIdParams,
@@ -60,6 +61,7 @@ export const createBusiness = async (req: Request<{}, unknown, CreateBusinessBod
         userId,
         businessId: business.id,
     });
+    setAuthCookies(res, tokens);
 
     return sendSuccess(res, {
         statusCode: 201,
@@ -70,7 +72,6 @@ export const createBusiness = async (req: Request<{}, unknown, CreateBusinessBod
                 business_id: business.id,
                 role: "owner",
             },
-            tokens,
         },
     });
 };

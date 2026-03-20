@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Lock, Eye, EyeOff, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { authService } from "@/services/auth.service";
@@ -9,8 +9,6 @@ import { getErrorMessage } from "@/lib/error-handler";
 
 export function ResetPasswordForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const token = searchParams.get("token");
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -21,6 +19,14 @@ export function ResetPasswordForm() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    setToken(hashParams.get("token"));
+  }, []);
 
   useEffect(() => {
     if (!token) {

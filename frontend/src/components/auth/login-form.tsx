@@ -19,7 +19,6 @@ import { authService } from "@/services/auth.service"
 import { useAuthStore } from "@/store/useAuthStore"
 import { toast } from "sonner"
 import { Eye, EyeOff } from "lucide-react"
-import { scheduleTokenRefresh } from "@/lib/token-manager"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { loginSchema, type LoginFormData } from "@/validators/auth.validator"
@@ -46,8 +45,7 @@ export function LoginForm({
 
     try {
       const response = await authService.login(data);
-      setAuth(response.user, response.tokens);
-      scheduleTokenRefresh();
+      setAuth(response.user, response.session);
       toast.success("Login successful!");
       router.push("/dashboard");
     } catch (error: any) {

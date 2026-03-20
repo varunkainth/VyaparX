@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { useSearchParams } from "next/navigation"
 import type { PublicInvoicePayload } from "@/services/invoice.service"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,13 +23,19 @@ interface PublicInvoicePageProps {
 }
 
 export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
-  const searchParams = useSearchParams()
   const { resolvedTheme } = useTheme()
   const [data, setData] = useState<PublicInvoicePayload | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [token, setToken] = useState<string | null>(null)
 
-  const token = searchParams.get("token")
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""))
+    const shareToken = hashParams.get("token")
+    setToken(shareToken)
+  }, [])
 
   useEffect(() => {
     if (!token) {
@@ -46,8 +51,11 @@ export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
       setError(null)
 
       try {
-        const response = await fetch(`/api/public/invoices/${invoiceId}?token=${encodeURIComponent(token)}`, {
+        const response = await fetch(`/api/public/invoices/${invoiceId}`, {
           cache: "no-store",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         })
 
         const payload = await response.json().catch(() => null)
@@ -98,11 +106,32 @@ export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
 
   const handleDownload = () => {
     if (!token) return
-    window.open(
-      `/api/public/invoices/${invoiceId}/pdf?token=${encodeURIComponent(token)}`,
-      "_blank",
-      "noopener,noreferrer"
-    )
+    void (async () => {
+      try {
+        const response = await fetch(`/api/public/invoices/${invoiceId}/pdf`, {
+          cache: "no-store",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (!response.ok) {
+          throw new Error("Unable to download this digital bill right now.")
+        }
+
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement("a")
+        link.href = url
+        link.download = `invoice-${invoiceId}.pdf`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        window.URL.revokeObjectURL(url)
+      } catch (downloadError) {
+        setError(downloadError instanceof Error ? downloadError.message : "Unable to download this digital bill right now.")
+      }
+    })()
   }
 
   if (isLoading) {

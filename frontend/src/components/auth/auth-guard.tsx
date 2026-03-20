@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/useAuthStore";
+import { authService } from "@/services/auth.service";
 import { checkAndRefreshToken, cancelTokenRefresh } from "@/lib/token-manager";
 import { useBusinesses } from "@/hooks/use-businesses";
 import { CreateBusinessModal } from "@/components/business/create-business-modal";
@@ -24,7 +25,7 @@ const AUTH_REDIRECT_ROUTES = ["/login", "/signup"];
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isAuthenticated, isLoading, _hasHydrated } = useAuthStore();
+  const { isAuthenticated, isLoading, _hasHydrated, setAuth, clearAuth, setLoading } = useAuthStore();
   const [showBusinessModal, setShowBusinessModal] = useState(false);
   
   const isPublicRoute = (path: string) => {
@@ -33,6 +34,31 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   // Fetch businesses when authenticated
   const { businesses } = useBusinesses();
+
+  useEffect(() => {
+    if (!_hasHydrated || isAuthenticated) return;
+
+    let isMounted = true;
+    setLoading(true);
+
+    void authService.getMe()
+      .then((response) => {
+        if (!isMounted) return;
+        setAuth(response.user, response.session);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        clearAuth();
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [_hasHydrated, isAuthenticated, setAuth, clearAuth, setLoading]);
 
   // Initialize token refresh on mount
   useEffect(() => {

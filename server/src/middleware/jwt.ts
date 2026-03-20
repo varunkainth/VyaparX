@@ -3,7 +3,22 @@ import { ERROR_CODES } from "../constants/errorCodes";
 import { userRepository } from "../repository/user.repository";
 import { authService } from "../services/auth.service";
 import type { TokenPayload } from "../types/jwt";
+import { authCookieNames } from "../utils/authCookies";
 import { logger } from "../utils/logger";
+
+const parseCookies = (cookieHeader: string | undefined): Record<string, string> => {
+    if (!cookieHeader) return {};
+
+    return cookieHeader.split(";").reduce<Record<string, string>>((cookies, segment) => {
+        const [rawName, ...rawValue] = segment.trim().split("=");
+        if (!rawName || rawValue.length === 0) {
+            return cookies;
+        }
+
+        cookies[rawName] = decodeURIComponent(rawValue.join("="));
+        return cookies;
+    }, {});
+};
 
 const extractBearerToken = (req: Request): string | null => {
     const authHeader = req.headers.authorization;
@@ -13,6 +28,12 @@ const extractBearerToken = (req: Request): string | null => {
 
     const token = authHeader.slice(7).trim();
     return token.length > 0 ? token : null;
+};
+
+const extractCookieToken = (req: Request, cookieName: string): string | null => {
+    const cookies = parseCookies(req.headers.cookie);
+    const token = cookies[cookieName];
+    return token && token.length > 0 ? token : null;
 };
 
 const attachUserToRequest = (req: Request, decoded: TokenPayload) => {
@@ -40,7 +61,7 @@ const validateTokenVersion = async (decoded: TokenPayload): Promise<boolean> => 
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
     void (async () => {
-        const token = extractBearerToken(req);
+        const token = extractBearerToken(req) ?? extractCookieToken(req, authCookieNames.access);
 
         if (!token) {
             return res.status(401).json({
@@ -84,7 +105,7 @@ export const authenticateToken = (req: Request, res: Response, next: NextFunctio
 
 export const authenticateRefreshToken = (req: Request, res: Response, next: NextFunction) => {
     void (async () => {
-        const token = extractBearerToken(req);
+        const token = extractBearerToken(req) ?? extractCookieToken(req, authCookieNames.refresh);
 
         if (!token) {
             return res.status(401).json({
@@ -127,7 +148,7 @@ export const authenticateRefreshToken = (req: Request, res: Response, next: Next
 };
 
 export const optionalAuth = (req: Request, _res: Response, next: NextFunction) => {
-    const token = extractBearerToken(req);
+    const token = extractBearerToken(req) ?? extractCookieToken(req, authCookieNames.access);
 
     if (!token) {
         return next();

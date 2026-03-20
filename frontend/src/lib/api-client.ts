@@ -14,32 +14,20 @@ function generateRequestKey(config: InternalAxiosRequestConfig): string {
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
   timeout: 30000,
 });
 
-// Token refresh state
+// Refresh state
 let isRefreshing = false;
-let refreshPromise: Promise<string> | null = null;
+let refreshPromise: Promise<void> | null = null;
 
-const waitForTokenRefresh = (): Promise<string> => {
-  if (refreshPromise) {
-    return refreshPromise;
-  }
-  return Promise.reject(new Error("No refresh in progress"));
-};
-
-// Request interceptor to add auth token and handle deduplication
+// Request interceptor to handle deduplication
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const { tokens } = useAuthStore.getState();
-    
-    if (tokens?.accessToken) {
-      config.headers.Authorization = `Bearer ${tokens.accessToken}`;
-    }
-    
     // Request deduplication for GET requests
     if (config.method?.toLowerCase() === 'get') {
       const requestKey = generateRequestKey(config);
@@ -68,7 +56,7 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle token refresh and cleanup deduplication
+// Response interceptor to handle session refresh and cleanup deduplication
 apiClient.interceptors.response.use(
   (response) => {
     // Clean up pending request
@@ -102,10 +90,8 @@ apiClient.interceptors.response.use(
 
       // If already refreshing, wait for that refresh to complete
       if (isRefreshing && refreshPromise) {
-        console.log("[API] Token refresh in progress, waiting...");
         try {
-          const newAccessToken = await refreshPromise;
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          await refreshPromise;
           return apiClient(originalRequest);
         } catch (refreshError) {
           return Promise.reject(refreshError);
@@ -114,44 +100,23 @@ apiClient.interceptors.response.use(
 
       // Start new refresh
       isRefreshing = true;
-      const { tokens, setTokens, clearAuth } = useAuthStore.getState();
-
-      if (!tokens?.refreshToken) {
-        console.log("[API] No refresh token available, clearing auth");
-        isRefreshing = false;
-        refreshPromise = null;
-        clearAuth();
-        return Promise.reject(error);
-      }
+      const { clearAuth } = useAuthStore.getState();
 
       // Create refresh promise
       refreshPromise = (async () => {
         try {
-          console.log("[API] Refreshing access token...");
-          console.log("[API] Using refresh token:", tokens.refreshToken?.substring(0, 20) + "...");
-          
-          const response = await axios.post(
+          await axios.post(
             `${API_BASE_URL}/auth/refresh`,
             {},
             {
+              withCredentials: true,
               headers: {
-                Authorization: `Bearer ${tokens.refreshToken}`,
                 "Content-Type": "application/json",
               },
             }
           );
-
-          const newTokens = response.data.data.tokens;
-          setTokens(newTokens);
-          console.log("[API] Token refreshed successfully");
-          console.log("[API] New access token:", newTokens.accessToken?.substring(0, 20) + "...");
-          return newTokens.accessToken;
         } catch (refreshError: any) {
-          console.error("[API] Token refresh failed!");
-          console.error("[API] Error status:", refreshError?.response?.status);
-          console.error("[API] Error data:", refreshError?.response?.data);
-          console.error("[API] Error message:", refreshError.message);
-          console.log("[API] Clearing auth and redirecting to login...");
+          console.error("[API] Session refresh failed:", refreshError?.message);
           clearAuth();
           if (typeof window !== "undefined") {
             window.location.href = "/login";
@@ -164,8 +129,7 @@ apiClient.interceptors.response.use(
       })();
 
       try {
-        const newAccessToken = await refreshPromise;
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+        await refreshPromise;
         return apiClient(originalRequest);
       } catch (refreshError) {
         return Promise.reject(refreshError);

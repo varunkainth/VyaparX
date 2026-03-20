@@ -6,7 +6,7 @@ import pool from "../src/config/db";
 import { ERROR_CODES } from "../src/constants/errorCodes";
 import { openApiSpec } from "../src/config/openapi";
 import { requestLogger } from "../src/middleware/requestLogger";
-import { authRateLimit, corsMiddleware, globalRateLimit, helmetMiddleware } from "../src/middleware/security";
+import { authRateLimit, corsMiddleware, csrfProtection, globalRateLimit, helmetMiddleware } from "../src/middleware/security";
 import authRouter from "../src/routes/auth.routes";
 import passwordResetRouter from "../src/routes/password-reset.routes";
 import emailVerificationRouter from "../src/routes/email-verification.routes";
@@ -34,6 +34,7 @@ const app = express();
 app.use(express.json());
 app.use(helmetMiddleware);
 app.use(corsMiddleware);
+app.use(csrfProtection);
 app.use(globalRateLimit);
 app.use(requestLogger);
 app.use((req, _res, next) => {

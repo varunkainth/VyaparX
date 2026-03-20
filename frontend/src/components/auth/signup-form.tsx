@@ -19,7 +19,6 @@ import { authService } from "@/services/auth.service"
 import { useAuthStore } from "@/store/useAuthStore"
 import { toast } from "sonner"
 import { Eye, EyeOff } from "lucide-react"
-import { scheduleTokenRefresh } from "@/lib/token-manager"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { signupSchema, type SignupFormData } from "@/validators/auth.validator"
@@ -49,8 +48,7 @@ export function SignupForm({
       // Remove confirmPassword before sending to API
       const { confirmPassword, ...signupData } = data;
       const response = await authService.signup(signupData);
-      setAuth(response.user, response.tokens);
-      scheduleTokenRefresh();
+      setAuth(response.user, response.session);
       toast.success("Account created successfully!");
       router.push("/dashboard");
     } catch (error: any) {

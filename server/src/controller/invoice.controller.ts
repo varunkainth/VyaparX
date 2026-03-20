@@ -56,6 +56,28 @@ const verifyInvoiceShareToken = (token: string, invoiceId: string): InvoiceShare
     }
 };
 
+const extractInvoiceShareToken = (req: Request): string | null => {
+    const authHeader = req.headers.authorization;
+    if (authHeader?.startsWith("Bearer ")) {
+        const token = authHeader.slice(7).trim();
+        if (token) {
+            return token;
+        }
+    }
+
+    const headerToken = req.headers["x-share-token"];
+    if (typeof headerToken === "string" && headerToken.trim().length > 0) {
+        return headerToken.trim();
+    }
+
+    const queryToken = req.query.token;
+    if (typeof queryToken === "string" && queryToken.trim().length > 0) {
+        return queryToken.trim();
+    }
+
+    return null;
+};
+
 const buildInvoicePublicData = async (businessId: string, invoiceId: string) => {
     const invoice = await getInvoiceById(businessId, invoiceId);
     const [business, party, invoiceSettings] = await Promise.all([
@@ -214,7 +236,7 @@ export const createInvoiceShareLinkHandler = async (req: Request<InvoiceParams>,
 
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    const shareUrl = `${frontendUrl}/shared/invoice/${invoiceId}?token=${encodeURIComponent(token)}`;
+    const shareUrl = `${frontendUrl}/shared/invoice/${invoiceId}#token=${encodeURIComponent(token)}`;
 
     return sendSuccess(res, {
         message: "Invoice share link generated",
@@ -230,7 +252,7 @@ export const getPublicInvoiceHandler = async (
     res: Response
 ) => {
     const invoiceId = getInvoiceId(req);
-    const token = req.query.token;
+    const token = extractInvoiceShareToken(req);
 
     if (!token) {
         throw new AppError("Share token is required", 400, ERROR_CODES.BAD_REQUEST);
@@ -255,7 +277,7 @@ export const downloadPublicInvoicePdfHandler = async (
     }
 
     const invoiceId = getInvoiceId(req);
-    const token = req.query.token;
+    const token = extractInvoiceShareToken(req);
 
     if (!token) {
         throw new AppError("Share token is required", 400, ERROR_CODES.BAD_REQUEST);

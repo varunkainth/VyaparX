@@ -86,8 +86,8 @@ export function CreateBusinessPage() {
       }
       addBusiness(businessWithRole)
       
-      // Update tokens and session with new business context
-      updateBusinessContext(response.tokens, response.session, businessWithRole)
+      // Update session with new business context
+      updateBusinessContext(response.session, businessWithRole)
       
       toast.success("Business created successfully!")
       router.push("/dashboard")

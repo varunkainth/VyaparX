@@ -12,10 +12,12 @@ import type {
     SwitchBusinessInput,
 } from "../types/auth";
 import { AppError } from "../utils/appError";
+import { clearAuthCookies, setAuthCookies } from "../utils/authCookies";
 import { sendSuccess } from "../utils/responseHandler";
 import { ERROR_CODES } from "../constants/errorCodes";
 
 const isEmail = (value: string) => value.includes("@");
+const generateOpaqueToken = () => crypto.randomBytes(32).toString("hex");
 
 export const signup = async (req: Request<{}, unknown, SignupInput>, res: Response) => {
     const { name, email, phone, password } = req.body;
@@ -33,17 +35,18 @@ export const signup = async (req: Request<{}, unknown, SignupInput>, res: Respon
     const password_hash = await authService.hashPassword(password);
     const user = await userRepository.createUser({ name, email, phone, password_hash });
     const tokens = await authService.generateTokensForUserSession({ userId: user.id });
+    setAuthCookies(res, tokens);
 
     // Send verification email (don't block signup if email fails)
     if (emailService.isReady()) {
         try {
-            const verificationToken = crypto.randomBytes(32).toString("hex");
+            const verificationToken = generateOpaqueToken();
             const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
             
             await emailVerificationRepository.createVerificationToken(user.id, verificationToken, expiresAt);
             
             const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-            const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
+            const verificationUrl = `${frontendUrl}/verify-email#token=${encodeURIComponent(verificationToken)}`;
             
             const emailPromise = emailService.sendVerificationEmail({
                 to: email,
@@ -66,7 +69,13 @@ export const signup = async (req: Request<{}, unknown, SignupInput>, res: Respon
     return sendSuccess(res, {
         statusCode: 201,
         message: "Signup successful",
-        data: { user, tokens },
+        data: {
+            user,
+            session: {
+                business_id: null,
+                role: null,
+            },
+        },
     });
 };
 
@@ -90,11 +99,18 @@ export const login = async (req: Request<{}, unknown, LoginInput>, res: Response
         userId: user.id,
         businessId: business_id,
     });
+    setAuthCookies(res, tokens);
 
     const { password_hash: _passwordHash, ...publicUser } = user;
     return sendSuccess(res, {
         message: "Login successful",
-        data: { user: publicUser, tokens },
+        data: {
+            user: publicUser,
+            session: {
+                business_id: business_id ?? null,
+                role: business_id ? (await userRepository.getBusinessMemberRole(business_id, user.id)) ?? null : null,
+            },
+        },
     });
 };
 
@@ -104,10 +120,11 @@ export const refreshToken = async (req: Request, res: Response) => {
     }
 
     const tokens = await authService.rotateRefreshTokenSession(req.authToken);
+    setAuthCookies(res, tokens);
 
     return sendSuccess(res, {
         message: "Token refreshed",
-        data: { tokens },
+        data: null,
     });
 };
 
@@ -172,6 +189,7 @@ export const changePassword = async (req: Request<{}, unknown, ChangePasswordInp
 
     const newHash = await authService.hashPassword(newPassword);
     await userRepository.updatePassword(req.user.id, newHash);
+    clearAuthCookies(res);
 
     return sendSuccess(res, {
         message: "Password changed successfully. Please login again.",
@@ -185,6 +203,7 @@ export const logout = async (req: Request, res: Response) => {
 
     await refreshTokenRepository.revokeAllForUser(req.user.id);
     await userRepository.incrementTokenVersion(req.user.id);
+    clearAuthCookies(res);
     return sendSuccess(res, { message: "Logged out successfully" });
 };
 
@@ -208,12 +227,12 @@ export const switchBusiness = async (req: Request<{}, unknown, SwitchBusinessInp
         userId: req.user.id,
         businessId: business_id,
     });
+    setAuthCookies(res, tokens);
 
     return sendSuccess(res, {
         message: "Business switched successfully",
         data: {
             session: { business_id, role },
-            tokens,
         },
     });
 };

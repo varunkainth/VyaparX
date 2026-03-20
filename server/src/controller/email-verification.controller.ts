@@ -7,6 +7,8 @@ import { sendSuccess } from "../utils/responseHandler";
 import { AppError } from "../utils/appError";
 import { ERROR_CODES } from "../constants/errorCodes";
 
+const generateOpaqueToken = () => crypto.randomBytes(32).toString("hex");
+
 interface SendVerificationEmailBody {
     email: string;
 }
@@ -50,7 +52,7 @@ export async function sendVerificationEmailHandler(
     }
 
     // Generate secure random token
-    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const verificationToken = generateOpaqueToken();
     
     // Token expires in 24 hours
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -63,7 +65,7 @@ export async function sendVerificationEmailHandler(
 
     // Create verification URL
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-    const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
+    const verificationUrl = `${frontendUrl}/verify-email#token=${encodeURIComponent(verificationToken)}`;
 
     // Send email with timeout
     try {
@@ -192,7 +194,7 @@ export async function resendVerificationEmailHandler(
     }
 
     // Generate new token
-    const verificationToken = crypto.randomBytes(32).toString("hex");
+    const verificationToken = generateOpaqueToken();
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     // Delete old tokens
@@ -203,7 +205,7 @@ export async function resendVerificationEmailHandler(
 
     // Create verification URL
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-    const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
+    const verificationUrl = `${frontendUrl}/verify-email#token=${encodeURIComponent(verificationToken)}`;
 
     // Send email
     try {

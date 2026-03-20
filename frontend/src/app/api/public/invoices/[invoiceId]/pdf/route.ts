@@ -7,16 +7,22 @@ export async function GET(
   { params }: { params: Promise<{ invoiceId: string }> }
 ) {
   const { invoiceId } = await params
-  const token = request.nextUrl.searchParams.get("token")
+  const authorization = request.headers.get("authorization")
+  const token = authorization?.startsWith("Bearer ")
+    ? authorization.slice(7).trim()
+    : request.headers.get("x-share-token")?.trim() || request.nextUrl.searchParams.get("token")
 
   if (!token) {
     return new Response("Share token is required", { status: 400 })
   }
 
   const response = await fetch(
-    `${API_BASE_URL}/api/v1/public/invoices/${invoiceId}/pdf?token=${encodeURIComponent(token)}`,
+    `${API_BASE_URL}/api/v1/public/invoices/${invoiceId}/pdf`,
     {
       cache: "no-store",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     }
   )
 

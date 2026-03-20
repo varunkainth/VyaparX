@@ -62,15 +62,15 @@ export function useBusinesses(options?: { forceRefetch?: boolean }) {
         // This will be handled by the AuthGuard component
       }
       
-      // Auto-select first business if none selected and switch to get proper tokens
+      // Auto-select first business if none selected and switch business context
       const currentBusiness = useBusinessStore.getState().currentBusiness;
       if (data.length > 0 && !currentBusiness) {
         devLog("[useBusinesses] Auto-selecting first business:", data[0].name);
         try {
-          // Call switch business to get tokens with business context
+          // Call switch business to update the server-backed session context
           const response = await authService.switchBusiness({ business_id: data[0].id });
-          updateBusinessContext(response.tokens, response.session, data[0]);
-          devLog("[useBusinesses] Business context updated with tokens");
+          updateBusinessContext(response.session, data[0]);
+          devLog("[useBusinesses] Business context updated");
         } catch (switchError) {
           console.error("[useBusinesses] Failed to switch business:", switchError);
           // Fallback: just set the business without switching

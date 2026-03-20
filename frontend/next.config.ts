@@ -1,5 +1,22 @@
 import type { NextConfig } from "next";
 
+const isDevelopment = process.env.NODE_ENV !== "production";
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
+
+const cspDirectives = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ""}`,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  `connect-src 'self' ${apiBaseUrl}${isDevelopment ? " ws: wss:" : ""}`,
+  "img-src 'self' data: blob: https:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  isDevelopment ? "" : "upgrade-insecure-requests",
+].filter(Boolean).join("; ");
+
 const nextConfig: NextConfig = {
   output: 'standalone',
   
@@ -93,6 +110,14 @@ const nextConfig: NextConfig = {
           {
             key: "Referrer-Policy",
             value: "origin-when-cross-origin",
+          },
+          {
+            key: "Content-Security-Policy",
+            value: cspDirectives,
+          },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
           },
         ],
       },

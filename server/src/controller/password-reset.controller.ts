@@ -8,6 +8,8 @@ import { sendSuccess } from "../utils/responseHandler";
 import { AppError } from "../utils/appError";
 import { ERROR_CODES } from "../constants/errorCodes";
 
+const generateOpaqueToken = () => crypto.randomBytes(32).toString("hex");
+
 interface ForgotPasswordBody {
     email: string;
 }
@@ -49,7 +51,7 @@ export async function forgotPasswordHandler(
     }
 
     // Generate secure random token
-    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetToken = generateOpaqueToken();
     
     // Token expires in 1 hour
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
@@ -62,7 +64,7 @@ export async function forgotPasswordHandler(
 
     // Create reset URL
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-    const resetUrl = `${frontendUrl}/reset-password?token=${resetToken}`;
+    const resetUrl = `${frontendUrl}/reset-password#token=${encodeURIComponent(resetToken)}`;
 
     // Send email with timeout
     try {

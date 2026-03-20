@@ -167,7 +167,12 @@ export const invoiceService = {
 
   async getPublicInvoice(invoiceId: string, token: string): Promise<PublicInvoicePayload> {
     const response = await apiClient.get<ApiResponse<any>>(
-      `/api/v1/public/invoices/${invoiceId}?token=${encodeURIComponent(token)}`
+      `/api/v1/public/invoices/${invoiceId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
     );
 
     return {
