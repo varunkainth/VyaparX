@@ -6,6 +6,7 @@ import { userRepository } from "../repository/user.repository";
 import { sendSuccess } from "../utils/responseHandler";
 import { AppError } from "../utils/appError";
 import { ERROR_CODES } from "../constants/errorCodes";
+import env from "../config/env";
 
 const generateOpaqueToken = () => crypto.randomBytes(32).toString("hex");
 
@@ -64,7 +65,7 @@ export async function sendVerificationEmailHandler(
     await emailVerificationRepository.createVerificationToken(user.id, verificationToken, expiresAt);
 
     // Create verification URL
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const frontendUrl = env.FRONTEND_URL || "http://localhost:3000";
     const verificationUrl = `${frontendUrl}/verify-email#token=${encodeURIComponent(verificationToken)}`;
 
     // Send email with timeout
@@ -204,7 +205,7 @@ export async function resendVerificationEmailHandler(
     await emailVerificationRepository.createVerificationToken(userId, verificationToken, expiresAt);
 
     // Create verification URL
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const frontendUrl = env.FRONTEND_URL || "http://localhost:3000";
     const verificationUrl = `${frontendUrl}/verify-email#token=${encodeURIComponent(verificationToken)}`;
 
     // Send email

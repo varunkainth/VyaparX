@@ -1,15 +1,13 @@
+import type { Pool, PoolClient } from "pg";
 import pool from "../config/db";
 
-async function run() {
-    const client = await pool.connect();
-    
-    try {
-        await client.query("BEGIN");
+type MigrationDb = Pick<PoolClient | Pool, "query">;
 
+export async function up(db: MigrationDb = pool) {
         console.log("Backfilling invoice-level tax amounts from invoice items...");
 
         // Update invoices with aggregated tax amounts from their items
-        const result = await client.query(`
+        const result = await db.query(`
             UPDATE invoices i
             SET 
                 cgst_amount = COALESCE(item_totals.total_cgst, 0),
@@ -33,18 +31,19 @@ async function run() {
         `);
 
         console.log(`Updated ${result.rowCount} invoices with tax amounts from items`);
-
-        await client.query("COMMIT");
         console.log("Invoice tax amounts backfilled successfully");
-    } catch (error) {
-        await client.query("ROLLBACK");
-        console.error("Error backfilling invoice tax amounts:", error);
-        throw error;
-    } finally {
-        client.release();
-    }
-
-    process.exit();
 }
 
-run();
+if (import.meta.main) {
+    up()
+        .then(() => {
+            console.log("Migration applied successfully");
+        })
+        .catch((error) => {
+            console.error("Migration failed:", error);
+            process.exitCode = 1;
+        })
+        .finally(async () => {
+            await pool.end();
+        });
+}

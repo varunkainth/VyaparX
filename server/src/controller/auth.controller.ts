@@ -15,6 +15,7 @@ import { AppError } from "../utils/appError";
 import { clearAuthCookies, setAuthCookies } from "../utils/authCookies";
 import { sendSuccess } from "../utils/responseHandler";
 import { ERROR_CODES } from "../constants/errorCodes";
+import env from "../config/env";
 
 const isEmail = (value: string) => value.includes("@");
 const generateOpaqueToken = () => crypto.randomBytes(32).toString("hex");
@@ -45,7 +46,7 @@ export const signup = async (req: Request<{}, unknown, SignupInput>, res: Respon
             
             await emailVerificationRepository.createVerificationToken(user.id, verificationToken, expiresAt);
             
-            const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+            const frontendUrl = env.FRONTEND_URL || "http://localhost:3000";
             const verificationUrl = `${frontendUrl}/verify-email#token=${encodeURIComponent(verificationToken)}`;
             
             const emailPromise = emailService.sendVerificationEmail({

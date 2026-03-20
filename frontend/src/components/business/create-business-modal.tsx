@@ -37,8 +37,7 @@ import {
   FileText,
   Sparkles,
   CreditCard,
-  MapPinned,
-  X
+  MapPinned
 } from "lucide-react"
 
 interface CreateBusinessModalProps {
@@ -147,26 +146,16 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
         {/* Modal Header */}
         <DialogHeader className="p-6 pb-4 border-b shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-primary/10 border-2 border-primary/20">
-                <Building2 className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <DialogTitle className="text-xl font-bold">Create Your First Business</DialogTitle>
-                <DialogDescription className="text-sm text-muted-foreground mt-1">
-                  Set up your business profile to start managing invoices, inventory, and finances
-                </DialogDescription>
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-primary/10 border-2 border-primary/20">
+              <Building2 className="h-6 w-6 text-primary" />
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-              className="h-8 w-8 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div>
+              <DialogTitle className="text-xl font-bold">Create Your First Business</DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground mt-1">
+                Set up your business profile to start managing invoices, inventory, and finances
+              </DialogDescription>
+            </div>
           </div>
         </DialogHeader>
 

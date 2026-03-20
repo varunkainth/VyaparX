@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthStore } from "@/store/useAuthStore"
 import { authService } from "@/services/auth.service"
@@ -14,6 +14,7 @@ import {
 } from "@/validators/auth.validator"
 import { toast } from "sonner"
 import { getErrorMessage } from "@/lib/error-handler"
+import { passkeyClient } from "@/lib/passkeys"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -21,7 +22,7 @@ import { Field, FieldGroup, FieldLabel, FieldDescription } from "@/components/ui
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { 
+import {
   Eye, 
   EyeOff, 
   User, 
@@ -32,7 +33,9 @@ import {
   XCircle,
   Calendar,
   Shield,
-  Loader2
+  Loader2,
+  KeyRound,
+  Trash2
 } from "lucide-react"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { PageLayout } from "@/components/layout/page-layout"
@@ -49,6 +52,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
+import type { PasskeyCredential } from "@/types/auth"
 
 export function ProfilePage() {
   const router = useRouter()
@@ -58,6 +62,10 @@ export function ProfilePage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isResendingVerification, setIsResendingVerification] = useState(false)
   const [verificationEmailSent, setVerificationEmailSent] = useState(false)
+  const [passkeys, setPasskeys] = useState<PasskeyCredential[]>([])
+  const [isLoadingPasskeys, setIsLoadingPasskeys] = useState(false)
+  const [isAddingPasskey, setIsAddingPasskey] = useState(false)
+  const [deletingCredentialId, setDeletingCredentialId] = useState<string | null>(null)
 
   const {
     register: registerProfile,
@@ -138,6 +146,63 @@ export function ProfilePage() {
       }
     } finally {
       setIsResendingVerification(false)
+    }
+  }
+
+  const loadPasskeys = async () => {
+    if (!passkeyClient.isSupported()) {
+      return
+    }
+
+    setIsLoadingPasskeys(true)
+    try {
+      const credentials = await authService.listPasskeys()
+      setPasskeys(credentials)
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+    } finally {
+      setIsLoadingPasskeys(false)
+    }
+  }
+
+  useEffect(() => {
+    void loadPasskeys()
+  }, [])
+
+  const handleAddPasskey = async () => {
+    if (!passkeyClient.isSupported()) {
+      toast.error("Passkeys are not supported in this browser.")
+      return
+    }
+
+    setIsAddingPasskey(true)
+    try {
+      const options = await authService.beginPasskeyRegistration()
+      const credential = await passkeyClient.register(options)
+      const savedCredential = await authService.verifyPasskeyRegistration({
+        response: credential,
+      })
+      setPasskeys((current) => [savedCredential, ...current])
+      toast.success("Passkey added successfully!")
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+    } finally {
+      setIsAddingPasskey(false)
+    }
+  }
+
+  const handleDeletePasskey = async (credentialId: string) => {
+    setDeletingCredentialId(credentialId)
+    try {
+      await authService.deletePasskey(credentialId)
+      setPasskeys((current) =>
+        current.filter((credential) => credential.credential_id !== credentialId)
+      )
+      toast.success("Passkey removed successfully!")
+    } catch (error) {
+      toast.error(getErrorMessage(error))
+    } finally {
+      setDeletingCredentialId(null)
     }
   }
 
@@ -505,6 +570,75 @@ export function ProfilePage() {
                     </FieldDescription>
                   </FieldGroup>
                 </form>
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <KeyRound className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle>Passkeys</CardTitle>
+                      <CardDescription>Use your device or security key to sign in without typing a password</CardDescription>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleAddPasskey}
+                    disabled={isAddingPasskey || !passkeyClient.isSupported()}
+                  >
+                    {isAddingPasskey ? "Waiting for passkey..." : "Add Passkey"}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {!passkeyClient.isSupported() ? (
+                  <p className="text-sm text-muted-foreground">
+                    This browser does not support passkeys.
+                  </p>
+                ) : isLoadingPasskeys ? (
+                  <p className="text-sm text-muted-foreground">Loading passkeys...</p>
+                ) : passkeys.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No passkeys registered yet. Add one to sign in faster and reduce password use.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {passkeys.map((credential) => (
+                      <div
+                        key={credential.credential_id}
+                        className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="space-y-1">
+                          <p className="font-medium">{credential.label}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {credential.credential_device_type === "multiDevice" ? "Synced passkey" : "Single-device passkey"}
+                            {credential.transports.length > 0 ? ` • ${credential.transports.join(", ")}` : ""}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Added {new Date(credential.created_at).toLocaleDateString()}
+                            {credential.last_used_at
+                              ? ` • Last used ${new Date(credential.last_used_at).toLocaleDateString()}`
+                              : ""}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeletePasskey(credential.credential_id)}
+                          disabled={deletingCredentialId === credential.credential_id}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          {deletingCredentialId === credential.credential_id ? "Removing..." : "Remove"}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

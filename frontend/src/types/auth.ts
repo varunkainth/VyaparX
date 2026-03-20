@@ -55,3 +55,18 @@ export interface ChangePasswordInput {
 export interface SwitchBusinessInput {
   business_id: string;
 }
+
+export interface PasskeyCredential {
+  credential_id: string;
+  label: string;
+  transports: string[];
+  credential_device_type: "singleDevice" | "multiDevice";
+  credential_backed_up: boolean;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+export interface PasskeyAuthenticationInput {
+  identifier: string;
+  business_id?: string;
+}

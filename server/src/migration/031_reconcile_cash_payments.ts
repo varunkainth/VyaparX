@@ -1,8 +1,11 @@
+import type { Pool, PoolClient } from "pg";
 import pool from "../config/db";
 
-async function run() {
+type MigrationDb = Pick<PoolClient | Pool, "query">;
+
+export async function up(db: MigrationDb = pool) {
     // Auto-reconcile all existing cash payments
-    const result = await pool.query(`
+    const result = await db.query(`
         UPDATE payments
         SET 
             is_reconciled = true,
@@ -15,8 +18,19 @@ async function run() {
           AND is_reconciled = false;
     `);
 
-    console.log(`✓ Auto-reconciled ${result.rowCount} existing cash payment(s)`);
-    process.exit();
-}
+    console.log(`✓ Auto-reconciled ${result.rowCount} existing cash payment(s)`);}
 
-run();
+
+if (import.meta.main) {
+    up()
+        .then(() => {
+            console.log("Migration applied successfully");
+        })
+        .catch((error) => {
+            console.error("Migration failed:", error);
+            process.exitCode = 1;
+        })
+        .finally(async () => {
+            await pool.end();
+        });
+}

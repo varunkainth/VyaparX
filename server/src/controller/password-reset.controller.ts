@@ -7,6 +7,7 @@ import { userRepository } from "../repository/user.repository";
 import { sendSuccess } from "../utils/responseHandler";
 import { AppError } from "../utils/appError";
 import { ERROR_CODES } from "../constants/errorCodes";
+import env from "../config/env";
 
 const generateOpaqueToken = () => crypto.randomBytes(32).toString("hex");
 
@@ -63,7 +64,7 @@ export async function forgotPasswordHandler(
     await passwordResetRepository.createResetToken(user.id, resetToken, expiresAt);
 
     // Create reset URL
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const frontendUrl = env.FRONTEND_URL || "http://localhost:3000";
     const resetUrl = `${frontendUrl}/reset-password#token=${encodeURIComponent(resetToken)}`;
 
     // Send email with timeout

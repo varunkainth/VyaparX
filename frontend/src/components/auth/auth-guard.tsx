@@ -21,11 +21,12 @@ const PUBLIC_ROUTE_PREFIXES = ["/shared/invoice"];
 
 // Routes that authenticated users shouldn't access (will redirect to dashboard)
 const AUTH_REDIRECT_ROUTES = ["/login", "/signup"];
+const getBusinessModalDismissKey = (userId: string) => `business-onboarding-dismissed:${userId}`;
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, isLoading, _hasHydrated, tokens, setAuth, clearAuth, setLoading } = useAuthStore();
+  const { user, isAuthenticated, isLoading, _hasHydrated, tokens, setAuth, clearAuth, setLoading } = useAuthStore();
   const [showBusinessModal, setShowBusinessModal] = useState(false);
   
   const isPublicRoute = (path: string) => {
@@ -74,18 +75,22 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   // Check for empty businesses and show modal - using setTimeout to avoid setState in effect
   useEffect(() => {
-    if (!_hasHydrated || isLoading || !isAuthenticated) return;
+    if (!_hasHydrated || isLoading || !isAuthenticated || !user?.id) return;
     
     // Use setTimeout to avoid the linter warning about setState in effect
     const timer = setTimeout(() => {
-      if (businesses.length === 0 && !showBusinessModal) {
+      const dismissKey = getBusinessModalDismissKey(user.id);
+      const hasDismissedModal = typeof window !== "undefined" && localStorage.getItem(dismissKey) === "true";
+
+      if (businesses.length === 0 && !showBusinessModal && !hasDismissedModal) {
         devLog("[AuthGuard] Authenticated user has no businesses, showing creation modal");
+        localStorage.setItem(dismissKey, "true");
         setShowBusinessModal(true);
       }
     }, 0);
 
     return () => clearTimeout(timer);
-  }, [isAuthenticated, businesses.length, showBusinessModal, _hasHydrated, isLoading]);
+  }, [isAuthenticated, businesses.length, showBusinessModal, _hasHydrated, isLoading, user?.id]);
 
   useEffect(() => {
     // Wait for hydration before checking routes

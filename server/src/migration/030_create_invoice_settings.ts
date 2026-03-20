@@ -1,7 +1,10 @@
+import type { Pool, PoolClient } from "pg";
 import pool from "../config/db";
 
-async function run() {
-    await pool.query(`
+type MigrationDb = Pick<PoolClient | Pool, "query">;
+
+export async function up(db: MigrationDb = pool) {
+    await db.query(`
         CREATE TABLE IF NOT EXISTS invoice_settings (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             business_id UUID NOT NULL UNIQUE REFERENCES businesses(id) ON DELETE CASCADE,
@@ -51,8 +54,19 @@ async function run() {
         CREATE INDEX IF NOT EXISTS idx_invoice_settings_business_id ON invoice_settings(business_id);
     `);
 
-    console.log("Invoice settings table created successfully");
-    process.exit();
-}
+    console.log("Invoice settings table created successfully");}
 
-run();
+
+if (import.meta.main) {
+    up()
+        .then(() => {
+            console.log("Migration applied successfully");
+        })
+        .catch((error) => {
+            console.error("Migration failed:", error);
+            process.exitCode = 1;
+        })
+        .finally(async () => {
+            await pool.end();
+        });
+}

@@ -31,3 +31,48 @@ export const changePasswordSchema = z.object({
 export const switchBusinessSchema = z.object({
     business_id: z.string().uuid(),
 });
+
+export const beginPasskeyAuthenticationSchema = z.object({
+    identifier: z.string().min(3),
+});
+
+const registrationResponseSchema = z.object({
+    id: z.string().min(1),
+    rawId: z.string().min(1),
+    type: z.literal("public-key"),
+    authenticatorAttachment: z.string().optional(),
+    clientExtensionResults: z.record(z.string(), z.unknown()),
+    response: z.object({
+        clientDataJSON: z.string().min(1),
+        attestationObject: z.string().min(1),
+        authenticatorData: z.string().optional(),
+        transports: z.array(z.string()).optional(),
+        publicKeyAlgorithm: z.number().optional(),
+        publicKey: z.string().optional(),
+    }),
+});
+
+const authenticationResponseSchema = z.object({
+    id: z.string().min(1),
+    rawId: z.string().min(1),
+    type: z.literal("public-key"),
+    authenticatorAttachment: z.string().optional(),
+    clientExtensionResults: z.record(z.string(), z.unknown()),
+    response: z.object({
+        clientDataJSON: z.string().min(1),
+        authenticatorData: z.string().min(1),
+        signature: z.string().min(1),
+        userHandle: z.string().optional(),
+    }),
+});
+
+export const verifyPasskeyRegistrationSchema = z.object({
+    response: registrationResponseSchema,
+    label: z.string().trim().min(1).max(255).optional(),
+});
+
+export const verifyPasskeyAuthenticationSchema = z.object({
+    identifier: z.string().min(3),
+    response: authenticationResponseSchema,
+    business_id: z.string().uuid().optional(),
+});

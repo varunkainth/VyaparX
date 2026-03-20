@@ -1,7 +1,10 @@
+import type { Pool, PoolClient } from "pg";
 import pool from "../config/db";
 
-async function run() {
-    await pool.query(`
+type MigrationDb = Pick<PoolClient | Pool, "query">;
+
+export async function up(db: MigrationDb = pool) {
+    await db.query(`
         CREATE TABLE IF NOT EXISTS password_reset_tokens (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -16,8 +19,19 @@ async function run() {
         CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at ON password_reset_tokens(expires_at);
     `);
 
-    console.log("Password reset tokens table created successfully");
-    process.exit();
-}
+    console.log("Password reset tokens table created successfully");}
 
-run();
+
+if (import.meta.main) {
+    up()
+        .then(() => {
+            console.log("Migration applied successfully");
+        })
+        .catch((error) => {
+            console.error("Migration failed:", error);
+            process.exitCode = 1;
+        })
+        .finally(async () => {
+            await pool.end();
+        });
+}

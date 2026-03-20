@@ -1,7 +1,10 @@
+import type { Pool, PoolClient } from "pg";
 import pool from "../config/db";
 
-async function run() {
-    await pool.query(`
+type MigrationDb = Pick<PoolClient | Pool, "query">;
+
+export async function up(db: MigrationDb = pool) {
+    await db.query(`
         ALTER TABLE sync_mutations
             ADD COLUMN IF NOT EXISTS request_hash VARCHAR(128),
             ADD COLUMN IF NOT EXISTS response_json JSONB;
@@ -11,8 +14,19 @@ async function run() {
     `);
 
     console.log("Sync idempotency hardening applied");
-    process.exit();
 }
 
-run();
 
+if (import.meta.main) {
+    up()
+        .then(() => {
+            console.log("Migration applied successfully");
+        })
+        .catch((error) => {
+            console.error("Migration failed:", error);
+            process.exitCode = 1;
+        })
+        .finally(async () => {
+            await pool.end();
+        });
+}

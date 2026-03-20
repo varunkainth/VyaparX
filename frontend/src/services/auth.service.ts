@@ -1,6 +1,14 @@
 import apiClient from "@/lib/api-client";
 import type {
+  AuthenticationResponseJSON,
+  PublicKeyCredentialCreationOptionsJSON,
+  PublicKeyCredentialRequestOptionsJSON,
+  RegistrationResponseJSON,
+} from "@simplewebauthn/browser";
+import type {
   LoginInput,
+  PasskeyAuthenticationInput,
+  PasskeyCredential,
   SignupInput,
   UpdateProfileInput,
   ChangePasswordInput,
@@ -62,6 +70,56 @@ export const authService = {
       ...response.data.data,
       tokens: assertTokensPresent(response.data.data.tokens, "login"),
     };
+  },
+
+  async beginPasskeyLogin(identifier: string): Promise<PublicKeyCredentialRequestOptionsJSON> {
+    const response = await apiClient.post<ApiResponse<{ options: PublicKeyCredentialRequestOptionsJSON }>>(
+      "/auth/passkeys/login/options",
+      { identifier }
+    );
+    return response.data.data.options;
+  },
+
+  async verifyPasskeyLogin(data: {
+    identifier: string;
+    response: AuthenticationResponseJSON;
+    business_id?: string;
+  }): Promise<AuthResponse> {
+    const response = await apiClient.post<ApiResponse<AuthResponse>>(
+      "/auth/passkeys/login/verify",
+      data
+    );
+    return {
+      ...response.data.data,
+      tokens: assertTokensPresent(response.data.data.tokens, "passkey-login"),
+    };
+  },
+
+  async beginPasskeyRegistration(): Promise<PublicKeyCredentialCreationOptionsJSON> {
+    const response = await apiClient.post<ApiResponse<{ options: PublicKeyCredentialCreationOptionsJSON }>>(
+      "/auth/passkeys/register/options"
+    );
+    return response.data.data.options;
+  },
+
+  async verifyPasskeyRegistration(data: {
+    response: RegistrationResponseJSON;
+    label?: string;
+  }): Promise<PasskeyCredential> {
+    const response = await apiClient.post<ApiResponse<{ credential: PasskeyCredential }>>(
+      "/auth/passkeys/register/verify",
+      data
+    );
+    return response.data.data.credential;
+  },
+
+  async listPasskeys(): Promise<PasskeyCredential[]> {
+    const response = await apiClient.get<ApiResponse<PasskeyCredential[]>>("/auth/passkeys");
+    return response.data.data;
+  },
+
+  async deletePasskey(credentialId: string): Promise<void> {
+    await apiClient.delete(`/auth/passkeys/${encodeURIComponent(credentialId)}`);
   },
 
   async refreshToken(refreshToken: string): Promise<Tokens> {

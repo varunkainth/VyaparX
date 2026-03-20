@@ -234,7 +234,7 @@ export const createInvoiceShareLinkHandler = async (req: Request<InvoiceParams>,
         invoice_id: invoiceId,
     });
 
-    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const frontendUrl = env.FRONTEND_URL || "http://localhost:3000";
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
     const shareUrl = `${frontendUrl}/shared/invoice/${invoiceId}#token=${encodeURIComponent(token)}`;
 

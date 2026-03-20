@@ -1,7 +1,10 @@
+import type { Pool, PoolClient } from "pg";
 import pool from "../config/db";
 
-async function run() {
-    await pool.query(`
+type MigrationDb = Pick<PoolClient | Pool, "query">;
+
+export async function up(db: MigrationDb = pool) {
+    await db.query(`
         CREATE TABLE IF NOT EXISTS refresh_tokens (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             token_id VARCHAR(128) NOT NULL UNIQUE,
@@ -18,8 +21,19 @@ async function run() {
     `);
 
     console.log("Refresh tokens table created successfully");
-    process.exit();
 }
 
-run();
 
+if (import.meta.main) {
+    up()
+        .then(() => {
+            console.log("Migration applied successfully");
+        })
+        .catch((error) => {
+            console.error("Migration failed:", error);
+            process.exitCode = 1;
+        })
+        .finally(async () => {
+            await pool.end();
+        });
+}

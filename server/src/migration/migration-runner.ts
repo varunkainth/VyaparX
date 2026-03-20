@@ -1,9 +1,18 @@
 import { readdir } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, extname, join } from "node:path";
+import { pathToFileURL, fileURLToPath } from "node:url";
+import type { PoolClient, QueryResult } from "pg";
 import pool from "../config/db";
 
-const migrationFilePattern = /^\d+_.+\.ts$/;
+type MigrationDb = Pick<PoolClient, "query">;
+type MigrationExecutor = (db: MigrationDb) => Promise<void>;
+type MigrationModule = {
+    default?: MigrationExecutor;
+    up?: MigrationExecutor;
+};
+
+const migrationFilePattern = /^\d+_.+\.(ts|js)$/;
+const migrationDir = dirname(fileURLToPath(import.meta.url));
 
 const ensureTrackingTable = async () => {
     await pool.query(`
@@ -16,11 +25,22 @@ const ensureTrackingTable = async () => {
 };
 
 const getMigrationFiles = async (): Promise<string[]> => {
-    const migrationDir = dirname(fileURLToPath(import.meta.url));
     const files = await readdir(migrationDir);
 
     return files
-        .filter((file) => migrationFilePattern.test(file))
+        .filter((file) => {
+            if (!migrationFilePattern.test(file)) {
+                return false;
+            }
+
+            const extension = extname(file);
+            if (extension === ".js") {
+                const sourceTypeScriptFile = file.slice(0, -3) + ".ts";
+                return !files.includes(sourceTypeScriptFile);
+            }
+
+            return true;
+        })
         .sort((a, b) => {
             const parseOrder = (name: string) => Number(name.split("_", 1)[0]) || 0;
             const orderA = parseOrder(a);
@@ -39,20 +59,18 @@ const getAppliedMigrations = async (): Promise<Set<string>> => {
     return new Set(result.rows.map((row) => row.migration_name));
 };
 
-const runMigrationFile = async (fileName: string) => {
-    const projectRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-    const migrationPath = join("src", "migration", fileName);
+const loadMigrationExecutor = async (fileName: string): Promise<MigrationExecutor> => {
+    const migrationUrl = pathToFileURL(join(migrationDir, fileName)).href;
+    const migrationModule = (await import(migrationUrl)) as MigrationModule;
+    const executor = migrationModule.up ?? migrationModule.default;
 
-    const proc = Bun.spawn(["bun", "run", migrationPath], {
-        cwd: projectRoot,
-        stdout: "inherit",
-        stderr: "inherit",
-    });
-
-    const exitCode = await proc.exited;
-    if (exitCode !== 0) {
-        throw new Error(`Migration failed: ${fileName} (exit code ${exitCode})`);
+    if (typeof executor !== "function") {
+        throw new Error(
+            `Migration ${fileName} must export an async "up" function or default export`
+        );
     }
+
+    return executor;
 };
 
 const markMigrationApplied = async (fileName: string) => {
@@ -64,6 +82,24 @@ const markMigrationApplied = async (fileName: string) => {
         `,
         [fileName]
     );
+};
+
+const runMigrationFile = async (fileName: string) => {
+    const migration = await loadMigrationExecutor(fileName);
+    const client = await pool.connect();
+
+    try {
+        await client.query("BEGIN");
+        await migration(client);
+        await client.query("COMMIT");
+    } catch (error) {
+        await client.query("ROLLBACK");
+        throw new Error(
+            `Migration failed: ${fileName}${error instanceof Error ? `: ${error.message}` : ""}`
+        );
+    } finally {
+        client.release();
+    }
 };
 
 async function run() {

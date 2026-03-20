@@ -1,11 +1,10 @@
+import type { Pool, PoolClient } from "pg";
 import pool from "../config/db";
 
-async function run() {
-    const client = await pool.connect();
-    try {
-        await client.query("BEGIN");
+type MigrationDb = Pick<PoolClient | Pool, "query">;
 
-        await client.query(`
+export async function up(db: MigrationDb = pool) {
+        await db.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -27,7 +26,7 @@ async function run() {
             END $$;
         `);
 
-        await client.query(`
+        await db.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -49,7 +48,7 @@ async function run() {
             END $$;
         `);
 
-        await client.query(`
+        await db.query(`
             DO $$ BEGIN
                 ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'viewer';
             EXCEPTION
@@ -57,7 +56,7 @@ async function run() {
             END $$;
         `);
 
-        await client.query(`
+        await db.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -73,7 +72,7 @@ async function run() {
             END $$;
         `);
 
-        await client.query(`
+        await db.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -89,7 +88,7 @@ async function run() {
             END $$;
         `);
 
-        await client.query(`
+        await db.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -110,15 +109,6 @@ async function run() {
                 END IF;
             END $$;
         `);
-
-        await client.query("COMMIT");
-    } catch (err) {
-        await client.query("ROLLBACK");
-        console.error("Schema patch failed:", err);
-        throw err;
-    } finally {
-        client.release();
-    }
 
     const indexes = [
         `CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);`,
@@ -151,12 +141,22 @@ async function run() {
     ];
 
     for (const sql of indexes) {
-        await pool.query(sql);
+        await db.query(sql);
     }
 
     console.log("Schema patch + indexes applied");
-    process.exit();
 }
 
-run();
-
+if (import.meta.main) {
+    up()
+        .then(() => {
+            console.log("Migration applied successfully");
+        })
+        .catch((error) => {
+            console.error("Migration failed:", error);
+            process.exitCode = 1;
+        })
+        .finally(async () => {
+            await pool.end();
+        });
+}

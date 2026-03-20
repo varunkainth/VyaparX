@@ -17,7 +17,7 @@ const parseConfiguredOrigins = (): string[] => {
         }
     }
 
-    const frontendUrl = process.env.FRONTEND_URL?.trim();
+    const frontendUrl = env.FRONTEND_URL.trim();
     if (frontendUrl) {
         try {
             configured.add(new URL(frontendUrl).origin);

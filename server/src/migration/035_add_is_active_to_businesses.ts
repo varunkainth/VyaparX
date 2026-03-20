@@ -1,8 +1,11 @@
+import type { Pool, PoolClient } from "pg";
 import pool from "../config/db";
 
-async function run() {
+type MigrationDb = Pick<PoolClient | Pool, "query">;
+
+export async function up(db: MigrationDb = pool) {
     // Add is_active column to businesses table
-    await pool.query(`
+    await db.query(`
         DO $$ 
         BEGIN
             -- Check if column doesn't exist before adding
@@ -24,13 +27,13 @@ async function run() {
     `);
 
     // Ensure all existing businesses are set to active (in case default didn't apply)
-    const result = await pool.query(`
+    const result = await db.query(`
         UPDATE businesses 
         SET is_active = COALESCE(is_active, true);
     `);
 
     // Get count of businesses
-    const countResult = await pool.query(`
+    const countResult = await db.query(`
         SELECT COUNT(*) as total, 
                COUNT(*) FILTER (WHERE is_active = true) as active,
                COUNT(*) FILTER (WHERE is_active = false) as inactive
@@ -42,8 +45,19 @@ async function run() {
     console.log(`✓ Added is_active column to businesses table`);
     console.log(`✓ Total businesses: ${stats.total}`);
     console.log(`✓ Active businesses: ${stats.active}`);
-    console.log(`✓ Inactive businesses: ${stats.inactive}`);
-    process.exit();
-}
+    console.log(`✓ Inactive businesses: ${stats.inactive}`);}
 
-run();
+
+if (import.meta.main) {
+    up()
+        .then(() => {
+            console.log("Migration applied successfully");
+        })
+        .catch((error) => {
+            console.error("Migration failed:", error);
+            process.exitCode = 1;
+        })
+        .finally(async () => {
+            await pool.end();
+        });
+}

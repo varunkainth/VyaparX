@@ -11,18 +11,18 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
-import Image from "next/image"
-import logo from "@/assets/images/logo.png"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { authService } from "@/services/auth.service"
 import { useAuthStore } from "@/store/useAuthStore"
 import { toast } from "sonner"
-import { Eye, EyeOff } from "lucide-react"
+import { Eye, EyeOff, KeyRound } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { loginSchema, type LoginFormData } from "@/validators/auth.validator"
 import { getErrorMessage } from "@/lib/error-handler"
+import { passkeyClient } from "@/lib/passkeys"
+import { Wordmark } from "@/components/branding/wordmark"
 
 export function LoginForm({
   className,
@@ -31,10 +31,12 @@ export function LoginForm({
   const router = useRouter();
   const { setAuth, setLoading } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
+  const [isPasskeySubmitting, setIsPasskeySubmitting] = useState(false);
   
   const {
     register,
     handleSubmit,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -69,16 +71,50 @@ export function LoginForm({
     }
   };
 
+  const handlePasskeyLogin = async () => {
+    const identifier = getValues("identifier")?.trim();
+    if (!identifier) {
+      toast.error("Enter your email or phone first to continue with a passkey.");
+      return;
+    }
+
+    if (!passkeyClient.isSupported()) {
+      toast.error("Passkeys are not supported in this browser.");
+      return;
+    }
+
+    setLoading(true);
+    setIsPasskeySubmitting(true);
+
+    try {
+      const options = await authService.beginPasskeyLogin(identifier);
+      const credential = await passkeyClient.authenticate(options);
+      const response = await authService.verifyPasskeyLogin({
+        identifier,
+        response: credential,
+      });
+      setAuth(response.user, response.tokens, response.session);
+      toast.success("Passkey login successful!");
+      router.push("/dashboard");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setIsPasskeySubmitting(false);
+      setLoading(false);
+    }
+  };
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0">
+      <Card className="overflow-hidden border-white/10 bg-white/6 p-0 shadow-[0_24px_70px_rgba(0,0,0,0.34)] backdrop-blur">
         <CardContent className="grid p-0 md:grid-cols-2">
           <form className="p-6 md:p-8" onSubmit={handleSubmit(onSubmit)}>
             <FieldGroup>
               <div className="flex flex-col items-center gap-2 text-center">
-                <h1 className="text-2xl font-bold">Welcome back</h1>
-                <p className="text-muted-foreground text-balance">
-                  Login to your VyaparX account
+                <Wordmark className="items-center" compact />
+                <h1 className="mt-2 font-serif text-3xl italic text-white">Welcome back</h1>
+                <p className="text-balance text-stone-400">
+                  Sign in to manage invoices, stock, payments, and reports.
                 </p>
               </div>
               <Field>
@@ -133,9 +169,18 @@ export function LoginForm({
                   </p>
                 )}
               </Field>
-              <Field>
-                <Button type="submit" disabled={isSubmitting}>
+              <Field className="space-y-3">
+                <Button type="submit" disabled={isSubmitting || isPasskeySubmitting}>
                   {isSubmitting ? "Logging in..." : "Login"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handlePasskeyLogin}
+                  disabled={isSubmitting || isPasskeySubmitting}
+                >
+                  <KeyRound className="mr-2 h-4 w-4" />
+                  {isPasskeySubmitting ? "Waiting for passkey..." : "Continue with passkey"}
                 </Button>
               </Field>
               {/* <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
@@ -175,8 +220,31 @@ export function LoginForm({
               </FieldDescription>
             </FieldGroup>
           </form>
-          <div className="bg-muted relative hidden md:flex items-center justify-center p-8">
-            <Image src={logo} alt="Logo" width={300} height={120} priority className="object-contain" />
+          <div className="relative hidden overflow-hidden md:flex md:flex-col md:justify-between bg-[radial-gradient(circle_at_top,_rgba(251,191,36,0.22),_transparent_40%),linear-gradient(160deg,#09090b_0%,#111214_42%,#1c1917_100%)] p-8 text-white">
+            <div className="absolute inset-0 opacity-40">
+              <div className="absolute left-8 top-10 h-24 w-24 rounded-full bg-orange-300 blur-3xl" />
+              <div className="absolute bottom-10 right-6 h-32 w-32 rounded-full bg-amber-200 blur-3xl" />
+            </div>
+            <div className="relative">
+              <p className="text-sm uppercase tracking-[0.26em] text-orange-200/80">VyaparX Sign In</p>
+              <h2 className="mt-4 font-serif text-4xl italic leading-tight">
+                Calm books.
+                <span className="block text-orange-200">Sharper decisions.</span>
+              </h2>
+              <p className="mt-4 max-w-sm text-sm leading-6 text-stone-200/80">
+                Use password or passkey login and get straight back to the work that matters.
+              </p>
+            </div>
+            <div className="relative grid gap-3">
+              <div className="rounded-2xl border border-white/10 bg-white/8 p-4">
+                <p className="text-sm text-stone-300">Fast access</p>
+                <p className="mt-1 text-xl font-semibold">Password or passkey</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/8 p-4">
+                <p className="text-sm text-stone-300">Built for</p>
+                <p className="mt-1 text-xl font-semibold">Billing, inventory, reporting</p>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

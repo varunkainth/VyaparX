@@ -1,7 +1,6 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig, type AxiosResponse } from "axios";
 import { useAuthStore } from "@/store/useAuthStore";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000";
+import { API_BASE_URL } from "@/lib/env";
 
 // Request deduplication map
 const pendingRequests = new Map<string, Promise<AxiosResponse>>();

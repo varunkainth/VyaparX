@@ -11,8 +11,6 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
-import Image from "next/image"
-import logo from "@/assets/images/logo.png"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { authService } from "@/services/auth.service"
@@ -23,6 +21,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { signupSchema, type SignupFormData } from "@/validators/auth.validator"
 import { getErrorMessage } from "@/lib/error-handler"
+import { Wordmark } from "@/components/branding/wordmark"
 
 export function SignupForm({
   className,
@@ -61,14 +60,15 @@ export function SignupForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card className="overflow-hidden p-0">
+      <Card className="overflow-hidden border-white/10 bg-white/6 p-0 shadow-[0_24px_70px_rgba(0,0,0,0.34)] backdrop-blur">
         <CardContent className="grid p-0 md:grid-cols-2">
           <form className="p-6 md:p-8" onSubmit={handleSubmit(onSubmit)}>
             <FieldGroup>
               <div className="flex flex-col items-center gap-2 text-center">
-                <h1 className="text-2xl font-bold">Create your account</h1>
-                <p className="text-muted-foreground text-sm text-balance">
-                  Enter your details below to create your account
+                <Wordmark className="items-center" compact />
+                <h1 className="mt-2 font-serif text-3xl italic text-white">Create your account</h1>
+                <p className="text-sm text-balance text-stone-400">
+                  Set up your workspace and start billing with a cleaner system.
                 </p>
               </div>
               
@@ -197,8 +197,31 @@ export function SignupForm({
               </FieldDescription>
             </FieldGroup>
           </form>
-          <div className="bg-muted relative hidden md:flex items-center justify-center p-8">
-           <Image src={logo} alt="Logo" width={300} height={120} priority className="object-contain" />
+          <div className="relative hidden overflow-hidden md:flex md:flex-col md:justify-between bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.2),_transparent_34%),linear-gradient(160deg,#111214_0%,#1c1917_44%,#09090b_100%)] p-8 text-white">
+            <div className="absolute inset-0 opacity-45">
+              <div className="absolute left-6 top-12 h-28 w-28 rounded-full bg-amber-200 blur-3xl" />
+              <div className="absolute bottom-8 right-8 h-36 w-36 rounded-full bg-orange-300 blur-3xl" />
+            </div>
+            <div className="relative">
+              <p className="text-sm uppercase tracking-[0.26em] text-orange-200/80">Start with style</p>
+              <h2 className="mt-4 font-serif text-4xl italic leading-tight">
+                A smarter
+                <span className="block text-orange-200">business desk.</span>
+              </h2>
+              <p className="mt-4 max-w-sm text-sm leading-6 text-stone-200/80">
+                Bring billing, inventory, parties, and reporting together from day one.
+              </p>
+            </div>
+            <div className="relative grid gap-3">
+              <div className="rounded-2xl border border-white/10 bg-white/8 p-4">
+                <p className="text-sm text-stone-300">Get started fast</p>
+                <p className="mt-1 text-xl font-semibold">No spreadsheet sprawl</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/8 p-4">
+                <p className="text-sm text-stone-300">Designed for</p>
+                <p className="mt-1 text-xl font-semibold">Small teams and growing shops</p>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

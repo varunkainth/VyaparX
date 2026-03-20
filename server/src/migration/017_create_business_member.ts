@@ -1,8 +1,11 @@
 // 017_create_business_members.ts
+import type { Pool, PoolClient } from "pg";
 import pool from "../config/db";
 
-async function run() {
-    await pool.query(`
+type MigrationDb = Pick<PoolClient | Pool, "query">;
+
+export async function up(db: MigrationDb = pool) {
+    await db.query(`
         CREATE TABLE IF NOT EXISTS business_members (
             id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
 
@@ -24,8 +27,19 @@ async function run() {
         CREATE INDEX IF NOT EXISTS idx_business_members_user_id 
             ON business_members (user_id, is_active);
     `);
-    console.log("business_members table created");
-    process.exit();
-}
+    console.log("business_members table created");}
 
-run();
+
+if (import.meta.main) {
+    up()
+        .then(() => {
+            console.log("Migration applied successfully");
+        })
+        .catch((error) => {
+            console.error("Migration failed:", error);
+            process.exitCode = 1;
+        })
+        .finally(async () => {
+            await pool.end();
+        });
+}
