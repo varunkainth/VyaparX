@@ -90,8 +90,11 @@ const parseOriginList = (name: string, value: string | undefined): string[] => {
     })
 }
 
-const parseSameSite = (value: string | undefined): "lax" | "strict" | "none" => {
-    const normalized = value?.trim().toLowerCase() || "lax"
+const parseSameSite = (
+    value: string | undefined,
+    fallback: "lax" | "strict" | "none" = "lax"
+): "lax" | "strict" | "none" => {
+    const normalized = value?.trim().toLowerCase() || fallback
     if (normalized === "lax" || normalized === "strict" || normalized === "none") {
         return normalized
     }
@@ -190,7 +193,7 @@ if (frontendUrl) {
     }
 }
 
-const cookieSameSite = parseSameSite(process.env.COOKIE_SAME_SITE)
+const cookieSameSite = parseSameSite(process.env.COOKIE_SAME_SITE, isProduction ? "none" : "lax")
 const cookieSecure = parseBoolean("COOKIE_SECURE", process.env.COOKIE_SECURE, isProduction)
 if (cookieSameSite === "none" && !cookieSecure) {
     throw new Error("COOKIE_SECURE must be true when COOKIE_SAME_SITE=none")
