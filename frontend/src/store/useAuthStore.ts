@@ -27,11 +27,19 @@ export const useAuthStore = create<AuthState & AuthActions & { _hasHydrated: boo
       _hasHydrated: false,
 
       setAuth: (user, tokens, session) =>
-        set({
-          user,
-          tokens,
-          session: session || null,
-          isAuthenticated: true,
+        set(() => {
+          console.log("[AuthDebug] setAuth called", {
+            userId: user.id,
+            hasAccessToken: !!tokens?.accessToken,
+            hasRefreshToken: !!tokens?.refreshToken,
+            sessionBusinessId: session?.business_id ?? null,
+          });
+          return {
+            user,
+            tokens,
+            session: session || null,
+            isAuthenticated: true,
+          };
         }),
 
       setUser: (user) =>
@@ -42,8 +50,14 @@ export const useAuthStore = create<AuthState & AuthActions & { _hasHydrated: boo
         })),
 
       setTokens: (tokens) =>
-        set({
-          tokens,
+        set(() => {
+          console.log("[AuthDebug] setTokens called", {
+            hasAccessToken: !!tokens?.accessToken,
+            hasRefreshToken: !!tokens?.refreshToken,
+          });
+          return {
+            tokens,
+          };
         }),
 
       setSession: (session) =>
@@ -87,6 +101,12 @@ export const useAuthStore = create<AuthState & AuthActions & { _hasHydrated: boo
         isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state) => {
+        console.log("[AuthDebug] auth store rehydrated", {
+          hasAccessToken: !!state?.tokens?.accessToken,
+          hasRefreshToken: !!state?.tokens?.refreshToken,
+          userId: state?.user?.id ?? null,
+          isAuthenticated: state?.isAuthenticated ?? false,
+        });
         state?.setHydrated();
       },
     }

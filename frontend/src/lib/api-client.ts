@@ -33,6 +33,14 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${tokens.accessToken}`;
     }
 
+    if (config.url?.includes("/api/v1/businesses") || config.url?.includes("/auth/me")) {
+      console.log("[AuthDebug] Request prepared", {
+        url: config.url,
+        hasAccessToken: !!tokens?.accessToken,
+        authHeaderPresent: !!config.headers.Authorization,
+      });
+    }
+
     // Request deduplication for GET requests
     if (config.method?.toLowerCase() === 'get') {
       const requestKey = generateRequestKey(config);
@@ -84,6 +92,15 @@ apiClient.interceptors.response.use(
     }
     const originalRequest = error.config;
 
+    if (originalRequest?.url?.includes("/api/v1/businesses") || originalRequest?.url?.includes("/auth/me")) {
+      console.log("[AuthDebug] Request failed", {
+        url: originalRequest?.url,
+        status: error.response?.status,
+        hasAccessToken: !!useAuthStore.getState().tokens?.accessToken,
+        responseData: error.response?.data ?? null,
+      });
+    }
+
     // Skip refresh for auth endpoints
     if (originalRequest.url?.includes('/auth/refresh') || originalRequest.url?.includes('/auth/login')) {
       return Promise.reject(error);
@@ -108,6 +125,7 @@ apiClient.interceptors.response.use(
       const { tokens, setTokens, clearAuth } = useAuthStore.getState();
 
       if (!tokens?.refreshToken) {
+        console.log("[AuthDebug] Missing refresh token before refresh attempt");
         clearAuth();
         return Promise.reject(error);
       }
@@ -115,6 +133,10 @@ apiClient.interceptors.response.use(
       // Create refresh promise
       refreshPromise = (async () => {
         try {
+          console.log("[AuthDebug] Attempting refresh", {
+            refreshUrl: "/auth/refresh",
+            hasRefreshToken: !!tokens.refreshToken,
+          });
           const newTokens = await apiClient.post<{ data: { tokens: { accessToken: string; refreshToken: string } } }>(
             "/auth/refresh",
             {},
@@ -127,6 +149,10 @@ apiClient.interceptors.response.use(
           setTokens(newTokens.data.data.tokens);
         } catch (refreshError: any) {
           console.error("[API] Session refresh failed:", refreshError?.message);
+          console.log("[AuthDebug] Refresh failed", {
+            status: refreshError?.response?.status,
+            data: refreshError?.response?.data ?? null,
+          });
           clearAuth();
           if (typeof window !== "undefined") {
             window.location.href = "/login";

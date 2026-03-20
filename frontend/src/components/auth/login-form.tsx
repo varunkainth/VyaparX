@@ -45,7 +45,20 @@ export function LoginForm({
 
     try {
       const response = await authService.login(data);
+      console.log("[AuthDebug] Login response received", {
+        hasAccessToken: !!response.tokens?.accessToken,
+        hasRefreshToken: !!response.tokens?.refreshToken,
+        userId: response.user?.id,
+        sessionBusinessId: response.session?.business_id ?? null,
+      });
       setAuth(response.user, response.tokens, response.session);
+      const stored = useAuthStore.getState();
+      console.log("[AuthDebug] Store updated after login", {
+        hasAccessToken: !!stored.tokens?.accessToken,
+        hasRefreshToken: !!stored.tokens?.refreshToken,
+        userId: stored.user?.id ?? null,
+        isAuthenticated: stored.isAuthenticated,
+      });
       toast.success("Login successful!");
       router.push("/dashboard");
     } catch (error: any) {
