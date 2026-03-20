@@ -66,7 +66,7 @@ export async function sendVerificationEmailHandler(
 
     // Create verification URL
     const frontendUrl = env.FRONTEND_URL || "http://localhost:3000";
-    const verificationUrl = `${frontendUrl}/verify-email#token=${encodeURIComponent(verificationToken)}`;
+    const verificationUrl = `${frontendUrl}/verify-email?token=${encodeURIComponent(verificationToken)}`;
 
     // Send email with timeout
     try {
@@ -206,7 +206,7 @@ export async function resendVerificationEmailHandler(
 
     // Create verification URL
     const frontendUrl = env.FRONTEND_URL || "http://localhost:3000";
-    const verificationUrl = `${frontendUrl}/verify-email#token=${encodeURIComponent(verificationToken)}`;
+    const verificationUrl = `${frontendUrl}/verify-email?token=${encodeURIComponent(verificationToken)}`;
 
     // Send email
     try {

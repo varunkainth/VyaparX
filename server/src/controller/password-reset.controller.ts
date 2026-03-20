@@ -65,7 +65,7 @@ export async function forgotPasswordHandler(
 
     // Create reset URL
     const frontendUrl = env.FRONTEND_URL || "http://localhost:3000";
-    const resetUrl = `${frontendUrl}/reset-password#token=${encodeURIComponent(resetToken)}`;
+    const resetUrl = `${frontendUrl}/reset-password?token=${encodeURIComponent(resetToken)}`;
 
     // Send email with timeout
     try {

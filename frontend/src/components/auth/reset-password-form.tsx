@@ -24,8 +24,14 @@ export function ResetPasswordForm() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const searchParams = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    setToken(hashParams.get("token"));
+    const urlToken = searchParams.get("token") || hashParams.get("token");
+    setToken(urlToken);
+
+    if (urlToken) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
 
   useEffect(() => {

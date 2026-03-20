@@ -47,7 +47,7 @@ export const signup = async (req: Request<{}, unknown, SignupInput>, res: Respon
             await emailVerificationRepository.createVerificationToken(user.id, verificationToken, expiresAt);
             
             const frontendUrl = env.FRONTEND_URL || "http://localhost:3000";
-            const verificationUrl = `${frontendUrl}/verify-email#token=${encodeURIComponent(verificationToken)}`;
+            const verificationUrl = `${frontendUrl}/verify-email?token=${encodeURIComponent(verificationToken)}`;
             
             const emailPromise = emailService.sendVerificationEmail({
                 to: email,
