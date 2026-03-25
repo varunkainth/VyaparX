@@ -28,6 +28,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, isAuthenticated, isLoading, _hasHydrated, tokens, setAuth, clearAuth, setLoading } = useAuthStore();
   const [showBusinessModal, setShowBusinessModal] = useState(false);
+  const accessToken = tokens?.accessToken ?? null;
+  const refreshToken = tokens?.refreshToken ?? null;
   
   const isPublicRoute = (path: string) => {
     return PUBLIC_ROUTES.includes(path) || PUBLIC_ROUTE_PREFIXES.some((prefix) => path.startsWith(prefix));
@@ -37,7 +39,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { businesses } = useBusinesses();
 
   useEffect(() => {
-    if (!_hasHydrated || isAuthenticated || !tokens?.accessToken) return;
+    if (!_hasHydrated || isAuthenticated || !accessToken || !refreshToken || !tokens) return;
 
     let isMounted = true;
     setLoading(true);
@@ -59,7 +61,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return () => {
       isMounted = false;
     };
-  }, [_hasHydrated, isAuthenticated, tokens, setAuth, clearAuth, setLoading]);
+  }, [_hasHydrated, isAuthenticated, accessToken, tokens, setAuth, clearAuth, setLoading]);
 
   // Initialize token refresh on mount
   useEffect(() => {
@@ -71,7 +73,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return () => {
       cancelTokenRefresh();
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, accessToken, refreshToken]);
 
   // Check for empty businesses and show modal - using setTimeout to avoid setState in effect
   useEffect(() => {

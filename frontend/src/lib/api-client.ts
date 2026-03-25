@@ -29,7 +29,8 @@ apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const { tokens } = useAuthStore.getState();
 
-    if (tokens?.accessToken) {
+    // Preserve explicitly provided Authorization headers, such as refresh requests
+    if (tokens?.accessToken && !config.headers.Authorization) {
       config.headers.Authorization = `Bearer ${tokens.accessToken}`;
     }
 
@@ -101,8 +102,12 @@ apiClient.interceptors.response.use(
       });
     }
 
-    // Skip refresh for auth endpoints
-    if (originalRequest.url?.includes('/auth/refresh') || originalRequest.url?.includes('/auth/login')) {
+    // Skip refresh for auth endpoints that should not trigger refresh loops
+    if (
+      originalRequest.url?.includes('/auth/refresh') ||
+      originalRequest.url?.includes('/auth/login') ||
+      originalRequest.url?.includes('/auth/signup')
+    ) {
       return Promise.reject(error);
     }
 
