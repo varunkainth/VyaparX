@@ -1,0 +1,15 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.get_login_creds",
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.vyaparx.mobile",
+      "sha256_cert_fingerprints": [
+        "22:5A:44:3E:CA:CA:13:C6:84:C3:95:F5:7E:0C:7D:E9:CF:9C:22:52:56:0C:58:06:E3:FE:B8:B0:49:33:F7:0C"
+      ]
+    }
+  }
+]
