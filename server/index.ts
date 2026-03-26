@@ -76,7 +76,21 @@ app.get("/.well-known/apple-app-site-association", (_req, res) => {
 
     res.setHeader("Content-Type", "application/json");
     return res.status(200).json({
-        applinks: {},
+        applinks: {
+            details: [
+                {
+                    appIDs: [`${iosTeamId}.${iosBundleId}`],
+                    components: [
+                        {
+                            "/": "/reset-password*",
+                        },
+                        {
+                            "/": "/verify-email*",
+                        },
+                    ],
+                },
+            ],
+        },
         webcredentials: {
             apps: [`${iosTeamId}.${iosBundleId}`],
         },
@@ -98,7 +112,10 @@ app.get("/.well-known/assetlinks.json", (_req, res) => {
     res.setHeader("Content-Type", "application/json");
     return res.status(200).json([
         {
-            relation: ["delegate_permission/common.get_login_creds"],
+            relation: [
+                "delegate_permission/common.get_login_creds",
+                "delegate_permission/common.handle_all_urls",
+            ],
             target: {
                 namespace: "android_app",
                 package_name: androidPackageName,

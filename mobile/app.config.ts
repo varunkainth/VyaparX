@@ -1,14 +1,17 @@
 import type { ExpoConfig } from 'expo/config';
 
 const passkeyDomain = process.env.EXPO_PUBLIC_PASSKEY_DOMAIN?.trim();
-const iosAssociatedDomains = passkeyDomain ? [`webcredentials:${passkeyDomain}`] : [];
+const iosAssociatedDomains = passkeyDomain ? [`webcredentials:${passkeyDomain}`, `applinks:${passkeyDomain}`] : [];
 const androidIntentFilters = passkeyDomain
   ? [
       {
         action: 'VIEW',
         autoVerify: true,
         category: ['BROWSABLE', 'DEFAULT'],
-        data: [{ host: passkeyDomain, scheme: 'https' }],
+        data: [
+          { host: passkeyDomain, pathPrefix: '/reset-password', scheme: 'https' },
+          { host: passkeyDomain, pathPrefix: '/verify-email', scheme: 'https' },
+        ],
       },
     ]
   : [];
