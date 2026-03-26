@@ -51,6 +51,8 @@ const TAB_PARENT_BY_ROUTE: Record<string, string> = {
   '(app)/business': 'more',
   'business-settings': 'more',
   '(app)/business-settings': 'more',
+  'business-members': 'more',
+  '(app)/business-members': 'more',
   ledger: 'customers',
   '(app)/ledger': 'customers',
   payments: 'invoices',
@@ -99,6 +101,7 @@ export default function AppLayout() {
         <Tabs.Screen name="settings" options={{ href: null }} />
         <Tabs.Screen name="business" options={{ href: null }} />
         <Tabs.Screen name="business-settings" options={{ href: null }} />
+        <Tabs.Screen name="business-members" options={{ href: null }} />
         <Tabs.Screen name="reports" options={{ href: null }} />
       </Tabs>
     </PermissionsGate>

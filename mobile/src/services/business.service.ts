@@ -1,6 +1,6 @@
 import apiClient from '../lib/api-client';
 import type { ApiResponse, Session, Tokens } from '../types/auth';
-import type { BusinessWithRole, CreateBusinessInput } from '../types/business';
+import type { BusinessAssignableRole, BusinessMember, BusinessWithRole, CreateBusinessInput } from '../types/business';
 
 interface CreateBusinessResponse {
   business: BusinessWithRole;
@@ -14,8 +14,46 @@ export const businessService = {
     return response.data.data;
   },
 
+  async getBusiness(business_id: string): Promise<BusinessWithRole> {
+    const response = await apiClient.get<ApiResponse<BusinessWithRole>>(`/api/v1/businesses/${business_id}`);
+    return response.data.data;
+  },
+
   async createBusiness(payload: CreateBusinessInput): Promise<CreateBusinessResponse> {
     const response = await apiClient.post<ApiResponse<CreateBusinessResponse>>('/api/v1/businesses', payload);
     return response.data.data;
+  },
+
+  async updateBusiness(business_id: string, payload: Partial<CreateBusinessInput>): Promise<BusinessWithRole> {
+    const response = await apiClient.patch<ApiResponse<BusinessWithRole>>(`/api/v1/businesses/${business_id}`, payload);
+    return response.data.data;
+  },
+
+  async listBusinessMembers(business_id: string): Promise<BusinessMember[]> {
+    const response = await apiClient.get<ApiResponse<BusinessMember[]>>(`/api/v1/businesses/${business_id}/members`);
+    return response.data.data;
+  },
+
+  async inviteBusinessMember(
+    business_id: string,
+    payload: { email: string; role: BusinessAssignableRole }
+  ): Promise<void> {
+    await apiClient.post(`/api/v1/businesses/${business_id}/members/invite`, payload);
+  },
+
+  async updateBusinessMemberRole(
+    business_id: string,
+    user_id: string,
+    role: BusinessAssignableRole
+  ): Promise<void> {
+    await apiClient.patch(`/api/v1/businesses/${business_id}/members/${user_id}/role`, { role });
+  },
+
+  async updateBusinessMemberStatus(
+    business_id: string,
+    user_id: string,
+    is_active: boolean
+  ): Promise<void> {
+    await apiClient.patch(`/api/v1/businesses/${business_id}/members/${user_id}/status`, { is_active });
   },
 };

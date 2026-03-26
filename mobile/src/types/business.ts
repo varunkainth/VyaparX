@@ -11,11 +11,31 @@ export interface BusinessWithRole {
   pincode?: string | null;
   phone?: string | null;
   email?: string | null;
+  website?: string | null;
+  logo_url?: string | null;
+  signature_url?: string | null;
+  invoice_prefix?: string | null;
+  bank_name?: string | null;
+  bank_account_no?: string | null;
+  bank_ifsc?: string | null;
+  bank_branch?: string | null;
+  upi_id?: string | null;
   role: 'owner' | 'admin' | 'staff' | 'viewer' | 'accountant';
   membership_status?: 'active' | 'inactive' | 'pending';
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export type BusinessAssignableRole = 'admin' | 'staff' | 'viewer' | 'accountant';
+
+export interface BusinessMember {
+  email: string;
+  id: string;
+  is_active: boolean;
+  joined_at: string;
+  name: string;
+  role: 'owner' | BusinessAssignableRole;
 }
 
 export interface CreateBusinessInput {
