@@ -30,6 +30,13 @@ import { errorHandler } from "./src/utils/errorHandler";
 import { sendSuccess } from "./src/utils/responseHandler";
 
 const app = express();
+const iosBundleId = process.env.IOS_BUNDLE_ID?.trim() || "com.vyaparx.mobile";
+const iosTeamId = process.env.IOS_TEAM_ID?.trim() || "";
+const androidPackageName = process.env.ANDROID_PACKAGE_NAME?.trim() || "com.vyaparx.mobile";
+const androidFingerprints = (process.env.ANDROID_SHA256_CERT_FINGERPRINTS || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
 
 app.use(express.json());
 app.use(helmetMiddleware);
@@ -54,6 +61,51 @@ app.get("/health", (_req, res) => {
             timestamp: new Date().toISOString(),
         },
     });
+});
+
+app.get("/.well-known/apple-app-site-association", (_req, res) => {
+    if (!iosTeamId) {
+        return res.status(404).json({
+            success: false,
+            error: {
+                code: ERROR_CODES.NOT_FOUND,
+                message: "iOS passkey association is not configured",
+            },
+        });
+    }
+
+    res.setHeader("Content-Type", "application/json");
+    return res.status(200).json({
+        applinks: {},
+        webcredentials: {
+            apps: [`${iosTeamId}.${iosBundleId}`],
+        },
+        appclips: {},
+    });
+});
+
+app.get("/.well-known/assetlinks.json", (_req, res) => {
+    if (androidFingerprints.length === 0) {
+        return res.status(404).json({
+            success: false,
+            error: {
+                code: ERROR_CODES.NOT_FOUND,
+                message: "Android passkey association is not configured",
+            },
+        });
+    }
+
+    res.setHeader("Content-Type", "application/json");
+    return res.status(200).json([
+        {
+            relation: ["delegate_permission/common.get_login_creds"],
+            target: {
+                namespace: "android_app",
+                package_name: androidPackageName,
+                sha256_cert_fingerprints: androidFingerprints,
+            },
+        },
+    ]);
 });
 
 app.get("/test-db", async (_req, res, next) => {
