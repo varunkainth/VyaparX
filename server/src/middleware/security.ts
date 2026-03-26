@@ -75,10 +75,24 @@ export const corsMiddleware = cors({
         origin: string | undefined,
         callback: (err: Error | null, allow?: boolean) => void
     ) {
+        // ✅ Allow mobile apps, Postman, etc.
         if (!origin) return callback(null, true);
+
+        // ✅ Allow Expo (VERY IMPORTANT)
+        if (
+            origin.startsWith("exp://") ||
+            origin.includes("192.168") ||
+            origin.includes("localhost")
+        ) {
+            return callback(null, true);
+        }
+
+        // ✅ Allow your trusted web domains
         if (trustedOrigins.includes(origin)) {
             return callback(null, true);
         }
+
+        // ❌ Block everything else
         return callback(new Error("Origin not allowed by CORS"));
     },
     credentials: true,
