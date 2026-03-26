@@ -58,6 +58,7 @@ const config: ExpoConfig = {
     supportsTablet: true,
   },
   android: {
+    permissions: ['RECORD_AUDIO'],
     adaptiveIcon: {
       backgroundColor: '#E6F4FE',
       foregroundImage: './assets/android-icon-foreground.png',

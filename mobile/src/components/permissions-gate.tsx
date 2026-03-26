@@ -2,15 +2,16 @@ import * as React from 'react';
 import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Camera, FolderOpen, ShieldCheck, BellRing } from 'lucide-react-native';
-import * as Notifications from 'expo-notifications';
 import * as MediaLibrary from 'expo-media-library';
 import { Camera as ExpoCamera } from 'expo-camera';
+import { isRunningInExpoGo } from 'expo';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { hasHandledPermissionsPrompt, markPermissionsPromptHandled } from '@/lib/permission-storage';
+import type { NotificationPermissionsStatus } from 'expo-notifications';
 
 type PermissionState = 'granted' | 'denied' | 'undetermined';
 
@@ -20,18 +21,25 @@ type PermissionSnapshot = {
   notifications: PermissionState;
 };
 
+type NotificationPermissionResponse = NotificationPermissionsStatus | { status: PermissionState };
+
 export function PermissionsGate({ children }: { children: React.ReactNode }) {
   const [snapshot, setSnapshot] = React.useState<PermissionSnapshot | null>(null);
   const [hasHandledPrompt, setHasHandledPrompt] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isRequesting, setIsRequesting] = React.useState(false);
+  const notificationsSupported = Platform.OS !== 'web' && !isRunningInExpoGo();
 
   React.useEffect(() => {
     let isMounted = true;
 
     const bootstrap = async () => {
+      const notificationPromise: Promise<NotificationPermissionResponse> = notificationsSupported
+        ? (await import('expo-notifications')).getPermissionsAsync()
+        : Promise.resolve({ status: 'granted' } as NotificationPermissionResponse);
+
       const [notificationPermission, mediaPermission, cameraPermission, handled] = await Promise.all([
-        Notifications.getPermissionsAsync(),
+        notificationPromise,
         MediaLibrary.getPermissionsAsync(),
         ExpoCamera.getCameraPermissionsAsync(),
         hasHandledPermissionsPrompt(),
@@ -46,7 +54,7 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
         media: normalizeStatus(mediaPermission.status),
         notifications: normalizeStatus(notificationPermission.status),
       });
-      setHasHandledPrompt(handled);
+      setHasHandledPrompt(handled || !notificationsSupported);
       setIsLoading(false);
     };
 
@@ -55,12 +63,11 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [notificationsSupported]);
 
+  const notificationsGranted = !notificationsSupported || snapshot?.notifications === 'granted';
   const allGranted =
-    snapshot?.camera === 'granted' &&
-    snapshot?.media === 'granted' &&
-    snapshot?.notifications === 'granted';
+    snapshot?.camera === 'granted' && snapshot?.media === 'granted' && notificationsGranted;
 
   if (isLoading) {
     return null;
@@ -74,15 +81,24 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
     setIsRequesting(true);
 
     try {
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-          name: 'Default',
-          importance: Notifications.AndroidImportance.DEFAULT,
-        });
+      let notificationPermissionPromise: Promise<NotificationPermissionResponse> = Promise.resolve({
+        status: 'granted',
+      } as NotificationPermissionResponse);
+
+      if (notificationsSupported) {
+        const Notifications = await import('expo-notifications');
+        if (Platform.OS === 'android') {
+          await Notifications.setNotificationChannelAsync('default', {
+            name: 'Default',
+            importance: Notifications.AndroidImportance.DEFAULT,
+          });
+        }
+
+        notificationPermissionPromise = Notifications.requestPermissionsAsync();
       }
 
       const [notificationPermission, mediaPermission, cameraPermission] = await Promise.all([
-        Notifications.requestPermissionsAsync(),
+        notificationPermissionPromise,
         MediaLibrary.requestPermissionsAsync(),
         ExpoCamera.requestCameraPermissionsAsync(),
       ]);
@@ -109,7 +125,7 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
   const anyDenied =
     snapshot?.camera === 'denied' ||
     snapshot?.media === 'denied' ||
-    snapshot?.notifications === 'denied';
+    (notificationsSupported && snapshot?.notifications === 'denied');
 
   return (
     <SafeAreaView className="flex-1 bg-background">
@@ -129,12 +145,14 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
             </CardDescription>
           </CardHeader>
           <CardContent className="gap-3">
-            <PermissionRow
-              description="Receive reminders, due alerts, and business updates."
-              icon={BellRing}
-              status={snapshot?.notifications ?? 'undetermined'}
-              title="Notifications"
-            />
+            {notificationsSupported ? (
+              <PermissionRow
+                description="Receive reminders, due alerts, and business updates."
+                icon={BellRing}
+                status={snapshot?.notifications ?? 'undetermined'}
+                title="Notifications"
+              />
+            ) : null}
             <PermissionRow
               description="Save and access media, files, and generated assets."
               icon={FolderOpen}
