@@ -30,7 +30,7 @@ import { errorHandler } from "./src/utils/errorHandler";
 import { sendSuccess } from "./src/utils/responseHandler";
 
 const app = express();
-
+app.set("trust proxy", 1);
 app.use(express.json());
 app.use(helmetMiddleware);
 app.use(corsMiddleware);
