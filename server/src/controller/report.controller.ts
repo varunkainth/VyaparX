@@ -5,8 +5,11 @@ import {
     getLowStockReport,
     getMonthlySalesReport,
     getOutstandingReport,
+    getProfitLossReport,
+    getPurchaseReport,
 } from "../services/report.service";
 import type {
+    DateRangeQueryRaw,
     DateRangeExportQueryRaw,
     ExportFormat,
     GstSummaryExportQueryRaw,
@@ -92,6 +95,48 @@ export const lowStockReportHandler = async (req: Request<ReportsParams>, res: Re
 
     return sendSuccess(res, {
         message: "Low stock report fetched",
+        data,
+    });
+};
+
+export const purchaseReportHandler = async (
+    req: Request<ReportsParams, unknown, unknown, DateRangeQueryRaw>,
+    res: Response
+) => {
+    const businessId = getBusinessId(req);
+    const parsed = dateRangeQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+        throw new AppError("Validation failed", 400, ERROR_CODES.VALIDATION_ERROR, parsed.error.issues);
+    }
+
+    const data = await getPurchaseReport({
+        business_id: businessId,
+        ...parsed.data,
+    });
+
+    return sendSuccess(res, {
+        message: "Purchase report fetched",
+        data,
+    });
+};
+
+export const profitLossReportHandler = async (
+    req: Request<ReportsParams, unknown, unknown, DateRangeQueryRaw>,
+    res: Response
+) => {
+    const businessId = getBusinessId(req);
+    const parsed = dateRangeQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+        throw new AppError("Validation failed", 400, ERROR_CODES.VALIDATION_ERROR, parsed.error.issues);
+    }
+
+    const data = await getProfitLossReport({
+        business_id: businessId,
+        ...parsed.data,
+    });
+
+    return sendSuccess(res, {
+        message: "Profit and loss report fetched",
         data,
     });
 };
@@ -212,6 +257,56 @@ export const exportLowStockReportHandler = async (
         "low-stock-report",
         "Low Stock",
         data as Record<string, unknown>[],
+        parsed.data.format
+    );
+};
+
+export const exportPurchaseReportHandler = async (
+    req: Request<ReportsParams, unknown, unknown, DateRangeExportQueryRaw>,
+    res: Response
+) => {
+    const businessId = getBusinessId(req);
+    const parsed = dateRangeExportQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+        throw new AppError("Validation failed", 400, ERROR_CODES.VALIDATION_ERROR, parsed.error.issues);
+    }
+
+    const data = await getPurchaseReport({
+        business_id: businessId,
+        from_date: parsed.data.from_date,
+        to_date: parsed.data.to_date,
+    });
+
+    return await sendExport(
+        res,
+        "purchase-report",
+        "Purchase Report",
+        [data as Record<string, unknown>],
+        parsed.data.format
+    );
+};
+
+export const exportProfitLossReportHandler = async (
+    req: Request<ReportsParams, unknown, unknown, DateRangeExportQueryRaw>,
+    res: Response
+) => {
+    const businessId = getBusinessId(req);
+    const parsed = dateRangeExportQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+        throw new AppError("Validation failed", 400, ERROR_CODES.VALIDATION_ERROR, parsed.error.issues);
+    }
+
+    const data = await getProfitLossReport({
+        business_id: businessId,
+        from_date: parsed.data.from_date,
+        to_date: parsed.data.to_date,
+    });
+
+    return await sendExport(
+        res,
+        "profit-loss-report",
+        "Profit Loss",
+        [data as Record<string, unknown>],
         parsed.data.format
     );
 };

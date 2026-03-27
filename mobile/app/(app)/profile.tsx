@@ -11,12 +11,14 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
+import { ToastBanner, useTimedToast } from '@/components/ui/toast-banner';
 import { authService } from '@/services/auth.service';
 import { useAuthStore } from '@/store/auth-store';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { setUser, user } = useAuthStore();
+  const { message, showToast } = useTimedToast();
   const [isEditing, setIsEditing] = React.useState(false);
   const [name, setName] = React.useState(user?.name ?? '');
   const [email, setEmail] = React.useState(user?.email ?? '');
@@ -50,6 +52,7 @@ export default function ProfileScreen() {
 
       setUser(updatedUser);
       setSuccessMessage('Profile updated successfully.');
+      showToast('Profile updated successfully.');
       setIsEditing(false);
     } catch (submitError: any) {
       setError(
@@ -173,6 +176,7 @@ export default function ProfileScreen() {
           </Card>
         </View>
       </ScrollView>
+      <ToastBanner message={message} variant="success" />
     </SafeAreaView>
   );
 }

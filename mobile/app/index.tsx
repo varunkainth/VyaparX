@@ -1,13 +1,12 @@
 import { Redirect } from "expo-router";
 
-import { FullScreenLoader } from "../src/components/full-screen-loader";
 import { useAuthStore } from "../src/store/auth-store";
 
 export default function IndexScreen() {
   const { hasHydrated, isAuthenticated, session } = useAuthStore();
 
   if (!hasHydrated) {
-    return <FullScreenLoader label="Loading VyaparX Mobile..." />;
+    return null;
   }
 
   if (isAuthenticated) {

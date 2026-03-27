@@ -1,10 +1,10 @@
 import * as React from "react";
-import { Pressable, RefreshControl, ScrollView, View } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { BookOpenText, ChevronDown, CircleDollarSign, ReceiptText, Search } from "lucide-react-native";
+import { BookOpenText, ChevronDown, CircleDollarSign, Download, ReceiptText, Search } from "lucide-react-native";
 
-import { FullScreenLoader } from "@/components/full-screen-loader";
+import { CollectionScreenSkeleton } from "@/components/screen-skeleton";
 import { SubpageHeader } from "@/components/subpage-header";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,9 @@ import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Text } from "@/components/ui/text";
+import { ToastBanner, useTimedToast } from "@/components/ui/toast-banner";
 import { formatCurrency, formatShortDate } from "@/lib/formatters";
+import { buildCsvFromRows, exportCsvText } from "@/lib/report-export";
 import { ledgerService } from "@/services/ledger.service";
 import { partyService } from "@/services/party.service";
 import { useAuthStore } from "@/store/auth-store";
@@ -34,6 +36,7 @@ function getDefaultRange(days: number) {
 export default function LedgerScreen() {
   const router = useRouter();
   const { session } = useAuthStore();
+  const { message, showToast } = useTimedToast();
   const [entries, setEntries] = React.useState<LedgerEntry[]>([]);
   const [parties, setParties] = React.useState<Party[]>([]);
   const [selectedPartyId, setSelectedPartyId] = React.useState("");
@@ -43,6 +46,7 @@ export default function LedgerScreen() {
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [isPartyPickerOpen, setIsPartyPickerOpen] = React.useState(false);
+  const [isExporting, setIsExporting] = React.useState(false);
 
   const selectedParty = React.useMemo(
     () => parties.find((party) => party.id === selectedPartyId) ?? null,
@@ -131,8 +135,38 @@ export default function LedgerScreen() {
 
   const closingBalance = entries[0]?.balance_after ?? 0;
 
+  async function onExportLedger() {
+    setIsExporting(true);
+    setError(null);
+
+    try {
+      const csv = buildCsvFromRows(
+        entries.map((entry) => ({
+          date: entry.entry_date,
+          party: entry.party_name,
+          description: entry.description,
+          entry_type: entry.entry_type,
+          reference_type: entry.reference_type ?? "",
+          debit: entry.debit,
+          credit: entry.credit,
+          balance_after: entry.balance_after,
+        })),
+      );
+
+      await exportCsvText({
+        baseName: selectedParty ? `ledger-${selectedParty.name.replace(/\s+/g, "-").toLowerCase()}` : "ledger-statement",
+        content: csv,
+      });
+      showToast("Ledger exported as CSV.");
+    } catch (exportError) {
+      setError(exportError instanceof Error ? exportError.message : "Unable to export ledger statement.");
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
   if (isLoading) {
-    return <FullScreenLoader label="Loading ledger statement" />;
+    return <CollectionScreenSkeleton metricCount={2} rowCount={5} showActionCard />;
   }
 
   return (
@@ -194,6 +228,19 @@ export default function LedgerScreen() {
             </CardHeader>
             <CardContent>
               <Text className="text-3xl font-extrabold text-foreground">{formatCurrency(closingBalance)}</Text>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[28px]">
+            <CardHeader>
+              <CardTitle>Export</CardTitle>
+              <CardDescription>Share the current filtered ledger statement as CSV.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button variant="outline" className="h-12 rounded-2xl" disabled={isExporting || entries.length === 0} onPress={() => void onExportLedger()}>
+                {isExporting ? <ActivityIndicator color="#0f172a" /> : <Icon as={Download} className="text-foreground" size={16} />}
+                <Text>Export CSV</Text>
+              </Button>
             </CardContent>
           </Card>
 
@@ -311,6 +358,7 @@ export default function LedgerScreen() {
           </View>
         </DialogContent>
       </Dialog>
+      <ToastBanner message={message} variant="success" />
     </SafeAreaView>
   );
 }

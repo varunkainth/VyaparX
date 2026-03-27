@@ -225,6 +225,40 @@ export const openApiSpec = {
                 responses: { "200": { description: "OK" } },
             },
         },
+        "/api/v1/businesses/{business_id}/invites": {
+            get: {
+                summary: "List business invites",
+                security: [{ bearerAuth: [] }],
+                parameters: [{ in: "path", name: "business_id", required: true, schema: { type: "string" } }],
+                responses: { "200": { description: "OK" } },
+            },
+        },
+        "/api/v1/business-invites/{token}": {
+            get: {
+                summary: "Get business invite details",
+                parameters: [{ in: "path", name: "token", required: true, schema: { type: "string" } }],
+                responses: { "200": { description: "OK" } },
+            },
+        },
+        "/api/v1/business-invites/{token}/accept": {
+            post: {
+                summary: "Accept business invite",
+                security: [{ bearerAuth: [] }],
+                parameters: [{ in: "path", name: "token", required: true, schema: { type: "string" } }],
+                responses: { "200": { description: "OK" } },
+            },
+        },
+        "/api/v1/businesses/{business_id}/invites/{invite_id}/revoke": {
+            post: {
+                summary: "Revoke a pending business invite",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { in: "path", name: "business_id", required: true, schema: { type: "string" } },
+                    { in: "path", name: "invite_id", required: true, schema: { type: "string" } },
+                ],
+                responses: { "200": { description: "OK" } },
+            },
+        },
         "/api/v1/businesses/{business_id}/members/{user_id}/role": {
             patch: {
                 summary: "Update business member role",
@@ -536,6 +570,56 @@ export const openApiSpec = {
                 parameters: [
                     { in: "path", name: "business_id", required: true, schema: { type: "string" } },
                     { in: "query", name: "format", required: false, schema: { type: "string", enum: ["csv", "excel"] } },
+                ],
+                responses: { "200": { description: "File download" } },
+            },
+        },
+        "/api/v1/businesses/{business_id}/reports/purchase": {
+            get: {
+                summary: "Purchase report",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { in: "path", name: "business_id", required: true, schema: { type: "string" } },
+                    { in: "query", name: "from_date", required: false, schema: { type: "string", format: "date" } },
+                    { in: "query", name: "to_date", required: false, schema: { type: "string", format: "date" } },
+                ],
+                responses: { "200": { description: "OK" } },
+            },
+        },
+        "/api/v1/businesses/{business_id}/reports/purchase/export": {
+            get: {
+                summary: "Export purchase report (CSV/XLSX)",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { in: "path", name: "business_id", required: true, schema: { type: "string" } },
+                    { in: "query", name: "format", required: false, schema: { type: "string", enum: ["csv", "excel"] } },
+                    { in: "query", name: "from_date", required: false, schema: { type: "string", format: "date" } },
+                    { in: "query", name: "to_date", required: false, schema: { type: "string", format: "date" } },
+                ],
+                responses: { "200": { description: "File download" } },
+            },
+        },
+        "/api/v1/businesses/{business_id}/reports/profit-loss": {
+            get: {
+                summary: "Profit and loss report",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { in: "path", name: "business_id", required: true, schema: { type: "string" } },
+                    { in: "query", name: "from_date", required: false, schema: { type: "string", format: "date" } },
+                    { in: "query", name: "to_date", required: false, schema: { type: "string", format: "date" } },
+                ],
+                responses: { "200": { description: "OK" } },
+            },
+        },
+        "/api/v1/businesses/{business_id}/reports/profit-loss/export": {
+            get: {
+                summary: "Export profit and loss report (CSV/XLSX)",
+                security: [{ bearerAuth: [] }],
+                parameters: [
+                    { in: "path", name: "business_id", required: true, schema: { type: "string" } },
+                    { in: "query", name: "format", required: false, schema: { type: "string", enum: ["csv", "excel"] } },
+                    { in: "query", name: "from_date", required: false, schema: { type: "string", format: "date" } },
+                    { in: "query", name: "to_date", required: false, schema: { type: "string", format: "date" } },
                 ],
                 responses: { "200": { description: "File download" } },
             },

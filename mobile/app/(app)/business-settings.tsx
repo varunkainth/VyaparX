@@ -11,8 +11,9 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
-import { businessService } from '@/services/business.service';
+import { ToastBanner, useTimedToast } from '@/components/ui/toast-banner';
 import { useAuthStore } from '@/store/auth-store';
+import { useBusinessStore } from '@/store/business-store';
 import type { CreateBusinessInput } from '@/types/business';
 
 const initialForm: CreateBusinessInput = {
@@ -43,6 +44,8 @@ const initialForm: CreateBusinessInput = {
 export default function BusinessSettingsScreen() {
   const router = useRouter();
   const { session } = useAuthStore();
+  const { currentBusiness, ensureCurrentBusiness, updateActiveBusiness } = useBusinessStore();
+  const { message, showToast } = useTimedToast();
   const [form, setForm] = React.useState<CreateBusinessInput>(initialForm);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -62,7 +65,12 @@ export default function BusinessSettingsScreen() {
       setError(null);
 
       try {
-        const business = await businessService.getBusiness(session.business_id);
+        await ensureCurrentBusiness(session.business_id, !currentBusiness || currentBusiness.id !== session.business_id);
+
+        const business = useBusinessStore.getState().currentBusiness;
+        if (!business) {
+          throw new Error('Unable to load business settings right now.');
+        }
 
         if (!isMounted) {
           return;
@@ -113,7 +121,7 @@ export default function BusinessSettingsScreen() {
     return () => {
       isMounted = false;
     };
-  }, [session?.business_id]);
+  }, [currentBusiness, ensureCurrentBusiness, session?.business_id]);
 
   async function onSave() {
     if (!session?.business_id) {
@@ -126,7 +134,7 @@ export default function BusinessSettingsScreen() {
     setSuccessMessage(null);
 
     try {
-      await businessService.updateBusiness(session.business_id, {
+      await updateActiveBusiness({
         address_line1: form.address_line1.trim() || undefined,
         address_line2: form.address_line2?.trim() || undefined,
         bank_account_no: form.bank_account_no?.trim() || undefined,
@@ -150,6 +158,7 @@ export default function BusinessSettingsScreen() {
       });
 
       setSuccessMessage('Business settings updated successfully.');
+      showToast('Business settings updated successfully.');
     } catch (saveError: any) {
       setError(
         saveError?.response?.data?.error?.message ??
@@ -381,6 +390,7 @@ export default function BusinessSettingsScreen() {
           </Card>
         </View>
       </ScrollView>
+      <ToastBanner message={message} variant="success" />
     </SafeAreaView>
   );
 }

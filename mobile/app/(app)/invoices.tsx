@@ -16,16 +16,18 @@ import {
   TrendingUp,
 } from "lucide-react-native";
 
-import { FullScreenLoader } from "@/components/full-screen-loader";
 import { ToastBanner, useTimedToast } from "@/components/ui/toast-banner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DevCacheIndicator } from "@/components/dev-cache-indicator";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Text } from "@/components/ui/text";
+import { CACHE_TTL_MS, formatCacheAge, isCacheStale } from "@/lib/cache-policy";
 import { formatCompactNumber, formatCurrency, formatShortDate } from "@/lib/formatters";
-import { invoiceService } from "@/services/invoice.service";
 import { useAuthStore } from "@/store/auth-store";
+import { getInvoiceCacheKey, useInvoiceStore } from "@/store/invoice-store";
 import type { Invoice, InvoiceType, PaymentStatus } from "@/types/invoice";
 
 const INVOICE_TYPE_FILTERS: Array<{ label: string; value: InvoiceType | "all" }> = [
@@ -46,8 +48,8 @@ export default function InvoicesScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ refresh?: string; toast?: string }>();
   const { session } = useAuthStore();
+  const ensureInvoices = useInvoiceStore((state) => state.ensureInvoices);
   const { message, showToast } = useTimedToast();
-  const [invoices, setInvoices] = React.useState<Invoice[]>([]);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [includeCancelled, setIncludeCancelled] = React.useState(false);
   const [invoiceTypeFilter, setInvoiceTypeFilter] = React.useState<InvoiceType | "all">("all");
@@ -59,11 +61,23 @@ export default function InvoicesScreen() {
   const handledRefreshRef = React.useRef<string | null>(null);
   const handledToastRef = React.useRef<string | null>(null);
   const hasFocusedOnceRef = React.useRef(false);
+  const invoiceCache = useInvoiceStore((state) =>
+    session?.business_id ? state.cache[getInvoiceCacheKey(session.business_id, includeCancelled)] : undefined
+  );
+  const invoices = invoiceCache?.items ?? [];
+  const cacheError = invoiceCache?.error ?? null;
+  const invoiceCacheState =
+    invoiceCache?.status === "loading"
+      ? "refreshing"
+      : invoices.length
+        ? isCacheStale(invoiceCache?.updatedAt, CACHE_TTL_MS.invoiceList)
+          ? "stale"
+          : "cached"
+        : "empty";
 
   const loadInvoices = React.useCallback(
     async (mode: "initial" | "refresh" = "initial") => {
       if (!session?.business_id) {
-        setInvoices([]);
         setError("Select a business to view invoices.");
         setIsLoading(false);
         setIsRefreshing(false);
@@ -78,11 +92,7 @@ export default function InvoicesScreen() {
 
       try {
         setError(null);
-        const response = await invoiceService.listInvoices(session.business_id, {
-          include_cancelled: includeCancelled,
-          limit: 100,
-        });
-        setInvoices(response.items);
+        await ensureInvoices(session.business_id, includeCancelled, mode === "refresh");
       } catch (loadError: any) {
         setError(
           loadError?.response?.data?.error?.message ??
@@ -95,7 +105,7 @@ export default function InvoicesScreen() {
         setIsRefreshing(false);
       }
     },
-    [includeCancelled, session?.business_id],
+    [ensureInvoices, includeCancelled, session?.business_id],
   );
 
   React.useEffect(() => {
@@ -163,10 +173,6 @@ export default function InvoicesScreen() {
     };
   }, [invoices]);
 
-  if (isLoading) {
-    return <FullScreenLoader label="Loading invoices" />;
-  }
-
   return (
     <SafeAreaView className="flex-1 bg-background">
       <View className="absolute -left-12 top-16 h-32 w-32 rounded-full bg-primary/8" />
@@ -176,7 +182,16 @@ export default function InvoicesScreen() {
         contentContainerClassName="px-6 pb-28 pt-4"
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void loadInvoices("refresh")} />}>
         <View className="gap-6">
+          {isLoading ? <InvoicesScreenSkeleton /> : null}
+
+          {!isLoading ? (
+          <>
           <View className="gap-2">
+            <DevCacheIndicator
+              label="invoices"
+              state={invoiceCacheState}
+              detail={formatCacheAge(invoiceCache?.updatedAt)}
+            />
             <Text className="text-sm uppercase tracking-[2px] text-muted-foreground">Invoices</Text>
             <Text className="text-3xl font-extrabold tracking-tight text-foreground">Billing desk</Text>
             <Text className="text-base leading-6 text-muted-foreground">
@@ -236,11 +251,11 @@ export default function InvoicesScreen() {
             </CardContent>
           </Card>
 
-          {error ? (
+          {error || cacheError ? (
             <Card className="rounded-[28px] border-destructive/20 bg-destructive/5">
               <CardContent className="gap-4 px-5 py-5">
                 <Text className="font-semibold text-foreground">Invoice sync failed</Text>
-                <Text className="text-sm leading-6 text-muted-foreground">{error}</Text>
+                <Text className="text-sm leading-6 text-muted-foreground">{error ?? cacheError}</Text>
                 <Button className="h-12 rounded-2xl" onPress={() => void loadInvoices()}>
                   <Text>Retry invoice sync</Text>
                 </Button>
@@ -309,17 +324,20 @@ export default function InvoicesScreen() {
               <CardDescription>Move into the payments desk to review receipts and outflows.</CardDescription>
             </CardHeader>
             <CardContent className="gap-3">
-              <Pressable onPress={() => router.push("/(app)/payments")}>
-                <Button variant="outline" className="h-14 justify-between rounded-2xl px-4">
-                  <View className="flex-row items-center gap-3">
-                    <Icon as={CreditCard} className="text-primary" size={18} />
-                    <Text>Payments</Text>
-                  </View>
-                  <Icon as={ArrowUpRight} className="text-muted-foreground" size={18} />
-                </Button>
-              </Pressable>
+              <Button
+                variant="outline"
+                className="h-14 justify-between rounded-2xl px-4"
+                onPress={() => router.push("/(app)/payments")}>
+                <View className="flex-row items-center gap-3">
+                  <Icon as={CreditCard} className="text-primary" size={18} />
+                  <Text>Payments</Text>
+                </View>
+                <Icon as={ArrowUpRight} className="text-muted-foreground" size={18} />
+              </Button>
             </CardContent>
           </Card>
+          </>
+          ) : null}
         </View>
       </ScrollView>
       <InvoiceActionFab
@@ -336,6 +354,25 @@ export default function InvoicesScreen() {
       />
       <ToastBanner message={message} variant="success" />
     </SafeAreaView>
+  );
+}
+
+function InvoicesScreenSkeleton() {
+  return (
+    <View className="gap-6">
+      <View className="gap-3">
+        <Skeleton className="h-4 w-20 rounded-full" />
+        <Skeleton className="h-9 w-40 rounded-full" />
+        <Skeleton className="h-5 w-full rounded-full" />
+      </View>
+      <View className="flex-row flex-wrap gap-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Skeleton key={index} className="h-16 min-w-[140px] flex-1 rounded-2xl" />
+        ))}
+      </View>
+      <Skeleton className="h-72 w-full rounded-[28px]" />
+      <Skeleton className="h-[420px] w-full rounded-[28px]" />
+    </View>
   );
 }
 

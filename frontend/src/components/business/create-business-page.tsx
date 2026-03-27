@@ -260,57 +260,6 @@ export function CreateBusinessPage() {
                   </CardContent>
                 </Card>
 
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 rounded-lg bg-primary/10 shrink-0">
-                      <FileText className="h-4 w-4 md:h-5 md:w-5 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base md:text-lg">Document Prefixes</CardTitle>
-                      <CardDescription className="text-xs md:text-sm">Optional defaults for sales and purchase documents</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
-                    <Field>
-                      <FieldLabel htmlFor="invoice_prefix" className="text-xs md:text-sm">Sales Prefix</FieldLabel>
-                      <Input
-                        id="invoice_prefix"
-                        type="text"
-                        placeholder="INV"
-                        {...register("invoice_prefix")}
-                        disabled={isSubmitting}
-                        className="uppercase text-sm"
-                      />
-                      {errors.invoice_prefix && (
-                        <p className="text-xs text-destructive mt-1">
-                          {errors.invoice_prefix.message}
-                        </p>
-                      )}
-                    </Field>
-
-                    <Field>
-                      <FieldLabel htmlFor="purchase_prefix" className="text-xs md:text-sm">Purchase Prefix</FieldLabel>
-                      <Input
-                        id="purchase_prefix"
-                        type="text"
-                        placeholder="PUR"
-                        {...register("purchase_prefix")}
-                        disabled={isSubmitting}
-                        className="uppercase text-sm"
-                      />
-                      {errors.purchase_prefix && (
-                        <p className="text-xs text-destructive mt-1">
-                          {errors.purchase_prefix.message}
-                        </p>
-                      )}
-                    </Field>
-                  </div>
-                </CardContent>
-              </Card>
-
               {/* Contact Information - Mobile Optimized */}
               <Card>
                 <CardHeader>

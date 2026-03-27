@@ -27,16 +27,11 @@ const config: ExpoConfig = {
   plugins: [
     'expo-router',
     'expo-secure-store',
+     "expo-sharing",
     [
       'expo-notifications',
       {
         defaultChannel: 'default',
-      },
-    ],
-    [
-      'expo-camera',
-      {
-        cameraPermission: 'Allow VyaparX to use the camera for scanning documents and attaching images.',
       },
     ],
     [
@@ -58,7 +53,6 @@ const config: ExpoConfig = {
     supportsTablet: true,
   },
   android: {
-    permissions: ['RECORD_AUDIO'],
     adaptiveIcon: {
       backgroundColor: '#E6F4FE',
       foregroundImage: './assets/android-icon-foreground.png',

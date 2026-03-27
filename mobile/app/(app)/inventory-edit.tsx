@@ -4,8 +4,9 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { PenLine, Trash2 } from "lucide-react-native";
 
-import { FullScreenLoader } from "@/components/full-screen-loader";
+import { FormScreenSkeleton } from "@/components/screen-skeleton";
 import { SubpageHeader } from "@/components/subpage-header";
+import { DevCacheIndicator } from "@/components/dev-cache-indicator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,10 +25,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Text } from "@/components/ui/text";
 import { Textarea } from "@/components/ui/textarea";
+import { CACHE_TTL_MS, formatCacheAge, isCacheStale } from "@/lib/cache-policy";
 import { formatCurrency, formatShortDate } from "@/lib/formatters";
-import { inventoryService } from "@/services/inventory.service";
 import { useAuthStore } from "@/store/auth-store";
-import { GST_RATES, INVENTORY_UNITS, type StockMovement } from "@/types/inventory";
+import { useInventoryStore } from "@/store/inventory-store";
+import { GST_RATES, INVENTORY_UNITS } from "@/types/inventory";
 
 type EditFormState = {
   name: string;
@@ -45,9 +47,12 @@ export default function InventoryEditScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string }>();
   const { session } = useAuthStore();
+  const deleteInventoryItem = useInventoryStore((state) => state.deleteInventoryItem);
+  const ensureInventoryDetail = useInventoryStore((state) => state.ensureInventoryDetail);
+  const ensureStockMovements = useInventoryStore((state) => state.ensureStockMovements);
+  const updateInventoryItem = useInventoryStore((state) => state.updateInventoryItem);
   const { message, showToast } = useTimedToast();
   const [form, setForm] = React.useState<EditFormState | null>(null);
-  const [movements, setMovements] = React.useState<StockMovement[]>([]);
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -55,6 +60,30 @@ export default function InventoryEditScreen() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
 
   const itemId = typeof params.id === "string" ? params.id : undefined;
+  const item = useInventoryStore((state) => (itemId ? state.detailById[itemId] ?? null : null));
+  const movements = useInventoryStore((state) => (itemId ? state.movementsByItemId[itemId] ?? [] : []));
+  const detailError = useInventoryStore((state) => (itemId ? state.detailErrorById[itemId] ?? null : null));
+  const detailStatus = useInventoryStore((state) => (itemId ? state.detailStatusById[itemId] ?? "idle" : "idle"));
+  const detailUpdatedAt = useInventoryStore((state) => (itemId ? state.detailUpdatedAtById[itemId] ?? null : null));
+  const movementError = useInventoryStore((state) => (itemId ? state.movementsErrorByItemId[itemId] ?? null : null));
+  const movementStatus = useInventoryStore((state) => (itemId ? state.movementsStatusByItemId[itemId] ?? "idle" : "idle"));
+  const movementUpdatedAt = useInventoryStore((state) => (itemId ? state.movementsUpdatedAtByItemId[itemId] ?? null : null));
+  const itemCacheState =
+    detailStatus === "loading"
+      ? "refreshing"
+      : item
+        ? isCacheStale(detailUpdatedAt, CACHE_TTL_MS.inventoryDetail)
+          ? "stale"
+          : "cached"
+        : "empty";
+  const movementCacheState =
+    movementStatus === "loading"
+      ? "refreshing"
+      : movements.length
+        ? isCacheStale(movementUpdatedAt, CACHE_TTL_MS.stockMovements)
+          ? "stale"
+          : "cached"
+        : "empty";
 
   const loadItem = React.useCallback(async () => {
     if (!session?.business_id || !itemId) {
@@ -66,22 +95,22 @@ export default function InventoryEditScreen() {
     setIsLoading(true);
     try {
       setError(null);
-      const [item, stockMovements] = await Promise.all([
-        inventoryService.getInventoryItem(session.business_id, itemId),
-        inventoryService.listStockMovements(session.business_id, { item_id: itemId }),
+      const [nextItem, stockMovements] = await Promise.all([
+        ensureInventoryDetail(session.business_id, itemId, true),
+        ensureStockMovements(session.business_id, itemId, true),
       ]);
       setForm({
-        name: item.name,
-        sku: item.sku ?? "",
-        hsn_code: item.hsn_code ?? "",
-        description: item.description ?? "",
-        unit: item.unit,
-        gst_rate: String(item.gst_rate),
-        purchase_price: String(item.purchase_price),
-        selling_price: String(item.selling_price),
-        low_stock_threshold: String(item.low_stock_threshold),
+        name: nextItem.name,
+        sku: nextItem.sku ?? "",
+        hsn_code: nextItem.hsn_code ?? "",
+        description: nextItem.description ?? "",
+        unit: nextItem.unit,
+        gst_rate: String(nextItem.gst_rate),
+        purchase_price: String(nextItem.purchase_price),
+        selling_price: String(nextItem.selling_price),
+        low_stock_threshold: String(nextItem.low_stock_threshold),
       });
-      setMovements(stockMovements.slice(0, 6));
+      void stockMovements;
     } catch (loadError: any) {
       setError(
         loadError?.response?.data?.error?.message ??
@@ -92,7 +121,7 @@ export default function InventoryEditScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [itemId, session?.business_id]);
+  }, [ensureInventoryDetail, ensureStockMovements, itemId, session?.business_id]);
 
   React.useEffect(() => {
     void loadItem();
@@ -127,7 +156,7 @@ export default function InventoryEditScreen() {
     setError(null);
 
     try {
-      const updated = await inventoryService.updateInventoryItem(session.business_id, itemId, {
+      const updated = await updateInventoryItem(session.business_id, itemId, {
         name: form.name.trim(),
         sku: normalizeOptional(form.sku),
         hsn_code: normalizeOptional(form.hsn_code),
@@ -171,7 +200,7 @@ export default function InventoryEditScreen() {
     setError(null);
 
     try {
-      await inventoryService.deleteInventoryItem(session.business_id, itemId);
+      await deleteInventoryItem(session.business_id, itemId);
       setIsDeleteDialogOpen(false);
       showToast(`${form.name} deleted successfully.`);
       setTimeout(() => {
@@ -196,7 +225,7 @@ export default function InventoryEditScreen() {
   }
 
   if (isLoading || !form) {
-    return <FullScreenLoader label="Loading inventory item" />;
+    return <FormScreenSkeleton rowCount={4} showActionCard />;
   }
 
   return (
@@ -209,6 +238,18 @@ export default function InventoryEditScreen() {
             subtitle="Update the commercial details of an existing item without touching its movement history."
             title="Edit item"
           />
+          <View className="gap-2">
+            <DevCacheIndicator
+              label="inventory-item"
+              state={itemCacheState}
+              detail={formatCacheAge(detailUpdatedAt)}
+            />
+            <DevCacheIndicator
+              label="stock-history"
+              state={movementCacheState}
+              detail={formatCacheAge(movementUpdatedAt)}
+            />
+          </View>
 
           <Card className="rounded-[28px]">
             <CardHeader>
@@ -297,7 +338,7 @@ export default function InventoryEditScreen() {
             </CardHeader>
             <CardContent className="gap-3">
               {movements.length ? (
-                movements.map((movement) => (
+                movements.slice(0, 6).map((movement) => (
                   <View
                     key={movement.id}
                     className="rounded-[24px] border border-border/70 bg-background px-4 py-4">
@@ -329,9 +370,9 @@ export default function InventoryEditScreen() {
             </CardContent>
           </Card>
 
-          {error ? (
+          {error || detailError || movementError ? (
             <View className="rounded-[24px] border border-destructive/30 bg-destructive/10 px-4 py-4">
-              <Text className="text-sm text-destructive">{error}</Text>
+              <Text className="text-sm text-destructive">{error ?? detailError ?? movementError}</Text>
             </View>
           ) : null}
 

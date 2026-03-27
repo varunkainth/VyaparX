@@ -17,25 +17,26 @@ import {
   Search,
 } from "lucide-react-native";
 
-import { FullScreenLoader } from "@/components/full-screen-loader";
+import { CollectionScreenSkeleton } from "@/components/screen-skeleton";
 import { ToastBanner, useTimedToast } from "@/components/ui/toast-banner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DevCacheIndicator } from "@/components/dev-cache-indicator";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import { CACHE_TTL_MS, formatCacheAge, isCacheStale } from "@/lib/cache-policy";
 import { formatCompactNumber, formatCurrency } from "@/lib/formatters";
-import { inventoryService } from "@/services/inventory.service";
 import { useAuthStore } from "@/store/auth-store";
-import type { InventoryItem } from "@/types/inventory";
+import { getInventoryCacheKey, useInventoryStore } from "@/store/inventory-store";
 
 export default function InventoryScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ refresh?: string; toast?: string }>();
   const { message, showToast } = useTimedToast();
   const { session } = useAuthStore();
-  const [items, setItems] = React.useState<InventoryItem[]>([]);
+  const ensureInventoryItems = useInventoryStore((state) => state.ensureInventoryItems);
   const [error, setError] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [includeInactive, setIncludeInactive] = React.useState(false);
@@ -46,11 +47,23 @@ export default function InventoryScreen() {
   const handledRefreshRef = React.useRef<string | null>(null);
   const handledToastRef = React.useRef<string | null>(null);
   const hasFocusedOnceRef = React.useRef(false);
+  const inventoryCache = useInventoryStore((state) =>
+    session?.business_id ? state.cache[getInventoryCacheKey(session.business_id, includeInactive)] : undefined
+  );
+  const items = inventoryCache?.items ?? [];
+  const cacheError = inventoryCache?.error ?? null;
+  const inventoryCacheState =
+    inventoryCache?.status === "loading"
+      ? "refreshing"
+      : items.length
+        ? isCacheStale(inventoryCache?.updatedAt, CACHE_TTL_MS.inventoryList)
+          ? "stale"
+          : "cached"
+        : "empty";
 
   const loadInventory = React.useCallback(
     async (mode: "initial" | "refresh" = "initial") => {
       if (!session?.business_id) {
-        setItems([]);
         setError("Select a business to view inventory.");
         setIsLoading(false);
         setIsRefreshing(false);
@@ -65,10 +78,7 @@ export default function InventoryScreen() {
 
       try {
         setError(null);
-        const nextItems = await inventoryService.listInventoryItems(session.business_id, {
-          include_inactive: includeInactive ? "true" : "false",
-        });
-        setItems(nextItems);
+        await ensureInventoryItems(session.business_id, includeInactive, mode === "refresh");
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Unable to load inventory.");
       } finally {
@@ -76,7 +86,7 @@ export default function InventoryScreen() {
         setIsRefreshing(false);
       }
     },
-    [includeInactive, session?.business_id],
+    [ensureInventoryItems, includeInactive, session?.business_id],
   );
 
   React.useEffect(() => {
@@ -143,7 +153,7 @@ export default function InventoryScreen() {
   }, [items]);
 
   if (isLoading) {
-    return <FullScreenLoader label="Loading inventory" />;
+    return <CollectionScreenSkeleton metricCount={4} rowCount={5} />;
   }
 
   return (
@@ -156,6 +166,11 @@ export default function InventoryScreen() {
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void loadInventory("refresh")} />}>
         <View className="gap-6">
           <View className="gap-2">
+            <DevCacheIndicator
+              label="inventory"
+              state={inventoryCacheState}
+              detail={formatCacheAge(inventoryCache?.updatedAt)}
+            />
             <Text className="text-sm uppercase tracking-[2px] text-muted-foreground">Inventory</Text>
             <Text className="text-3xl font-extrabold tracking-tight text-foreground">Stock control</Text>
             <Text className="text-base leading-6 text-muted-foreground">
@@ -227,7 +242,7 @@ export default function InventoryScreen() {
             </CardContent>
           </Card>
 
-          {error ? (
+          {error || cacheError ? (
             <Card className="rounded-[28px] border-destructive/20 bg-destructive/5">
               <CardContent className="gap-4 px-5 py-5">
                 <View className="flex-row items-start gap-3">
@@ -236,7 +251,7 @@ export default function InventoryScreen() {
                   </View>
                   <View className="flex-1 gap-1">
                     <Text className="font-semibold text-foreground">Inventory sync failed</Text>
-                    <Text className="text-sm leading-6 text-muted-foreground">{error}</Text>
+                    <Text className="text-sm leading-6 text-muted-foreground">{error ?? cacheError}</Text>
                   </View>
                 </View>
                 <Button className="h-12 rounded-2xl" onPress={() => void loadInventory()}>

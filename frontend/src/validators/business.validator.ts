@@ -111,8 +111,11 @@ export const updateBusinessSchema = z.object({
 
 // Invite member validation schema
 export const inviteMemberSchema = z.object({
-  user_id: z.string().min(1, "User ID is required").uuid("Invalid user ID"),
-  role: z.enum(["owner", "admin", "staff", "viewer", "accountant"], {
+  email: z
+    .string({ error: "Email is required" })
+    .trim()
+    .email("Invalid email address"),
+  role: z.enum(["admin", "staff", "viewer", "accountant"], {
     message: "Invalid role selected",
   }),
 });

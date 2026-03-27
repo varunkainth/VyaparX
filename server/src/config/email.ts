@@ -543,6 +543,120 @@ This is an automated email. Please do not reply to this message.
             html,
         });
     }
+
+    async sendBusinessInviteEmail(options: {
+        to: string;
+        invitedEmail: string;
+        businessName: string;
+        inviterName: string;
+        role: string;
+        inviteUrl: string;
+    }): Promise<void> {
+        const { to, invitedEmail, businessName, inviterName, role, inviteUrl } = options;
+        const subject = `Join ${businessName} on VyaparX`;
+
+        const html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        line-height: 1.6;
+                        color: #333;
+                    }
+                    .container {
+                        max-width: 600px;
+                        margin: 0 auto;
+                        padding: 20px;
+                    }
+                    .header {
+                        background-color: #4F46E5;
+                        color: white;
+                        padding: 20px;
+                        text-align: center;
+                        border-radius: 5px 5px 0 0;
+                    }
+                    .content {
+                        background-color: #f9fafb;
+                        padding: 30px;
+                        border: 1px solid #e5e7eb;
+                        border-top: none;
+                    }
+                    .button {
+                        display: inline-block;
+                        padding: 12px 24px;
+                        background-color: #4F46E5;
+                        color: white;
+                        text-decoration: none;
+                        border-radius: 5px;
+                        margin: 20px 0;
+                        text-align: center;
+                    }
+                    .token-box {
+                        background-color: #f3f4f6;
+                        padding: 15px;
+                        border-radius: 5px;
+                        font-family: monospace;
+                        font-size: 14px;
+                        word-break: break-all;
+                        margin: 20px 0;
+                    }
+                    .footer {
+                        text-align: center;
+                        padding: 20px;
+                        color: #6b7280;
+                        font-size: 0.9em;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>Business Invite</h1>
+                    </div>
+                    <div class="content">
+                        <p>Hi ${invitedEmail},</p>
+                        <p><strong>${inviterName}</strong> invited you to join <strong>${businessName}</strong> on VyaparX.</p>
+                        <p>Your access role will be <strong>${role}</strong>.</p>
+                        <div style="text-align: center;">
+                            <a href="${inviteUrl}" class="button">Review And Accept Invite</a>
+                        </div>
+                        <p>Or copy and paste this link into your browser:</p>
+                        <div class="token-box">${inviteUrl}</div>
+                        <p>If you do not have an account yet, sign up with <strong>${invitedEmail}</strong> first, then return to this invite link.</p>
+                    </div>
+                    <div class="footer">
+                        <p>This is an automated email. Please do not reply to this message.</p>
+                        <p>&copy; ${new Date().getFullYear()} VyaparX. All rights reserved.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
+        const text = `
+Join ${businessName} on VyaparX
+
+${inviterName} invited you to join ${businessName} on VyaparX.
+Your access role will be ${role}.
+
+Open this link to review and accept the invite:
+${inviteUrl}
+
+If you do not have an account yet, sign up with ${invitedEmail} first, then return to this invite link.
+
+---
+This is an automated email. Please do not reply to this message.
+        `;
+
+        await this.sendEmail({
+            to,
+            subject,
+            text,
+            html,
+        });
+    }
 }
 
 export const emailService = new EmailService();

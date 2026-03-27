@@ -2,9 +2,9 @@ import * as React from 'react';
 import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BarChart3, Boxes, FileSpreadsheet, TrendingUp } from 'lucide-react-native';
+import { BarChart3, Boxes, ChevronRight, FileSpreadsheet, ReceiptText, ShoppingCart, TrendingDown, TrendingUp, Wallet } from 'lucide-react-native';
 
-import { FullScreenLoader } from '@/components/full-screen-loader';
+import { CollectionScreenSkeleton } from '@/components/screen-skeleton';
 import { SubpageHeader } from '@/components/subpage-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
@@ -86,7 +86,7 @@ export default function ReportsScreen() {
   }, [loadReports]);
 
   if (isLoading) {
-    return <FullScreenLoader label="Loading business reports" />;
+    return <CollectionScreenSkeleton metricCount={2} rowCount={6} showActionCard />;
   }
 
   const latestMonth = monthlySales[0] ?? null;
@@ -136,57 +136,52 @@ export default function ReportsScreen() {
 
           <Card className="rounded-[28px]">
             <CardHeader>
-              <CardTitle>Monthly sales</CardTitle>
-              <CardDescription>
-                {latestMonth ? `Most recent month: ${formatMonthLabel(latestMonth.month)}` : 'No sales data available yet.'}
-              </CardDescription>
+              <CardTitle>Report library</CardTitle>
+              <CardDescription>Open dedicated report views with export actions.</CardDescription>
             </CardHeader>
             <CardContent className="gap-3">
-              {latestMonth ? (
-                <View className="rounded-[24px] border border-border/70 bg-background px-4 py-4">
-                  <View className="flex-row items-center justify-between">
-                    <View className="gap-1">
-                      <Text className="text-sm text-muted-foreground">{formatMonthLabel(latestMonth.month)}</Text>
-                      <Text className="text-2xl font-extrabold text-foreground">
-                        {formatCurrency(Number(latestMonth.grand_total))}
-                      </Text>
-                    </View>
-                    <View className="rounded-2xl bg-primary/10 px-3 py-3">
-                      <Icon as={TrendingUp} className="text-primary" size={18} />
-                    </View>
-                  </View>
-                  <View className="mt-4 flex-row gap-3">
-                    <View className="flex-1 rounded-2xl border border-border/60 bg-card px-3 py-3">
-                      <Text className="text-xs uppercase tracking-[1px] text-muted-foreground">Invoices</Text>
-                      <Text className="mt-1 text-lg font-semibold text-foreground">{latestMonth.invoice_count}</Text>
-                    </View>
-                    <View className="flex-1 rounded-2xl border border-border/60 bg-card px-3 py-3">
-                      <Text className="text-xs uppercase tracking-[1px] text-muted-foreground">Taxable</Text>
-                      <Text className="mt-1 text-lg font-semibold text-foreground">
-                        {formatCurrency(Number(latestMonth.taxable_amount))}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              ) : (
-                <Text className="text-sm leading-6 text-muted-foreground">No monthly sales report data available yet.</Text>
-              )}
-
-              {monthlySales.slice(0, 4).map((item) => (
-                <Pressable
-                  key={item.month}
-                  className="flex-row items-center gap-4 rounded-2xl border border-border/70 bg-background px-4 py-4"
-                  onPress={() => router.push('/(app)/invoices')}>
-                  <View className="rounded-2xl bg-primary/10 px-3 py-3">
-                    <Icon as={TrendingUp} className="text-primary" size={18} />
-                  </View>
-                  <View className="flex-1 gap-1">
-                    <Text className="font-semibold text-foreground">{formatMonthLabel(item.month)}</Text>
-                    <Text className="text-sm leading-5 text-muted-foreground">{item.invoice_count} invoices raised</Text>
-                  </View>
-                  <Text className="font-semibold text-foreground">{formatCurrency(Number(item.grand_total))}</Text>
-                </Pressable>
-              ))}
+              <ReportLink
+                description={latestMonth ? `Latest sales bucket: ${formatMonthLabel(latestMonth.month)}` : 'Monthly sales totals with CSV or Excel export.'}
+                icon={TrendingUp}
+                title="Sales report"
+                value={formatCurrency(monthlySalesTotal)}
+                onPress={() => router.push('/(app)/report-sales')}
+              />
+              <ReportLink
+                description="Purchase totals derived from GST summary export."
+                icon={ShoppingCart}
+                title="Purchase report"
+                value="Open"
+                onPress={() => router.push('/(app)/report-purchase')}
+              />
+              <ReportLink
+                description="Derived from sales and purchase summaries."
+                icon={Wallet}
+                title="Profit and loss"
+                value="Open"
+                onPress={() => router.push('/(app)/report-profit-loss')}
+              />
+              <ReportLink
+                description="Sales tax snapshot with invoice-type filtering."
+                icon={ReceiptText}
+                title="GST report"
+                value={formatCurrency(Number(gstSummary?.total_tax ?? 0))}
+                onPress={() => router.push('/(app)/report-gst')}
+              />
+              <ReportLink
+                description="Receivable and payable balances by party."
+                icon={TrendingDown}
+                title="Outstanding report"
+                value={formatCurrency(Number(outstanding?.summary.total_receivable ?? 0))}
+                onPress={() => router.push('/(app)/report-outstanding')}
+              />
+              <ReportLink
+                description="Inventory items below threshold with export support."
+                icon={Boxes}
+                title="Low stock report"
+                value={`${lowStock.length} items`}
+                onPress={() => router.push('/(app)/report-low-stock')}
+              />
             </CardContent>
           </Card>
 
@@ -304,5 +299,35 @@ export default function ReportsScreen() {
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function ReportLink({
+  description,
+  icon,
+  onPress,
+  title,
+  value,
+}: {
+  description: string;
+  icon: typeof TrendingUp;
+  onPress: () => void;
+  title: string;
+  value: string;
+}) {
+  return (
+    <Pressable className="flex-row items-center gap-4 rounded-2xl border border-border/70 bg-background px-4 py-4" onPress={onPress}>
+      <View className="rounded-2xl bg-primary/10 px-3 py-3">
+        <Icon as={icon} className="text-primary" size={18} />
+      </View>
+      <View className="flex-1 gap-1">
+        <Text className="font-semibold text-foreground">{title}</Text>
+        <Text className="text-sm leading-5 text-muted-foreground">{description}</Text>
+      </View>
+      <View className="items-end gap-1">
+        <Text className="font-semibold text-foreground">{value}</Text>
+        <Icon as={ChevronRight} className="text-muted-foreground" size={16} />
+      </View>
+    </Pressable>
   );
 }

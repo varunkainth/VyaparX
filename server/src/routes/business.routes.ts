@@ -1,10 +1,14 @@
 import { Router } from "express";
 import {
+    acceptInvite,
     createBusiness,
     getBusiness,
+    getBusinessInvite,
+    getBusinessInvites,
     getBusinessMembers,
     inviteBusinessMember,
     listBusinesses,
+    revokeInvite,
     updateBusinessById,
     updateMemberRole,
     updateMemberStatus,
@@ -24,7 +28,17 @@ import {
 
 const businessRouter = Router();
 
+businessRouter.get(
+    "/business-invites/:token",
+    asyncHandler(getBusinessInvite)
+);
+
 businessRouter.use(authenticateToken);
+
+businessRouter.post(
+    "/business-invites/:token/accept",
+    asyncHandler(acceptInvite)
+);
 
 businessRouter.get("/businesses", asyncHandler(listBusinesses));
 businessRouter.post("/businesses", validate(createBusinessSchema), asyncHandler(createBusiness));
@@ -43,6 +57,13 @@ businessRouter.get(
     asyncHandler(getBusinessMembers)
 );
 
+businessRouter.get(
+    "/businesses/:business_id/invites",
+    businessGuard,
+    authorizeRoles(["owner", "admin"]),
+    asyncHandler(getBusinessInvites)
+);
+
 businessRouter.patch(
     "/businesses/:business_id",
     businessGuard,
@@ -57,6 +78,13 @@ businessRouter.post(
     authorizeRoles(["owner", "admin"]),
     validate(inviteBusinessMemberSchema),
     asyncHandler(inviteBusinessMember)
+);
+
+businessRouter.post(
+    "/businesses/:business_id/invites/:invite_id/revoke",
+    businessGuard,
+    authorizeRoles(["owner", "admin"]),
+    asyncHandler(revokeInvite)
 );
 
 businessRouter.patch(

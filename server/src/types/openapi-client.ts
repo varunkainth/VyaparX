@@ -215,6 +215,31 @@ export class OpenApiClient {
         });
     }
 
+    listBusinessInvites(businessId: string, accessToken: string) {
+        return this.request<ApiRecord[]>("GET", `/api/v1/businesses/${businessId}/invites`, undefined, {
+            accessToken,
+        });
+    }
+
+    getBusinessInvite(token: string) {
+        return this.request<ApiRecord>("GET", `/api/v1/business-invites/${token}`);
+    }
+
+    acceptBusinessInvite(token: string, accessToken: string) {
+        return this.request<ApiRecord>("POST", `/api/v1/business-invites/${token}/accept`, undefined, {
+            accessToken,
+        });
+    }
+
+    revokeBusinessInvite(businessId: string, inviteId: string, accessToken: string) {
+        return this.request<ApiRecord>(
+            "POST",
+            `/api/v1/businesses/${businessId}/invites/${inviteId}/revoke`,
+            undefined,
+            { accessToken }
+        );
+    }
+
     updateBusinessMemberRole(
         businessId: string,
         userId: string,
@@ -446,6 +471,26 @@ export class OpenApiClient {
         );
     }
 
+    getPurchaseReport(businessId: string, query: DateRangeQueryRaw | undefined, accessToken: string) {
+        const q = buildQuery(query);
+        return this.request<ApiRecord>(
+            "GET",
+            `/api/v1/businesses/${businessId}/reports/purchase${q}`,
+            undefined,
+            { accessToken }
+        );
+    }
+
+    getProfitLossReport(businessId: string, query: DateRangeQueryRaw | undefined, accessToken: string) {
+        const q = buildQuery(query);
+        return this.request<ApiRecord>(
+            "GET",
+            `/api/v1/businesses/${businessId}/reports/profit-loss${q}`,
+            undefined,
+            { accessToken }
+        );
+    }
+
     exportMonthlySalesReport(
         businessId: string,
         query: DateRangeQueryRaw & { format?: "csv" | "excel" } | undefined,
@@ -480,6 +525,24 @@ export class OpenApiClient {
     ) {
         const q = buildQuery(query);
         return this.requestFile(`/api/v1/businesses/${businessId}/reports/low-stock/export${q}`, { accessToken });
+    }
+
+    exportPurchaseReport(
+        businessId: string,
+        query: DateRangeQueryRaw & { format?: "csv" | "excel" } | undefined,
+        accessToken: string
+    ) {
+        const q = buildQuery(query);
+        return this.requestFile(`/api/v1/businesses/${businessId}/reports/purchase/export${q}`, { accessToken });
+    }
+
+    exportProfitLossReport(
+        businessId: string,
+        query: DateRangeQueryRaw & { format?: "csv" | "excel" } | undefined,
+        accessToken: string
+    ) {
+        const q = buildQuery(query);
+        return this.requestFile(`/api/v1/businesses/${businessId}/reports/profit-loss/export${q}`, { accessToken });
     }
 
     pushSync(payload: SyncPushBody, accessToken: string) {

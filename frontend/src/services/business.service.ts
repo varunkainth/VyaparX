@@ -5,9 +5,13 @@ import type {
   CreateBusinessInput,
   UpdateBusinessInput,
   InviteMemberInput,
+  InviteMemberResponse,
   UpdateMemberRoleInput,
   UpdateMemberStatusInput,
   BusinessMember,
+  BusinessInvite,
+  ListedBusinessInvite,
+  AcceptInviteResponse,
 } from "@/types/business";
 import type { Session, Tokens } from "@/types/auth";
 
@@ -81,10 +85,38 @@ export const businessService = {
   async inviteMember(
     businessId: string,
     data: InviteMemberInput
-  ): Promise<BusinessMember> {
-    const response = await apiClient.post<ApiResponse<BusinessMember>>(
-      `/api/v1/businesses/${businessId}/members`,
+  ): Promise<InviteMemberResponse> {
+    const response = await apiClient.post<ApiResponse<InviteMemberResponse>>(
+      `/api/v1/businesses/${businessId}/members/invite`,
       data
+    );
+    return response.data.data;
+  },
+
+  async getInvite(token: string): Promise<BusinessInvite> {
+    const response = await apiClient.get<ApiResponse<BusinessInvite>>(
+      `/api/v1/business-invites/${encodeURIComponent(token)}`
+    );
+    return response.data.data;
+  },
+
+  async listBusinessInvites(businessId: string): Promise<ListedBusinessInvite[]> {
+    const response = await apiClient.get<ApiResponse<ListedBusinessInvite[]>>(
+      `/api/v1/businesses/${businessId}/invites`
+    );
+    return response.data.data;
+  },
+
+  async acceptInvite(token: string): Promise<AcceptInviteResponse> {
+    const response = await apiClient.post<ApiResponse<AcceptInviteResponse>>(
+      `/api/v1/business-invites/${encodeURIComponent(token)}/accept`
+    );
+    return response.data.data;
+  },
+
+  async revokeInvite(businessId: string, inviteId: string): Promise<ListedBusinessInvite> {
+    const response = await apiClient.post<ApiResponse<ListedBusinessInvite>>(
+      `/api/v1/businesses/${businessId}/invites/${inviteId}/revoke`
     );
     return response.data.data;
   },

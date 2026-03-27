@@ -60,12 +60,12 @@ export function InviteMemberModal({ isOpen, onClose, onSuccess, businessId }: In
 
     const onSubmit = async (data: InviteFormValues) => {
         try {
-            await businessService.inviteMember(businessId, {
+            const result = await businessService.inviteMember(businessId, {
                 email: data.email,
                 // @ts-ignore - The schema guarantees it's one of the allowed types.
                 role: data.role,
             })
-            toast.success("Member invited successfully!")
+            toast.success(result.email_sent ? "Invite email sent successfully!" : "Invite created. Share the link manually if email is unavailable.")
             reset()
             onSuccess()
             onClose()
@@ -80,7 +80,7 @@ export function InviteMemberModal({ isOpen, onClose, onSuccess, businessId }: In
                 <DialogHeader>
                     <DialogTitle>Invite Team Member</DialogTitle>
                     <DialogDescription>
-                        Send an invitation for a user to join this business. The user must already be registered on VyaparX.
+                        Send an invitation link for a user to join this business. They can sign up or sign in, then accept it.
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-4">

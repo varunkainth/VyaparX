@@ -5,24 +5,25 @@ import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowUpRight, ChevronUp, CircleDollarSign, Phone, Plus, ScrollText, Users, UserRoundSearch } from 'lucide-react-native';
 
-import { FullScreenLoader } from '@/components/full-screen-loader';
 import { ToastBanner, useTimedToast } from '@/components/ui/toast-banner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DevCacheIndicator } from '@/components/dev-cache-indicator';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
+import { CACHE_TTL_MS, formatCacheAge, isCacheStale } from '@/lib/cache-policy';
 import { formatCompactNumber, formatCurrency } from '@/lib/formatters';
-import { partyService } from '@/services/party.service';
 import { useAuthStore } from '@/store/auth-store';
-import type { Party } from '@/types/party';
+import { getPartyCacheKey, usePartyStore } from '@/store/party-store';
 
 export default function CustomersScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ refresh?: string; toast?: string }>();
   const { message, showToast } = useTimedToast();
   const { session } = useAuthStore();
-  const [parties, setParties] = React.useState<Party[]>([]);
+  const ensureParties = usePartyStore((state) => state.ensureParties);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [includeInactive, setIncludeInactive] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -32,11 +33,23 @@ export default function CustomersScreen() {
   const handledRefreshRef = React.useRef<string | null>(null);
   const handledToastRef = React.useRef<string | null>(null);
   const hasFocusedOnceRef = React.useRef(false);
+  const partyCache = usePartyStore((state) =>
+    session?.business_id ? state.cache[getPartyCacheKey(session.business_id, includeInactive)] : undefined
+  );
+  const parties = partyCache?.items ?? [];
+  const cacheError = partyCache?.error ?? null;
+  const partyCacheState =
+    partyCache?.status === 'loading'
+      ? 'refreshing'
+      : parties.length
+        ? isCacheStale(partyCache?.updatedAt, CACHE_TTL_MS.partyList)
+          ? 'stale'
+          : 'cached'
+        : 'empty';
 
   const loadParties = React.useCallback(
     async (mode: 'initial' | 'refresh' = 'initial') => {
       if (!session?.business_id) {
-        setParties([]);
         setError('Select a business to view customers.');
         setIsLoading(false);
         setIsRefreshing(false);
@@ -51,10 +64,7 @@ export default function CustomersScreen() {
 
       try {
         setError(null);
-        const nextParties = await partyService.listParties(session.business_id, {
-          include_inactive: includeInactive ? 'true' : 'false',
-        });
-        setParties(nextParties);
+        await ensureParties(session.business_id, includeInactive, mode === 'refresh');
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : 'Unable to load parties.');
       } finally {
@@ -62,7 +72,7 @@ export default function CustomersScreen() {
         setIsRefreshing(false);
       }
     },
-    [includeInactive, session?.business_id],
+    [ensureParties, includeInactive, session?.business_id],
   );
 
   React.useEffect(() => {
@@ -121,10 +131,6 @@ export default function CustomersScreen() {
     };
   }, [customerParties]);
 
-  if (isLoading) {
-    return <FullScreenLoader label="Loading customers" />;
-  }
-
   return (
     <SafeAreaView className="flex-1 bg-background">
       <View className="absolute -left-12 top-16 h-32 w-32 rounded-full bg-primary/8" />
@@ -134,7 +140,16 @@ export default function CustomersScreen() {
         contentContainerClassName="px-6 pb-28 pt-4"
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void loadParties('refresh')} />}>
         <View className="gap-6">
+          {isLoading ? <CustomersScreenSkeleton /> : null}
+
+          {!isLoading ? (
+          <>
           <View className="gap-2">
+            <DevCacheIndicator
+              label="customers"
+              state={partyCacheState}
+              detail={formatCacheAge(partyCache?.updatedAt)}
+            />
             <Text className="text-sm uppercase tracking-[2px] text-muted-foreground">Customers</Text>
             <Text className="text-3xl font-extrabold tracking-tight text-foreground">Party book</Text>
             <Text className="text-base leading-6 text-muted-foreground">
@@ -172,11 +187,11 @@ export default function CustomersScreen() {
             </CardContent>
           </Card>
 
-          {error ? (
+          {error || cacheError ? (
             <Card className="rounded-[28px] border-destructive/20 bg-destructive/5">
               <CardContent className="gap-4 px-5 py-5">
                 <Text className="font-semibold text-foreground">Customer sync failed</Text>
-                <Text className="text-sm leading-6 text-muted-foreground">{error}</Text>
+                <Text className="text-sm leading-6 text-muted-foreground">{error ?? cacheError}</Text>
                 <Button className="h-12 rounded-2xl" onPress={() => void loadParties()}>
                   <Text>Retry customer sync</Text>
                 </Button>
@@ -233,17 +248,20 @@ export default function CustomersScreen() {
               <CardDescription>Open deeper customer finance views from here.</CardDescription>
             </CardHeader>
             <CardContent className="gap-3">
-              <Pressable onPress={() => router.push('/(app)/ledger')}>
-                <Button variant="outline" className="h-14 justify-between rounded-2xl px-4">
-                  <View className="flex-row items-center gap-3">
-                    <Icon as={ScrollText} className="text-primary" size={18} />
-                    <Text>Party ledger</Text>
-                  </View>
-                  <Icon as={ArrowUpRight} className="text-muted-foreground" size={18} />
-                </Button>
-              </Pressable>
+              <Button
+                variant="outline"
+                className="h-14 justify-between rounded-2xl px-4"
+                onPress={() => router.push('/(app)/ledger')}>
+                <View className="flex-row items-center gap-3">
+                  <Icon as={ScrollText} className="text-primary" size={18} />
+                  <Text>Party ledger</Text>
+                </View>
+                <Icon as={ArrowUpRight} className="text-muted-foreground" size={18} />
+              </Button>
             </CardContent>
           </Card>
+          </>
+          ) : null}
         </View>
       </ScrollView>
       <PartyActionFab
@@ -256,6 +274,25 @@ export default function CustomersScreen() {
       />
       <ToastBanner message={message} variant="success" />
     </SafeAreaView>
+  );
+}
+
+function CustomersScreenSkeleton() {
+  return (
+    <View className="gap-6">
+      <View className="gap-3">
+        <Skeleton className="h-4 w-24 rounded-full" />
+        <Skeleton className="h-9 w-36 rounded-full" />
+        <Skeleton className="h-5 w-full rounded-full" />
+      </View>
+      <View className="flex-row flex-wrap gap-4">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <Skeleton key={index} className="h-16 min-w-[140px] flex-1 rounded-2xl" />
+        ))}
+      </View>
+      <Skeleton className="h-44 w-full rounded-[28px]" />
+      <Skeleton className="h-[420px] w-full rounded-[28px]" />
+    </View>
   );
 }
 

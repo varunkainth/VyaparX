@@ -4,10 +4,14 @@ import {
     exportLowStockReportHandler,
     exportMonthlySalesReportHandler,
     exportOutstandingReportHandler,
+    exportProfitLossReportHandler,
+    exportPurchaseReportHandler,
     gstSummaryReportHandler,
     lowStockReportHandler,
     monthlySalesReportHandler,
     outstandingReportHandler,
+    profitLossReportHandler,
+    purchaseReportHandler,
 } from "../controller/report.controller";
 import { asyncHandler } from "../middleware/asyncHandler";
 import { businessGuard } from "../middleware/businessGaurd";
@@ -46,6 +50,18 @@ reportRouter.get(
 );
 
 reportRouter.get(
+    "/businesses/:business_id/reports/purchase",
+    readRoles,
+    asyncHandler(purchaseReportHandler)
+);
+
+reportRouter.get(
+    "/businesses/:business_id/reports/profit-loss",
+    readRoles,
+    asyncHandler(profitLossReportHandler)
+);
+
+reportRouter.get(
     "/businesses/:business_id/reports/monthly-sales/export",
     readRoles,
     asyncHandler(exportMonthlySalesReportHandler)
@@ -67,6 +83,18 @@ reportRouter.get(
     "/businesses/:business_id/reports/low-stock/export",
     readRoles,
     asyncHandler(exportLowStockReportHandler)
+);
+
+reportRouter.get(
+    "/businesses/:business_id/reports/purchase/export",
+    readRoles,
+    asyncHandler(exportPurchaseReportHandler)
+);
+
+reportRouter.get(
+    "/businesses/:business_id/reports/profit-loss/export",
+    readRoles,
+    asyncHandler(exportProfitLossReportHandler)
 );
 
 export default reportRouter;

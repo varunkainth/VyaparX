@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { authService } from "@/services/auth.service"
 import { useAuthStore } from "@/store/useAuthStore"
 import { toast } from "sonner"
@@ -29,9 +29,11 @@ export function LoginForm({
   ...props
 }: React.ComponentProps<"div">) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setAuth, setLoading } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [isPasskeySubmitting, setIsPasskeySubmitting] = useState(false);
+  const nextPath = searchParams.get("next") || "/dashboard";
   
   const {
     register,
@@ -62,7 +64,7 @@ export function LoginForm({
         isAuthenticated: stored.isAuthenticated,
       });
       toast.success("Login successful!");
-      router.push("/dashboard");
+      router.push(nextPath);
     } catch (error: any) {
       const errorMessage = getErrorMessage(error);
       toast.error(errorMessage);
@@ -95,7 +97,7 @@ export function LoginForm({
       });
       setAuth(response.user, response.tokens, response.session);
       toast.success("Passkey login successful!");
-      router.push("/dashboard");
+      router.push(nextPath);
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -216,7 +218,7 @@ export function LoginForm({
                 </Button>
               </Field> */}
               <FieldDescription className="text-center">
-                Don&apos;t have an account? <Link href="/signup">Sign up</Link>
+                Don&apos;t have an account? <Link href={`/signup?${new URLSearchParams(Object.fromEntries(searchParams.entries())).toString()}`}>Sign up</Link>
               </FieldDescription>
             </FieldGroup>
           </form>

@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { authService } from "@/services/auth.service"
 import { useAuthStore } from "@/store/useAuthStore"
 import { toast } from "sonner"
@@ -28,17 +28,27 @@ export function SignupForm({
   ...props
 }: React.ComponentProps<"div">) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setAuth, setLoading } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const nextPath = searchParams.get("next") || "/dashboard";
+  const inviteEmail = searchParams.get("email");
   
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
   });
+
+  useEffect(() => {
+    if (inviteEmail) {
+      setValue("email", inviteEmail);
+    }
+  }, [inviteEmail, setValue]);
 
   const onSubmit = async (data: SignupFormData) => {
     setLoading(true);
@@ -49,7 +59,7 @@ export function SignupForm({
       const response = await authService.signup(signupData);
       setAuth(response.user, response.tokens, response.session);
       toast.success("Account created successfully!");
-      router.push("/dashboard");
+      router.push(nextPath);
     } catch (error: any) {
       const errorMessage = getErrorMessage(error);
       toast.error(errorMessage);
@@ -193,7 +203,7 @@ export function SignupForm({
               </Field>
 
               <FieldDescription className="text-center">
-                Already have an account? <Link href="/login">Sign in</Link>
+                Already have an account? <Link href={`/login?${new URLSearchParams(Object.fromEntries(searchParams.entries())).toString()}`}>Sign in</Link>
               </FieldDescription>
             </FieldGroup>
           </form>

@@ -16,7 +16,7 @@ const devLog = (...args: unknown[]) => {
 };
 
 // Routes that don't require authentication
-const PUBLIC_ROUTES = ["/", "/login", "/signup", "/forgot-password", "/reset-password", "/verify-email"];
+const PUBLIC_ROUTES = ["/", "/login", "/signup", "/forgot-password", "/reset-password", "/verify-email", "/accept-invite"];
 const PUBLIC_ROUTE_PREFIXES = ["/shared/invoice"];
 
 // Routes that authenticated users shouldn't access (will redirect to dashboard)
@@ -77,7 +77,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   // Check for empty businesses and show modal - using setTimeout to avoid setState in effect
   useEffect(() => {
-    if (!_hasHydrated || isLoading || !isAuthenticated || !user?.id) return;
+    if (!_hasHydrated || isLoading || !isAuthenticated || !user?.id || isPublicRoute(pathname)) return;
     
     // Use setTimeout to avoid the linter warning about setState in effect
     const timer = setTimeout(() => {
@@ -117,7 +117,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     // If user is not authenticated and trying to access protected route, redirect to login
     if (!isAuthenticated && !isCurrentRoutePublic) {
       devLog("[AuthGuard] Redirecting to login (not authenticated)");
-      router.push("/login");
+      const next = encodeURIComponent(pathname);
+      router.push(`/login?next=${next}`);
       return;
     }
   }, [isAuthenticated, isLoading, pathname, router, _hasHydrated]);

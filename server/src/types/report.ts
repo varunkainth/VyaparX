@@ -23,3 +23,20 @@ export interface ReportExportQueryRaw {
 export interface DateRangeExportQueryRaw extends DateRangeQueryRaw, ReportExportQueryRaw {}
 
 export interface GstSummaryExportQueryRaw extends GstSummaryQueryRaw, ReportExportQueryRaw {}
+
+export interface PurchaseReport {
+    invoice_count: number;
+    taxable_amount: number;
+    cgst_amount: number;
+    sgst_amount: number;
+    igst_amount: number;
+    total_tax: number;
+    grand_total: number;
+}
+
+export interface ProfitLossReport {
+    sales_total: number;
+    purchase_total: number;
+    gross_profit: number;
+    profit_margin: number;
+}

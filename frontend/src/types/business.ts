@@ -81,6 +81,48 @@ export interface InviteMemberInput {
   role: BusinessRole;
 }
 
+export interface BusinessInvite {
+  id: string;
+  business_id: string;
+  email: string;
+  role: BusinessRole;
+  token: string;
+  invited_by: string | null;
+  accepted_by_user_id: string | null;
+  expires_at: string;
+  accepted_at: string | null;
+  revoked_at: string | null;
+  created_at: string;
+  updated_at: string;
+  business_name?: string;
+  inviter_name?: string | null;
+  inviter_email?: string | null;
+  status?: "pending" | "accepted" | "expired" | "revoked";
+}
+
+export interface InviteMemberResponse {
+  invite: BusinessInvite;
+  invite_url: string;
+  email_sent: boolean;
+}
+
+export interface ListedBusinessInvite extends BusinessInvite {
+  invite_url?: string;
+}
+
+export interface AcceptInviteResponse {
+  invite: BusinessInvite;
+  member: BusinessMember;
+  session: {
+    business_id: string;
+    role: BusinessRole;
+  };
+  tokens: {
+    accessToken: string;
+    refreshToken: string;
+  };
+}
+
 export interface UpdateMemberRoleInput {
   role: BusinessRole;
 }

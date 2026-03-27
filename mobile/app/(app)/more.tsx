@@ -2,7 +2,9 @@ import * as React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
+  Activity,
   BriefcaseBusiness,
+  Bell,
   ChartColumnBig,
   ChevronRight,
   CircleDollarSign,
@@ -33,6 +35,12 @@ const moreLinks = [
     title: 'Settings',
   },
   {
+    description: 'Stock alerts, overdue reminders, and payment updates from the backend.',
+    href: '/(app)/notifications' as const,
+    icon: Bell,
+    title: 'Notifications',
+  },
+  {
     description: 'Business profile, company details, switching, and operational setup.',
     href: '/(app)/business' as const,
     icon: BriefcaseBusiness,
@@ -43,6 +51,18 @@ const moreLinks = [
     href: '/(app)/reports' as const,
     icon: ChartColumnBig,
     title: 'Reports',
+  },
+  {
+    description: 'Sales, purchases, payment mix, and top customer or supplier trends.',
+    href: '/(app)/analytics' as const,
+    icon: ChartColumnBig,
+    title: 'Analytics',
+  },
+  {
+    description: 'A live timeline of invoice, payment, inventory, and business changes.',
+    href: '/(app)/activity' as const,
+    icon: Activity,
+    title: 'Activity',
   },
   {
     description: 'Manual receipts, payouts, reconciliation, and payment history.',

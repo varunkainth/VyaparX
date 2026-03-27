@@ -2,6 +2,7 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 const isProduction = process.env.NODE_ENV === "production";
+const configErrors: string[] = [];
 
 function inferDevBaseUrl(): string {
   const hostUri =
@@ -21,12 +22,21 @@ function inferDevBaseUrl(): string {
   return "http://localhost:4000";
 }
 
+function recordConfigError(message: string): null {
+  if (!configErrors.includes(message)) {
+    configErrors.push(message);
+  }
+
+  return null;
+}
+
 function parseApiBaseUrl(): string {
   const rawValue = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
 
   if (!rawValue) {
     if (isProduction) {
-      throw new Error("Missing required environment variable: EXPO_PUBLIC_API_BASE_URL");
+      recordConfigError("Missing required environment variable: EXPO_PUBLIC_API_BASE_URL");
+      return "";
     }
 
     return inferDevBaseUrl();
@@ -36,15 +46,18 @@ function parseApiBaseUrl(): string {
   try {
     parsed = new URL(rawValue);
   } catch {
-    throw new Error("EXPO_PUBLIC_API_BASE_URL must be a valid absolute URL");
+    recordConfigError("EXPO_PUBLIC_API_BASE_URL must be a valid absolute URL");
+    return "";
   }
 
   if (!["http:", "https:"].includes(parsed.protocol)) {
-    throw new Error("EXPO_PUBLIC_API_BASE_URL must use http or https");
+    recordConfigError("EXPO_PUBLIC_API_BASE_URL must use http or https");
+    return "";
   }
 
   if (isProduction && parsed.protocol !== "https:") {
-    throw new Error("EXPO_PUBLIC_API_BASE_URL must use https in production");
+    recordConfigError("EXPO_PUBLIC_API_BASE_URL must use https in production");
+    return "";
   }
 
   return parsed.toString().replace(/\/$/, "");
@@ -60,18 +73,25 @@ function parseRequestOrigin(): string {
       return "http://localhost:3000";
     }
 
-    return new URL(API_BASE_URL).origin;
+    if (API_BASE_URL) {
+      return new URL(API_BASE_URL).origin;
+    }
+
+    recordConfigError("Missing required environment variable: EXPO_PUBLIC_REQUEST_ORIGIN");
+    return "";
   }
 
   let parsed: URL;
   try {
     parsed = new URL(rawValue);
   } catch {
-    throw new Error("EXPO_PUBLIC_REQUEST_ORIGIN must be a valid absolute URL");
+    recordConfigError("EXPO_PUBLIC_REQUEST_ORIGIN must be a valid absolute URL");
+    return "";
   }
 
   if (!["http:", "https:"].includes(parsed.protocol)) {
-    throw new Error("EXPO_PUBLIC_REQUEST_ORIGIN must use http or https");
+    recordConfigError("EXPO_PUBLIC_REQUEST_ORIGIN must use http or https");
+    return "";
   }
 
   return parsed.origin;
@@ -79,3 +99,4 @@ function parseRequestOrigin(): string {
 
 export const REQUEST_ORIGIN = parseRequestOrigin();
 export const REQUEST_REFERER = `${REQUEST_ORIGIN}/mobile`;
+export const ENV_CONFIG_ERROR = configErrors.length ? configErrors.join("\n") : null;

@@ -75,8 +75,7 @@ export function LedgerStatementPage() {
 
   useEffect(() => {
     if (currentBusiness) {
-      fetchParties()
-      fetchLedgerEntries()
+      void Promise.all([fetchParties(), fetchLedgerEntries()])
     }
   }, [currentBusiness])
 
@@ -303,7 +302,10 @@ export function LedgerStatementPage() {
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <PageLayout onRefresh={fetchLedgerEntries}>
+        <PageLayout
+          onRefresh={async () => {
+            await Promise.all([fetchParties(), fetchLedgerEntries()])
+          }}>
           {/* Header */}
           <header className="flex h-16 shrink-0 items-center gap-2 border-b sticky top-0 bg-background z-10">
             <div className="flex items-center gap-2 px-4">

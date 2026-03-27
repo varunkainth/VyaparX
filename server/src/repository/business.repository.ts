@@ -1,6 +1,8 @@
 import pool from "../config/db";
 import type { PoolClient } from "pg";
 import type {
+    BusinessInviteCreateInput,
+    BusinessInviteDetails,
     BusinessMemberInviteInput,
     BusinessMemberMutationInput,
     BusinessMemberStatusInput,
@@ -188,8 +190,9 @@ export const businessRepository = {
         return business;
     },
 
-    async inviteOrUpsertBusinessMember(args: BusinessMemberInviteInput) {
-        const result = await pool.query(
+    async inviteOrUpsertBusinessMember(args: BusinessMemberInviteInput, client?: PoolClient) {
+        const db = getDb(client);
+        const result = await db.query(
             `
             INSERT INTO business_members (business_id, user_id, role, invited_by, is_active)
             VALUES ($1, $2, $3, $4, true)
@@ -203,6 +206,127 @@ export const businessRepository = {
             [args.businessId, args.userId, args.role, args.invitedBy]
         );
         return result.rows[0];
+    },
+
+    async createBusinessInvite(args: BusinessInviteCreateInput, client?: PoolClient) {
+        const db = getDb(client);
+        await db.query(
+            `
+            UPDATE business_invites
+            SET revoked_at = NOW(),
+                updated_at = NOW()
+            WHERE business_id = $1
+              AND LOWER(email) = LOWER($2)
+              AND accepted_at IS NULL
+              AND revoked_at IS NULL
+            `,
+            [args.businessId, args.email]
+        );
+
+        const result = await db.query(
+            `
+            INSERT INTO business_invites (
+                business_id, email, role, token, invited_by, expires_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6)
+            RETURNING *
+            `,
+            [args.businessId, args.email, args.role, args.token, args.invitedBy, args.expiresAt]
+        );
+        return result.rows[0];
+    },
+
+    async getBusinessInviteByToken(token: string, client?: PoolClient): Promise<BusinessInviteDetails | null> {
+        const db = getDb(client);
+        const result = await db.query<BusinessInviteDetails>(
+            `
+            SELECT
+                bi.*,
+                b.name AS business_name,
+                inviter.name AS inviter_name,
+                inviter.email AS inviter_email,
+                CASE
+                    WHEN bi.revoked_at IS NOT NULL THEN 'revoked'
+                    WHEN bi.accepted_at IS NOT NULL THEN 'accepted'
+                    WHEN bi.expires_at <= NOW() THEN 'expired'
+                    ELSE 'pending'
+                END AS status
+            FROM business_invites bi
+            JOIN businesses b ON b.id = bi.business_id
+            LEFT JOIN users inviter ON inviter.id = bi.invited_by
+            WHERE bi.token = $1
+            `,
+            [token]
+        );
+        return result.rows[0] ?? null;
+    },
+
+    async listBusinessInvites(businessId: string, client?: PoolClient): Promise<BusinessInviteDetails[]> {
+        const db = getDb(client);
+        const result = await db.query<BusinessInviteDetails>(
+            `
+            SELECT
+                bi.*,
+                b.name AS business_name,
+                inviter.name AS inviter_name,
+                inviter.email AS inviter_email,
+                CASE
+                    WHEN bi.revoked_at IS NOT NULL THEN 'revoked'
+                    WHEN bi.accepted_at IS NOT NULL THEN 'accepted'
+                    WHEN bi.expires_at <= NOW() THEN 'expired'
+                    ELSE 'pending'
+                END AS status
+            FROM business_invites bi
+            JOIN businesses b ON b.id = bi.business_id
+            LEFT JOIN users inviter ON inviter.id = bi.invited_by
+            WHERE bi.business_id = $1
+            ORDER BY bi.created_at DESC
+            `,
+            [businessId]
+        );
+        return result.rows;
+    },
+
+    async markBusinessInviteAccepted(token: string, acceptedByUserId: string, client?: PoolClient) {
+        const db = getDb(client);
+        const result = await db.query(
+            `
+            UPDATE business_invites
+            SET accepted_at = NOW(),
+                accepted_by_user_id = $2,
+                updated_at = NOW()
+            WHERE token = $1
+            RETURNING *
+            `,
+            [token, acceptedByUserId]
+        );
+        return result.rows[0] ?? null;
+    },
+
+    async revokeBusinessInvite(businessId: string, inviteId: string, client?: PoolClient) {
+        const db = getDb(client);
+        const result = await db.query<BusinessInviteDetails>(
+            `
+            UPDATE business_invites bi
+            SET revoked_at = NOW(),
+                updated_at = NOW()
+            FROM businesses b
+            LEFT JOIN users inviter ON inviter.id = bi.invited_by
+            WHERE bi.id = $1
+              AND bi.business_id = $2
+              AND bi.accepted_at IS NULL
+              AND bi.revoked_at IS NULL
+              AND b.id = bi.business_id
+            RETURNING
+                bi.*,
+                b.name AS business_name,
+                inviter.name AS inviter_name,
+                inviter.email AS inviter_email,
+                'revoked'::text AS status
+            `,
+            [inviteId, businessId]
+        );
+        return result.rows[0] ?? null;
     },
 
     async setBusinessMemberRole(args: BusinessMemberMutationInput) {

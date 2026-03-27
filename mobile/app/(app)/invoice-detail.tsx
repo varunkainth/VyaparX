@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ActivityIndicator, Linking, Pressable, RefreshControl, ScrollView, Share, View } from "react-native";
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Share, View } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,8 +20,8 @@ import {
   UserRound,
 } from "lucide-react-native";
 
-import { FullScreenLoader } from "@/components/full-screen-loader";
 import { SubpageHeader } from "@/components/subpage-header";
+import { DevCacheIndicator } from "@/components/dev-cache-indicator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,17 +40,21 @@ import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { Textarea } from "@/components/ui/textarea";
 import { ToastBanner, useTimedToast } from "@/components/ui/toast-banner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { CACHE_TTL_MS, formatCacheAge, isCacheStale } from "@/lib/cache-policy";
 import { formatCurrency, formatShortDate } from "@/lib/formatters";
+import { savePdfFile } from "@/lib/report-export";
 import { invoiceService } from "@/services/invoice.service";
 import { useAuthStore } from "@/store/auth-store";
-import type { InvoiceWithItems } from "@/types/invoice";
+import { useInvoiceStore } from "@/store/invoice-store";
 
 export default function InvoiceDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string }>();
   const { session } = useAuthStore();
+  const cancelInvoice = useInvoiceStore((state) => state.cancelInvoice);
+  const ensureInvoiceDetail = useInvoiceStore((state) => state.ensureInvoiceDetail);
   const { message, showToast } = useTimedToast();
-  const [invoice, setInvoice] = React.useState<InvoiceWithItems | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
@@ -65,11 +69,22 @@ export default function InvoiceDetailScreen() {
   const hasFocusedOnceRef = React.useRef(false);
 
   const invoiceId = typeof params.id === "string" ? params.id : "";
+  const invoice = useInvoiceStore((state) => (invoiceId ? state.detailById[invoiceId] ?? null : null));
+  const detailError = useInvoiceStore((state) => (invoiceId ? state.detailErrorById[invoiceId] ?? null : null));
+  const detailStatus = useInvoiceStore((state) => (invoiceId ? state.detailStatusById[invoiceId] ?? 'idle' : 'idle'));
+  const detailUpdatedAt = useInvoiceStore((state) => (invoiceId ? state.detailUpdatedAtById[invoiceId] ?? null : null));
+  const invoiceCacheState =
+    detailStatus === "loading"
+      ? "refreshing"
+      : invoice
+        ? isCacheStale(detailUpdatedAt, CACHE_TTL_MS.invoiceDetail)
+          ? "stale"
+          : "cached"
+        : "empty";
 
   const loadInvoice = React.useCallback(async (mode: "initial" | "refresh" = "initial") => {
     if (!session?.business_id || !invoiceId) {
       setError("Invoice details are unavailable.");
-      setInvoice(null);
       setIsLoading(false);
       setIsRefreshing(false);
       return;
@@ -82,8 +97,7 @@ export default function InvoiceDetailScreen() {
     }
       try {
         setError(null);
-        const nextInvoice = await invoiceService.getInvoice(session.business_id, invoiceId);
-        setInvoice(nextInvoice);
+        const nextInvoice = await ensureInvoiceDetail(session.business_id, invoiceId, mode === "refresh");
         setRecipientEmail(nextInvoice.party_email ?? "");
       } catch (loadError: any) {
       setError(
@@ -96,7 +110,7 @@ export default function InvoiceDetailScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [invoiceId, session?.business_id]);
+  }, [ensureInvoiceDetail, invoiceId, session?.business_id]);
 
   React.useEffect(() => {
     void loadInvoice();
@@ -120,7 +134,7 @@ export default function InvoiceDetailScreen() {
 
     setIsCancelling(true);
     try {
-      await invoiceService.cancelInvoice(session.business_id, invoice.id, {
+      await cancelInvoice(session.business_id, invoice.id, {
         cancel_reason: normalizeOptional(cancelReason),
       });
       router.replace({
@@ -152,14 +166,23 @@ export default function InvoiceDetailScreen() {
     try {
       const shareLink = await invoiceService.createInvoiceShareLink(session.business_id, invoice.id);
       const pdfUrl = invoiceService.buildPublicInvoicePdfUrl(shareLink.share_url, invoice.id);
-      await Linking.openURL(pdfUrl);
-      showToast("Invoice PDF opened.");
+      const response = await fetch(pdfUrl);
+      if (!response.ok) {
+        throw new Error("Unable to download invoice PDF.");
+      }
+
+      const bytes = await response.arrayBuffer();
+      await savePdfFile({
+        baseName: invoice.invoice_number,
+        bytes,
+      });
+      showToast("Invoice PDF saved.");
     } catch (downloadError: any) {
       setError(
         downloadError?.response?.data?.error?.message ??
           downloadError?.response?.data?.message ??
           downloadError?.message ??
-          "Unable to open invoice PDF.",
+          "Unable to save invoice PDF.",
       );
     } finally {
       setIsDownloading(false);
@@ -219,10 +242,6 @@ export default function InvoiceDetailScreen() {
     }
   }
 
-  if (isLoading) {
-    return <FullScreenLoader label="Loading invoice details" />;
-  }
-
   return (
     <SafeAreaView className="flex-1 bg-background">
       <ScrollView
@@ -236,12 +255,19 @@ export default function InvoiceDetailScreen() {
             subtitle="Review invoice amounts, line items, and billing status before taking follow-up actions."
             title={invoice?.invoice_number ?? "Invoice details"}
           />
+          <DevCacheIndicator
+            label="invoice"
+            state={invoiceCacheState}
+            detail={formatCacheAge(detailUpdatedAt)}
+          />
 
-          {error ? (
+          {isLoading ? <InvoiceDetailSkeleton /> : null}
+
+          {(error || detailError) && !isLoading ? (
             <Card className="rounded-[28px] border-destructive/20 bg-destructive/5">
               <CardContent className="gap-4 px-5 py-5">
                 <Text className="font-semibold text-foreground">Invoice details unavailable</Text>
-                <Text className="text-sm leading-6 text-muted-foreground">{error}</Text>
+                <Text className="text-sm leading-6 text-muted-foreground">{error ?? detailError}</Text>
                 <Button className="h-12 rounded-2xl" onPress={() => void loadInvoice()}>
                   <Text>Retry</Text>
                 </Button>
@@ -249,7 +275,7 @@ export default function InvoiceDetailScreen() {
             </Card>
           ) : null}
 
-          {invoice ? (
+          {invoice && !isLoading ? (
             <>
               <Card className="rounded-[28px]">
                 <CardHeader>
@@ -308,11 +334,12 @@ export default function InvoiceDetailScreen() {
                           }
                         />
                         <ActionTile
-                          description="Open the invoice PDF in the browser."
+                          description="Save the invoice PDF into your selected device folder."
                           icon={Download}
-                          label={isDownloading ? "Opening PDF..." : "Open PDF"}
+                          label={isDownloading ? "Saving PDF..." : "Save PDF"}
                           onPress={onDownloadPdf}
                           disabled={isDownloading}
+                          loading={isDownloading}
                         />
                         <ActionTile
                           description="Share a live invoice link."
@@ -320,6 +347,7 @@ export default function InvoiceDetailScreen() {
                           label={isSharing ? "Sharing..." : "Share"}
                           onPress={onShareInvoice}
                           disabled={isSharing}
+                          loading={isSharing}
                         />
                         <ActionTile
                           description="Send the invoice to the saved recipient email."
@@ -594,6 +622,54 @@ export default function InvoiceDetailScreen() {
   );
 }
 
+function InvoiceDetailSkeleton() {
+  return (
+    <View className="gap-6">
+      <Card className="rounded-[28px]">
+        <CardHeader>
+          <Skeleton className="h-6 w-40 rounded-full" />
+          <Skeleton className="mt-2 h-4 w-64 rounded-full" />
+        </CardHeader>
+        <CardContent className="gap-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <View key={index} className="flex-row items-center gap-3 rounded-2xl border border-border/70 bg-background px-4 py-4">
+              <Skeleton className="h-12 w-12 rounded-2xl" />
+              <View className="flex-1 gap-2">
+                <Skeleton className="h-4 w-28 rounded-full" />
+                <Skeleton className="h-5 w-36 rounded-full" />
+              </View>
+            </View>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-[28px]">
+        <CardHeader>
+          <Skeleton className="h-6 w-32 rounded-full" />
+          <Skeleton className="mt-2 h-4 w-72 rounded-full" />
+        </CardHeader>
+        <CardContent className="gap-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Skeleton key={index} className="h-24 w-full rounded-[24px]" />
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card className="rounded-[28px]">
+        <CardHeader>
+          <Skeleton className="h-6 w-28 rounded-full" />
+          <Skeleton className="mt-2 h-4 w-56 rounded-full" />
+        </CardHeader>
+        <CardContent className="gap-3">
+          {Array.from({ length: 2 }).map((_, index) => (
+            <Skeleton key={index} className="h-20 w-full rounded-[24px]" />
+          ))}
+        </CardContent>
+      </Card>
+    </View>
+  );
+}
+
 function SummaryRow({
   icon,
   label,
@@ -677,6 +753,7 @@ function ActionTile({
   icon,
   label,
   layout = "half",
+  loading = false,
   onPress,
   tone = "default",
 }: {
@@ -685,6 +762,7 @@ function ActionTile({
   icon: typeof CircleDollarSign;
   label: string;
   layout?: "full" | "half";
+  loading?: boolean;
   onPress: () => void;
   tone?: "default" | "primary";
 }) {
@@ -713,34 +791,42 @@ function ActionTile({
       onPress={onPress}>
       <View className="gap-3">
         <View className={`w-11 rounded-2xl px-0 py-3 ${palette.iconWrap}`}>
-          <Icon as={icon} className={`mx-auto ${palette.icon}`} size={18} />
+          {loading ? (
+            <ActivityIndicator color={tone === "primary" ? "#ffffff" : "#2563eb"} />
+          ) : (
+            <Icon as={icon} className={`mx-auto ${palette.icon}`} size={18} />
+          )}
         </View>
         <View className="gap-1">
           <Text className={`font-semibold ${palette.text}`}>{label}</Text>
           <Text className={`text-sm leading-5 ${palette.subtext}`}>{description}</Text>
         </View>
         <View className="flex-row items-center gap-2">
-          <Icon as={MoreHorizontal} className={palette.icon} size={16} />
-          <Text className={`text-xs uppercase tracking-[1px] ${palette.subtext}`}>Action</Text>
+          {loading ? (
+            <ActivityIndicator color={tone === "primary" ? "#ffffff" : "#2563eb"} size="small" />
+          ) : (
+            <Icon as={MoreHorizontal} className={palette.icon} size={16} />
+          )}
+          <Text className={`text-xs uppercase tracking-[1px] ${palette.subtext}`}>{loading ? "Working" : "Action"}</Text>
         </View>
       </View>
     </Pressable>
   );
 }
 
-function formatInvoiceType(type: InvoiceWithItems["invoice_type"]) {
+function formatInvoiceType(type: NonNullable<ReturnType<typeof useInvoiceStore.getState>["detailById"][string]>["invoice_type"]) {
   if (type === "credit_note") return "Credit note";
   if (type === "debit_note") return "Debit note";
   return type === "sales" ? "Sales" : "Purchase";
 }
 
-function formatPaymentStatus(status: InvoiceWithItems["payment_status"]) {
+function formatPaymentStatus(status: NonNullable<ReturnType<typeof useInvoiceStore.getState>["detailById"][string]>["payment_status"]) {
   if (status === "partial") return "Partial";
   if (status === "overdue") return "Overdue";
   return status === "paid" ? "Paid" : "Unpaid";
 }
 
-function formatPaymentMode(mode: NonNullable<InvoiceWithItems["payments"]>[number]["payment_mode"]) {
+function formatPaymentMode(mode: NonNullable<NonNullable<ReturnType<typeof useInvoiceStore.getState>["detailById"][string]>["payments"]>[number]["payment_mode"]) {
   if (mode === "bank_transfer") return "Bank transfer";
   return mode === "upi" ? "UPI" : mode.charAt(0).toUpperCase() + mode.slice(1);
 }

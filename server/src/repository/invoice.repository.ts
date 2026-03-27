@@ -181,7 +181,7 @@ export const invoiceRepository = {
             SELECT i.*, p.name AS party_name, p.email AS party_email
             FROM invoices i
             JOIN parties p ON p.id = i.party_id
-            WHERE business_id = $1
+            WHERE i.business_id = $1
               AND i.id = $2
             `,
             [businessId, invoiceId]

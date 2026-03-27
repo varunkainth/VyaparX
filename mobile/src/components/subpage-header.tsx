@@ -3,6 +3,7 @@ import { useRouter, type Href } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
+import { useNavigationStore } from '@/store/navigation-store';
 import { useAppTheme } from '@/theme/theme-provider';
 
 export function SubpageHeader({
@@ -18,6 +19,15 @@ export function SubpageHeader({
 }) {
   const router = useRouter();
   const { resolvedTheme } = useAppTheme();
+  const lastRoute = useNavigationStore((state) => state.lastRoute);
+  const onBackPress = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.replace((lastRoute || backHref) as Href);
+  };
 
   return (
     <View className="gap-4">
@@ -25,7 +35,7 @@ export function SubpageHeader({
         accessibilityLabel="Go back"
         accessibilityRole="button"
         className="h-11 w-11 items-center justify-center rounded-full border border-border bg-card"
-        onPress={() => router.replace(backHref)}
+        onPress={onBackPress}
         style={{
           shadowColor: resolvedTheme === 'dark' ? '#000000' : '#0f172a',
           shadowOffset: { width: 0, height: 6 },

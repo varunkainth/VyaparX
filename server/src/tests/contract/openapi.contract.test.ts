@@ -54,6 +54,8 @@ describe("OpenAPI contract", () => {
             "/api/v1/businesses/{business_id}/reports/outstanding/export",
             "/api/v1/businesses/{business_id}/reports/gst-summary/export",
             "/api/v1/businesses/{business_id}/reports/low-stock/export",
+            "/api/v1/businesses/{business_id}/reports/purchase/export",
+            "/api/v1/businesses/{business_id}/reports/profit-loss/export",
         ] as const;
 
         for (const path of routes) {

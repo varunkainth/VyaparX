@@ -5,8 +5,9 @@ import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ArrowDownLeft, ArrowUpRight, CreditCard, ShieldCheck, UserRound } from "lucide-react-native";
 
-import { FullScreenLoader } from "@/components/full-screen-loader";
+import { DetailScreenSkeleton } from "@/components/screen-skeleton";
 import { SubpageHeader } from "@/components/subpage-header";
+import { DevCacheIndicator } from "@/components/dev-cache-indicator";
 import {
   Dialog,
   DialogContent,
@@ -20,15 +21,20 @@ import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import { Textarea } from "@/components/ui/textarea";
+import { ToastBanner, useTimedToast } from "@/components/ui/toast-banner";
+import { CACHE_TTL_MS, formatCacheAge, isCacheStale } from "@/lib/cache-policy";
 import { formatCurrency, formatShortDate } from "@/lib/formatters";
-import { paymentService } from "@/services/payment.service";
 import { useAuthStore } from "@/store/auth-store";
+import { usePaymentStore } from "@/store/payment-store";
 import type { PaymentWithAllocations } from "@/types/payment";
 
 export default function PaymentDetailScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
   const { session } = useAuthStore();
-  const [payment, setPayment] = React.useState<PaymentWithAllocations | null>(null);
+  const ensurePaymentDetail = usePaymentStore((state) => state.ensurePaymentDetail);
+  const reconcilePayment = usePaymentStore((state) => state.reconcilePayment);
+  const unreconcilePayment = usePaymentStore((state) => state.unreconcilePayment);
+  const { message, showToast } = useTimedToast();
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
@@ -40,10 +46,21 @@ export default function PaymentDetailScreen() {
   const hasFocusedOnceRef = React.useRef(false);
 
   const paymentId = typeof params.id === "string" ? params.id : "";
+  const payment = usePaymentStore((state) => (paymentId ? state.detailById[paymentId] ?? null : null));
+  const detailError = usePaymentStore((state) => (paymentId ? state.detailErrorById[paymentId] ?? null : null));
+  const detailStatus = usePaymentStore((state) => (paymentId ? state.detailStatusById[paymentId] ?? 'idle' : 'idle'));
+  const detailUpdatedAt = usePaymentStore((state) => (paymentId ? state.detailUpdatedAtById[paymentId] ?? null : null));
+  const paymentCacheState =
+    detailStatus === "loading"
+      ? "refreshing"
+      : payment
+        ? isCacheStale(detailUpdatedAt, CACHE_TTL_MS.paymentDetail)
+          ? "stale"
+          : "cached"
+        : "empty";
 
   const loadPayment = React.useCallback(async (mode: "initial" | "refresh" = "initial") => {
     if (!session?.business_id || !paymentId) {
-      setPayment(null);
       setError("Payment details are unavailable.");
       setIsLoading(false);
       setIsRefreshing(false);
@@ -57,8 +74,7 @@ export default function PaymentDetailScreen() {
     }
     try {
       setError(null);
-      const nextPayment = await paymentService.getPayment(session.business_id, paymentId);
-      setPayment(nextPayment);
+      await ensurePaymentDetail(session.business_id, paymentId, mode === "refresh");
     } catch (loadError: any) {
       setError(
         loadError?.response?.data?.error?.message ??
@@ -70,7 +86,7 @@ export default function PaymentDetailScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [paymentId, session?.business_id]);
+  }, [ensurePaymentDetail, paymentId, session?.business_id]);
 
   React.useEffect(() => {
     void loadPayment();
@@ -92,13 +108,14 @@ export default function PaymentDetailScreen() {
 
     setIsSubmitting(true);
     try {
-      await paymentService.reconcilePayment(session.business_id, payment.id, {
+      await reconcilePayment(session.business_id, payment.id, {
         bank_ref_no: normalizeOptional(bankRefNo),
         bank_statement_date: normalizeOptional(bankStatementDate),
         notes: normalizeOptional(notes),
       });
       setIsReconcileOpen(false);
-      await loadPayment();
+      await loadPayment("refresh");
+      showToast("Payment reconciled successfully.");
     } catch (submitError: any) {
       setError(
         submitError?.response?.data?.error?.message ??
@@ -116,8 +133,9 @@ export default function PaymentDetailScreen() {
 
     setIsSubmitting(true);
     try {
-      await paymentService.unreconcilePayment(session.business_id, payment.id);
-      await loadPayment();
+      await unreconcilePayment(session.business_id, payment.id);
+      await loadPayment("refresh");
+      showToast("Payment marked as unreconciled.");
     } catch (submitError: any) {
       setError(
         submitError?.response?.data?.error?.message ??
@@ -131,7 +149,7 @@ export default function PaymentDetailScreen() {
   }
 
   if (isLoading) {
-    return <FullScreenLoader label="Loading payment details" />;
+    return <DetailScreenSkeleton rowCount={3} />;
   }
 
   return (
@@ -147,12 +165,17 @@ export default function PaymentDetailScreen() {
             subtitle="Review party, amount, allocation, and reconciliation details for this payment entry."
             title="Payment details"
           />
+          <DevCacheIndicator
+            label="payment"
+            state={paymentCacheState}
+            detail={formatCacheAge(detailUpdatedAt)}
+          />
 
-          {error ? (
+          {error || detailError ? (
             <Card className="rounded-[28px] border-destructive/20 bg-destructive/5">
               <CardContent className="gap-4 px-5 py-5">
                 <Text className="font-semibold text-foreground">Payment details unavailable</Text>
-                <Text className="text-sm leading-6 text-muted-foreground">{error}</Text>
+                <Text className="text-sm leading-6 text-muted-foreground">{error ?? detailError}</Text>
                 <Button className="h-12 rounded-2xl" onPress={() => void loadPayment()}>
                   <Text>Retry</Text>
                 </Button>
@@ -289,6 +312,7 @@ export default function PaymentDetailScreen() {
           </View>
         </DialogContent>
       </Dialog>
+      <ToastBanner message={message} variant="success" />
     </SafeAreaView>
   );
 }

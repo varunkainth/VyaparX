@@ -4,12 +4,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, ShieldCheck, UserPlus, Users } from 'lucide-react-native';
 
 import { SubpageHeader } from '@/components/subpage-header';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
+import { ToastBanner, useTimedToast } from '@/components/ui/toast-banner';
 import { businessService } from '@/services/business.service';
 import { useAuthStore } from '@/store/auth-store';
 import type { BusinessAssignableRole, BusinessMember } from '@/types/business';
@@ -18,6 +29,7 @@ const roleOptions: BusinessAssignableRole[] = ['admin', 'staff', 'viewer', 'acco
 
 export default function BusinessMembersScreen() {
   const { session } = useAuthStore();
+  const { message, showToast } = useTimedToast();
   const [members, setMembers] = React.useState<BusinessMember[]>([]);
   const [inviteEmail, setInviteEmail] = React.useState('');
   const [inviteRole, setInviteRole] = React.useState<BusinessAssignableRole>('staff');
@@ -25,6 +37,7 @@ export default function BusinessMembersScreen() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isInviting, setIsInviting] = React.useState(false);
   const [busyMemberId, setBusyMemberId] = React.useState<string | null>(null);
+  const [pendingStatusMember, setPendingStatusMember] = React.useState<BusinessMember | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
 
@@ -88,6 +101,7 @@ export default function BusinessMembersScreen() {
       });
       setInviteEmail('');
       setSuccessMessage('Member invited successfully.');
+      showToast('Member invited successfully.');
       await loadMembers();
     } catch (inviteError: any) {
       setError(
@@ -113,6 +127,7 @@ export default function BusinessMembersScreen() {
       await businessService.updateBusinessMemberRole(session.business_id, memberId, role);
       setMembers((current) => current.map((member) => (member.id === memberId ? { ...member, role } : member)));
       setSuccessMessage('Member role updated.');
+      showToast('Member role updated.');
     } catch (updateError: any) {
       setError(
         updateError?.response?.data?.error?.message ??
@@ -139,6 +154,7 @@ export default function BusinessMembersScreen() {
         current.map((member) => (member.id === memberId ? { ...member, is_active: !isActive } : member))
       );
       setSuccessMessage(`Member ${isActive ? 'disabled' : 'enabled'} successfully.`);
+      showToast(`Member ${isActive ? 'disabled' : 'enabled'} successfully.`);
     } catch (updateError: any) {
       setError(
         updateError?.response?.data?.error?.message ??
@@ -147,6 +163,7 @@ export default function BusinessMembersScreen() {
       );
     } finally {
       setBusyMemberId(null);
+      setPendingStatusMember(null);
     }
   }
 
@@ -347,7 +364,7 @@ export default function BusinessMembersScreen() {
                             variant={member.is_active ? 'outline' : 'secondary'}
                             className="h-11 rounded-[18px]"
                             disabled={isBusy}
-                            onPress={() => onToggleStatus(member.id, member.is_active)}>
+                            onPress={() => setPendingStatusMember(member)}>
                             {isBusy ? (
                               <ActivityIndicator color="#0f172a" />
                             ) : (
@@ -364,6 +381,39 @@ export default function BusinessMembersScreen() {
           </Card>
         </View>
       </ScrollView>
+      <AlertDialog open={!!pendingStatusMember} onOpenChange={(open) => {
+        if (!open) {
+          setPendingStatusMember(null);
+        }
+      }}>
+        <AlertDialogContent className="rounded-[28px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingStatusMember?.is_active ? 'Disable member access?' : 'Enable member access?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingStatusMember?.is_active
+                ? 'This member will lose access to the business until you enable them again.'
+                : 'This member will regain access to the business immediately.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              <Text>Cancel</Text>
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className={pendingStatusMember?.is_active ? 'bg-destructive' : undefined}
+              onPress={() => {
+                if (pendingStatusMember) {
+                  void onToggleStatus(pendingStatusMember.id, pendingStatusMember.is_active);
+                }
+              }}>
+              <Text>{pendingStatusMember?.is_active ? 'Disable access' : 'Enable access'}</Text>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <ToastBanner message={message} variant="success" />
     </SafeAreaView>
   );
 }

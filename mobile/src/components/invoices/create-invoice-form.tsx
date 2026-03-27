@@ -16,6 +16,7 @@ import {
 } from "lucide-react-native";
 
 import { INDIAN_STATES, formatStateDisplay } from "@/constants/indian-states";
+import { FormScreenSkeleton } from "@/components/screen-skeleton";
 import { SubpageHeader } from "@/components/subpage-header";
 import {
   Dialog,
@@ -132,10 +133,11 @@ export function CreateInvoiceForm({ invoiceType }: { invoiceType: InvoiceType })
     setIsLoading(true);
     try {
       setError(null);
-      const [nextBusiness, nextParties, nextInventory] = await Promise.all([
+      const [nextBusiness, nextParties, nextInventory, sourceInvoice] = await Promise.all([
         businessService.getBusiness(session.business_id),
         partyService.listParties(session.business_id, { include_inactive: "false" }),
         inventoryService.listInventoryItems(session.business_id, { include_inactive: "false" }),
+        sourceInvoiceId ? invoiceService.getInvoice(session.business_id, sourceInvoiceId) : Promise.resolve(null),
       ]);
 
       setBusiness(nextBusiness);
@@ -151,30 +153,8 @@ export function CreateInvoiceForm({ invoiceType }: { invoiceType: InvoiceType })
         ...current,
         place_of_supply: current.place_of_supply || nextBusiness.state_code || "",
       }));
-    } catch (loadError: any) {
-      setError(
-        loadError?.response?.data?.error?.message ??
-          loadError?.response?.data?.message ??
-          loadError?.message ??
-          "Unable to load invoice dependencies.",
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [invoiceType, session?.business_id]);
 
-  React.useEffect(() => {
-    void loadDependencies();
-  }, [loadDependencies]);
-
-  React.useEffect(() => {
-    async function loadSourceInvoice() {
-      if (!session?.business_id || !sourceInvoiceId) {
-        return;
-      }
-
-      try {
-        const sourceInvoice = await invoiceService.getInvoice(session.business_id, sourceInvoiceId);
+      if (sourceInvoice) {
         setForm((current) => ({
           ...current,
           invoice_date: INITIAL_FORM.invoice_date,
@@ -199,18 +179,22 @@ export function CreateInvoiceForm({ invoiceType }: { invoiceType: InvoiceType })
             : [INITIAL_ITEM],
         );
         setExpandedItemIndex(0);
-      } catch (loadError: any) {
-        setError(
-          loadError?.response?.data?.error?.message ??
-            loadError?.response?.data?.message ??
-            loadError?.message ??
-            "Unable to load the source invoice.",
-        );
       }
+    } catch (loadError: any) {
+      setError(
+        loadError?.response?.data?.error?.message ??
+          loadError?.response?.data?.message ??
+          loadError?.message ??
+          "Unable to load invoice dependencies.",
+      );
+    } finally {
+      setIsLoading(false);
     }
+  }, [invoiceType, session?.business_id, sourceInvoiceId]);
 
-    void loadSourceInvoice();
-  }, [session?.business_id, sourceInvoiceId]);
+  React.useEffect(() => {
+    void loadDependencies();
+  }, [loadDependencies]);
 
   const selectedParty = React.useMemo(
     () => parties.find((party) => party.id === form.party_id) ?? null,
@@ -408,14 +392,7 @@ export function CreateInvoiceForm({ invoiceType }: { invoiceType: InvoiceType })
   }
 
   if (isLoading) {
-    return (
-      <SafeAreaView className="flex-1 bg-background">
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" />
-          <Text className="mt-4 text-sm text-muted-foreground">Loading invoice form...</Text>
-        </View>
-      </SafeAreaView>
-    );
+    return <FormScreenSkeleton rowCount={6} showActionCard />;
   }
 
   return (

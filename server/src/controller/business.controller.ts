@@ -1,14 +1,20 @@
 import type { Request, Response } from "express";
+import crypto from "crypto";
+import env from "../config/env";
+import { emailService } from "../config/email";
 import { ERROR_CODES } from "../constants/errorCodes";
-import { userRepository } from "../repository/user.repository";
 import { authService } from "../services/auth.service";
 import { logAuditEvent } from "../services/audit.service";
 import {
+    acceptBusinessInvite,
+    createBusinessInvite,
     createBusinessWithOwnerMembership,
     getBusinessForUser,
-    inviteOrUpsertBusinessMember,
+    getBusinessInviteByToken,
+    listBusinessInvites,
     listUserBusinesses,
     listBusinessMembers,
+    revokeBusinessInvite,
     setBusinessMemberRole,
     setBusinessMemberStatus,
     updateBusiness,
@@ -18,6 +24,7 @@ import { setAuthCookies } from "../utils/authCookies";
 import { sendSuccess } from "../utils/responseHandler";
 import type {
     BusinessIdParams,
+    BusinessInviteParams,
     BusinessMemberParams,
     CreateBusinessBody,
     InviteBusinessMemberBody,
@@ -32,6 +39,7 @@ const ensureAuthUser = (req: Request) => {
     }
     return req.user.id;
 };
+const generateOpaqueToken = () => crypto.randomBytes(32).toString("hex");
 
 const getBusinessId = (params: Partial<BusinessIdParams>): string => {
     const raw = params.business_id;
@@ -124,31 +132,102 @@ export const inviteBusinessMember = async (
     const invitedBy = ensureAuthUser(req);
     const business_id = getBusinessId(req.params);
     const { email, role } = req.body;
-
-    const user = await userRepository.findByEmail(email);
-    if (!user) {
-        throw new AppError("User not found with that email", 404, ERROR_CODES.USER_NOT_FOUND);
+    const business = await getBusinessForUser(business_id, invitedBy);
+    if (!business) {
+        throw new AppError("Business not found", 404, ERROR_CODES.NOT_FOUND);
     }
 
-    const member = await inviteOrUpsertBusinessMember({
+    const inviteToken = generateOpaqueToken();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const invite = await createBusinessInvite({
         businessId: business_id,
-        userId: user.id,
+        email,
         role,
         invitedBy,
+        token: inviteToken,
+        expiresAt,
     });
+
+    const frontendUrl = env.FRONTEND_URL || "http://localhost:3000";
+    const inviteUrl = `${frontendUrl}/accept-invite?token=${encodeURIComponent(inviteToken)}`;
+    let emailSent = false;
+
+    if (emailService.isReady()) {
+        try {
+            await emailService.sendBusinessInviteEmail({
+                to: email,
+                invitedEmail: email,
+                businessName: business.name,
+                inviterName: req.user?.email || "A VyaparX team member",
+                role,
+                inviteUrl,
+            });
+            emailSent = true;
+        } catch (error) {
+            console.error("Failed to send business invite email:", error);
+        }
+    }
 
     await logAuditEvent({
         business_id,
         actor_user_id: invitedBy,
         action: "business_member_invited",
-        entity_type: "business_member",
-        entity_id: member.id,
-        metadata: { user_id: user.id, role },
+        entity_type: "business_invite",
+        entity_id: invite.id,
+        metadata: { email, role, email_sent: emailSent },
     });
 
     return sendSuccess(res, {
         message: "Business member invited",
-        data: member,
+        data: {
+            invite,
+            invite_url: inviteUrl,
+            email_sent: emailSent,
+        },
+    });
+};
+
+export const getBusinessInvite = async (
+    req: Request<{ token: string }>,
+    res: Response
+) => {
+    const invite = await getBusinessInviteByToken(req.params.token);
+    if (!invite) {
+        throw new AppError("Invite not found", 404, ERROR_CODES.NOT_FOUND);
+    }
+
+    return sendSuccess(res, {
+        message: "Business invite fetched",
+        data: invite,
+    });
+};
+
+export const acceptInvite = async (
+    req: Request<{ token: string }>,
+    res: Response
+) => {
+    const userId = ensureAuthUser(req);
+    const accepted = await acceptBusinessInvite({
+        token: req.params.token,
+        userId,
+    });
+    const tokens = await authService.generateTokensForUserSession({
+        userId,
+        businessId: accepted.invite.business_id,
+    });
+    setAuthCookies(res, tokens);
+
+    return sendSuccess(res, {
+        message: "Invite accepted",
+        data: {
+            invite: accepted.invite,
+            member: accepted.member,
+            tokens,
+            session: {
+                business_id: accepted.invite.business_id,
+                role: accepted.member.role,
+            },
+        },
     });
 };
 
@@ -161,6 +240,47 @@ export const getBusinessMembers = async (req: Request<BusinessIdParams>, res: Re
     return sendSuccess(res, {
         message: "Business members fetched",
         data: members,
+    });
+};
+
+export const getBusinessInvites = async (req: Request<BusinessIdParams>, res: Response) => {
+    ensureAuthUser(req);
+    const business_id = getBusinessId(req.params);
+
+    const invites = await listBusinessInvites(business_id);
+
+    return sendSuccess(res, {
+        message: "Business invites fetched",
+        data: invites,
+    });
+};
+
+export const revokeInvite = async (req: Request<BusinessInviteParams>, res: Response) => {
+    const actorUserId = ensureAuthUser(req);
+    const business_id = getBusinessId(req.params);
+    const invite_id = req.params.invite_id;
+
+    const invite = await revokeBusinessInvite({
+        businessId: business_id,
+        inviteId: invite_id,
+    });
+
+    if (!invite) {
+        throw new AppError("Pending invite not found", 404, ERROR_CODES.NOT_FOUND);
+    }
+
+    await logAuditEvent({
+        business_id,
+        actor_user_id: actorUserId,
+        action: "business_member_invite_revoked",
+        entity_type: "business_invite",
+        entity_id: invite.id,
+        metadata: { email: invite.email, role: invite.role },
+    });
+
+    return sendSuccess(res, {
+        message: "Business invite revoked",
+        data: invite,
     });
 };
 

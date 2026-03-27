@@ -1,18 +1,30 @@
 import * as React from 'react';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { Fingerprint, LockKeyhole, MoonStar, Smartphone, SunMedium, Trash2 } from 'lucide-react-native';
+import { Bell, CheckCircle2, ChevronRight, Fingerprint, Info, LockKeyhole, MoonStar, Smartphone, SunMedium, Trash2, Wallet, AlertTriangle, Package, type LucideIcon } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Passkey } from 'react-native-passkey';
 
 import { SubpageHeader } from '@/components/subpage-header';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
+import { ToastBanner, useTimedToast } from '@/components/ui/toast-banner';
 import { authService, type PasskeyCredential } from '@/services/auth.service';
+import { useNotifications } from '@/hooks/use-notifications';
 import { useAuthStore } from '@/store/auth-store';
 import { useAppTheme } from '@/theme/theme-provider';
 
@@ -22,19 +34,47 @@ const themeOptions = [
   { description: 'Darker interface for lower glare.', icon: MoonStar, key: 'dark', label: 'Dark' },
 ] as const;
 
+const criticalCategories = ['out_of_stock', 'low_stock', 'invoice_overdue', 'payment_due'] as const;
+const updateCategories = ['payment_received', 'stock_alert', 'system', 'info'] as const;
+
+function isCriticalNotificationType(value: string): value is (typeof criticalCategories)[number] {
+  return criticalCategories.includes(value as (typeof criticalCategories)[number]);
+}
+
+function isUpdateNotificationType(value: string): value is (typeof updateCategories)[number] {
+  return updateCategories.includes(value as (typeof updateCategories)[number]);
+}
+
 export default function SettingsScreen() {
   const router = useRouter();
   const { clearAuth } = useAuthStore();
+  const { message, showToast } = useTimedToast();
   const { resolvedTheme, setThemeMode, themeMode } = useAppTheme();
+  const { preferences, updatePreferences } = useNotifications();
   const [passkeys, setPasskeys] = React.useState<PasskeyCredential[]>([]);
   const [isPasskeysLoading, setIsPasskeysLoading] = React.useState(true);
   const [isDeletingId, setIsDeletingId] = React.useState<string | null>(null);
   const [isRegisteringPasskey, setIsRegisteringPasskey] = React.useState(false);
+  const [pendingDeletePasskey, setPendingDeletePasskey] = React.useState<PasskeyCredential | null>(null);
   const [currentPassword, setCurrentPassword] = React.useState('');
   const [newPassword, setNewPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const [successMessage, setSuccessMessage] = React.useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  const notificationTypes = [
+    { key: 'out_of_stock' as const, label: 'Out of stock', description: 'Alert when an item reaches zero stock.', icon: AlertTriangle },
+    { key: 'low_stock' as const, label: 'Low stock', description: 'Alert when an item falls below threshold.', icon: AlertTriangle },
+    { key: 'invoice_overdue' as const, label: 'Overdue invoices', description: 'Show reminders for overdue invoices.', icon: Info },
+    { key: 'payment_due' as const, label: 'Pending payments', description: 'Show reminders for pending payment follow-up.', icon: Wallet },
+    { key: 'payment_received' as const, label: 'Payment received', description: 'Notify when money is received.', icon: CheckCircle2 },
+    { key: 'stock_alert' as const, label: 'Stock alerts', description: 'General stock-related notifications.', icon: Package },
+    { key: 'system' as const, label: 'System', description: 'Important system messages.', icon: Bell },
+    { key: 'info' as const, label: 'Information', description: 'General informational updates.', icon: Info },
+  ];
+  const enabledCategories = notificationTypes.filter((item) => preferences.types[item.key]).length;
+  const criticalEnabled = criticalCategories.filter((key) => preferences.types[key]).length;
+  const updatesEnabled = updateCategories.filter((key) => preferences.types[key]).length;
 
   React.useEffect(() => {
     let isMounted = true;
@@ -118,6 +158,7 @@ export default function SettingsScreen() {
       await authService.deletePasskey(credentialId);
       setPasskeys((current) => current.filter((passkey) => passkey.credential_id !== credentialId));
       setSuccessMessage('Passkey removed successfully.');
+      showToast('Passkey removed successfully.');
     } catch (deleteError: any) {
       setError(
         deleteError?.response?.data?.error?.message ??
@@ -126,6 +167,7 @@ export default function SettingsScreen() {
       );
     } finally {
       setIsDeletingId(null);
+      setPendingDeletePasskey(null);
     }
   }
 
@@ -149,6 +191,7 @@ export default function SettingsScreen() {
 
       setPasskeys((current) => [credential, ...current.filter((item) => item.credential_id !== credential.credential_id)]);
       setSuccessMessage('Passkey registered successfully.');
+      showToast('Passkey registered successfully.');
     } catch (registerError: any) {
       setError(
         registerError?.response?.data?.error?.message ??
@@ -159,6 +202,27 @@ export default function SettingsScreen() {
     } finally {
       setIsRegisteringPasskey(false);
     }
+  }
+
+  async function onToggleNotifications(enabled: boolean) {
+    setError(null);
+    setSuccessMessage(null);
+    await updatePreferences({ ...preferences, enabled });
+    setSuccessMessage(enabled ? 'Notifications enabled.' : 'Notifications disabled.');
+    showToast(enabled ? 'Notifications enabled.' : 'Notifications disabled.');
+  }
+
+  async function onToggleNotificationType(
+    key: keyof typeof preferences.types,
+    enabled: boolean,
+  ) {
+    setError(null);
+    setSuccessMessage(null);
+    await updatePreferences({
+      ...preferences,
+      types: { ...preferences.types, [key]: enabled },
+    });
+    showToast(`${notificationTypes.find((item) => item.key === key)?.label ?? 'Notification'} ${enabled ? 'enabled' : 'disabled'}.`);
   }
 
   return (
@@ -269,6 +333,127 @@ export default function SettingsScreen() {
 
           <Card className="rounded-[28px]">
             <CardHeader>
+              <CardTitle>Notifications</CardTitle>
+              <CardDescription>Control which backend alerts appear inside the mobile app.</CardDescription>
+            </CardHeader>
+            <CardContent className="gap-4">
+              <View className="overflow-hidden rounded-[28px] border border-border/70 bg-background">
+                <View className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/10" />
+                <View className="gap-4 px-4 py-4">
+                  <View className="flex-row items-center gap-4">
+                    <View className="rounded-2xl bg-primary px-3 py-3">
+                      <Icon as={Bell} className="text-primary-foreground" size={18} />
+                    </View>
+                    <View className="flex-1 gap-1">
+                      <Text className="font-semibold text-foreground">In-app alerts</Text>
+                      <Text className="text-sm leading-5 text-muted-foreground">
+                        Keep business alerts visible across Home, notifications, and reminders.
+                      </Text>
+                    </View>
+                    <Pressable
+                      accessibilityRole="button"
+                      className={`rounded-full px-3 py-1.5 ${preferences.enabled ? 'bg-primary' : 'bg-muted'}`}
+                      onPress={() => void onToggleNotifications(!preferences.enabled)}>
+                      <Text className={preferences.enabled ? 'text-primary-foreground' : 'text-muted-foreground'}>
+                        {preferences.enabled ? 'On' : 'Off'}
+                      </Text>
+                    </Pressable>
+                  </View>
+
+                  <View className="flex-row gap-3">
+                    <View className="flex-1 rounded-2xl border border-border/70 bg-card px-4 py-3">
+                      <Text className="text-xs uppercase tracking-[1px] text-muted-foreground">Enabled</Text>
+                      <Text className="mt-1 text-xl font-bold text-foreground">
+                        {preferences.enabled ? `${enabledCategories}/8` : '0/8'}
+                      </Text>
+                    </View>
+                    <View className="flex-1 rounded-2xl border border-border/70 bg-card px-4 py-3">
+                      <Text className="text-xs uppercase tracking-[1px] text-muted-foreground">Critical</Text>
+                      <Text className="mt-1 text-xl font-bold text-foreground">
+                        {preferences.enabled ? `${criticalEnabled}/4` : '0/4'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              <Pressable
+                accessibilityRole="button"
+                className="flex-row items-center justify-between rounded-[24px] border border-border/70 bg-card px-4 py-4"
+                onPress={() => router.push('/(app)/notifications')}>
+                <View className="flex-row items-center gap-4">
+                  <View className="rounded-2xl bg-primary/10 px-3 py-3">
+                    <Icon as={Bell} className="text-primary" size={18} />
+                  </View>
+                  <View className="flex-1 gap-1">
+                    <Text className="font-semibold text-foreground">Open alerts center</Text>
+                    <Text className="text-sm leading-5 text-muted-foreground">
+                      Review unread notifications and manage them in one place.
+                    </Text>
+                  </View>
+                  <Icon as={ChevronRight} className="text-muted-foreground" size={18} />
+                </View>
+              </Pressable>
+
+              {preferences.enabled
+                ? (
+                    <View className="gap-3">
+                      <Text className="text-xs uppercase tracking-[1px] text-muted-foreground">Alert categories</Text>
+                      <PreferenceGroup
+                        description="Stock and collections warnings that usually need action."
+                        title="Critical alerts"
+                      >
+                        {notificationTypes
+                          .filter((item) => isCriticalNotificationType(item.key))
+                          .map((item) => (
+                            <PreferenceRow
+                              key={item.key}
+                              description={item.description}
+                              enabled={preferences.types[item.key]}
+                              icon={item.icon}
+                              label={item.label}
+                              onPress={() => void onToggleNotificationType(item.key, !preferences.types[item.key])}
+                            />
+                          ))}
+                      </PreferenceGroup>
+
+                      <PreferenceGroup
+                        description="Operational updates that help with awareness but are less urgent."
+                        title="Updates and system"
+                      >
+                        {notificationTypes
+                          .filter((item) => isUpdateNotificationType(item.key))
+                          .map((item) => (
+                            <PreferenceRow
+                              key={item.key}
+                              description={item.description}
+                              enabled={preferences.types[item.key]}
+                              icon={item.icon}
+                              label={item.label}
+                              onPress={() => void onToggleNotificationType(item.key, !preferences.types[item.key])}
+                            />
+                          ))}
+                      </PreferenceGroup>
+
+                      <View className="rounded-[24px] border border-border/70 bg-background px-4 py-4">
+                        <Text className="text-sm leading-6 text-muted-foreground">
+                          {criticalEnabled}/4 critical alerts and {updatesEnabled}/4 update categories are currently enabled.
+                        </Text>
+                      </View>
+                    </View>
+                  )
+                : (
+                    <View className="rounded-2xl border border-border/70 bg-background px-4 py-4">
+                      <Text className="text-sm leading-6 text-muted-foreground">
+                        Notifications are disabled. Enable them to receive stock, invoice, and payment alerts.
+                      </Text>
+                    </View>
+                  )}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[28px]">
+            <CardHeader>
               <CardTitle>Passkeys</CardTitle>
               <CardDescription>
                 Register and manage server-backed passkeys for this account.
@@ -339,7 +524,7 @@ export default function SettingsScreen() {
                           accessibilityRole="button"
                           className="rounded-full border border-destructive/30 bg-destructive/10 p-2.5"
                           disabled={isDeletingId === passkey.credential_id}
-                          onPress={() => onDeletePasskey(passkey.credential_id)}>
+                          onPress={() => setPendingDeletePasskey(passkey)}>
                           {isDeletingId === passkey.credential_id ? (
                             <ActivityIndicator color="#dc2626" />
                           ) : (
@@ -354,6 +539,91 @@ export default function SettingsScreen() {
           </Card>
         </View>
       </ScrollView>
+      <AlertDialog open={!!pendingDeletePasskey} onOpenChange={(open) => {
+        if (!open) {
+          setPendingDeletePasskey(null);
+        }
+      }}>
+        <AlertDialogContent className="rounded-[28px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove passkey?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This device passkey will stop working for sign-in until you register it again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              <Text>Cancel</Text>
+            </AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive" onPress={() => {
+              if (pendingDeletePasskey) {
+                void onDeletePasskey(pendingDeletePasskey.credential_id);
+              }
+            }}>
+              <Text>Remove</Text>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <ToastBanner message={message} variant="success" />
     </SafeAreaView>
+  );
+}
+
+function PreferenceGroup({
+  children,
+  description,
+  title,
+}: {
+  children: React.ReactNode;
+  description: string;
+  title: string;
+}) {
+  return (
+    <View className="rounded-[26px] border border-border/70 bg-background px-4 py-4">
+      <View className="mb-4 gap-1">
+        <Text className="font-semibold text-foreground">{title}</Text>
+        <Text className="text-sm leading-5 text-muted-foreground">{description}</Text>
+      </View>
+      <View className="gap-3">{children}</View>
+    </View>
+  );
+}
+
+function PreferenceRow({
+  description,
+  enabled,
+  icon,
+  label,
+  onPress,
+}: {
+  description: string;
+  enabled: boolean;
+  icon: LucideIcon;
+  label: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      className={`rounded-[22px] border px-4 py-4 ${
+        enabled ? 'border-primary/20 bg-primary/5' : 'border-border/70 bg-card'
+      }`}
+      onPress={onPress}>
+      <View className="flex-row items-center gap-4">
+        <View className={`rounded-2xl px-3 py-3 ${enabled ? 'bg-primary' : 'bg-primary/10'}`}>
+          <Icon as={icon} className={enabled ? 'text-primary-foreground' : 'text-primary'} size={18} />
+        </View>
+        <View className="flex-1 gap-1">
+          <Text className="font-semibold text-foreground">{label}</Text>
+          <Text className="text-sm leading-5 text-muted-foreground">{description}</Text>
+        </View>
+        <View className={`rounded-full px-3 py-1 ${enabled ? 'bg-primary' : 'bg-muted'}`}>
+          <Text className={enabled ? 'text-primary-foreground' : 'text-muted-foreground'}>
+            {enabled ? 'On' : 'Off'}
+          </Text>
+        </View>
+      </View>
+    </Pressable>
   );
 }

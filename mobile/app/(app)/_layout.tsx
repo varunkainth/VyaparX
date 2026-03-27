@@ -9,15 +9,22 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
-import { Redirect, Tabs } from 'expo-router';
+import { Redirect, Tabs, usePathname } from 'expo-router';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import type { LucideIcon } from 'lucide-react-native';
 import { BookUser, Boxes, House, ReceiptText, SunMoon } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { FullScreenLoader } from '@/components/full-screen-loader';
+import { Skeleton } from '@/components/ui/skeleton';
 import { PermissionsGate } from '@/components/permissions-gate';
 import { useAuthStore } from '@/store/auth-store';
+import { useBusinessStore } from '@/store/business-store';
+import { useDashboardStore } from '@/store/dashboard-store';
+import { useInventoryStore } from '@/store/inventory-store';
+import { useInvoiceStore } from '@/store/invoice-store';
+import { useNavigationStore } from '@/store/navigation-store';
+import { usePartyStore } from '@/store/party-store';
+import { usePaymentStore } from '@/store/payment-store';
 import { useAppTheme } from '@/theme/theme-provider';
 
 const TAB_META: Record<string, { icon: LucideIcon; label: string }> = {
@@ -67,6 +74,10 @@ const TAB_PARENT_BY_ROUTE: Record<string, string> = {
   '(app)/invoice-create-sales': 'invoices',
   'invoice-detail': 'invoices',
   '(app)/invoice-detail': 'invoices',
+  activity: 'more',
+  '(app)/activity': 'more',
+  analytics: 'more',
+  '(app)/analytics': 'more',
   'party-create': 'customers',
   '(app)/party-create': 'customers',
   'party-detail': 'customers',
@@ -77,10 +88,24 @@ const TAB_PARENT_BY_ROUTE: Record<string, string> = {
   '(app)/payment-detail': 'invoices',
   'payment-record': 'invoices',
   '(app)/payment-record': 'invoices',
+  notifications: 'more',
+  '(app)/notifications': 'more',
   payments: 'invoices',
   '(app)/payments': 'invoices',
   profile: 'more',
   '(app)/profile': 'more',
+  'report-gst': 'more',
+  '(app)/report-gst': 'more',
+  'report-low-stock': 'more',
+  '(app)/report-low-stock': 'more',
+  'report-outstanding': 'more',
+  '(app)/report-outstanding': 'more',
+  'report-profit-loss': 'more',
+  '(app)/report-profit-loss': 'more',
+  'report-purchase': 'more',
+  '(app)/report-purchase': 'more',
+  'report-sales': 'more',
+  '(app)/report-sales': 'more',
   reports: 'more',
   '(app)/reports': 'more',
   settings: 'more',
@@ -89,11 +114,63 @@ const TAB_PARENT_BY_ROUTE: Record<string, string> = {
 
 export default function AppLayout() {
   const { hasHydrated, isAuthenticated, isLoading, session } = useAuthStore();
+  const bootstrapForSession = useBusinessStore((state) => state.bootstrapForSession);
+  const clearBusinessState = useBusinessStore((state) => state.clearBusinessState);
+  const clearDashboardState = useDashboardStore((state) => state.clearDashboardState);
+  const clearInventoryState = useInventoryStore((state) => state.clearInventoryState);
+  const clearInvoiceState = useInvoiceStore((state) => state.clearInvoiceState);
+  const clearPartyState = usePartyStore((state) => state.clearPartyState);
+  const clearPaymentState = usePaymentStore((state) => state.clearPaymentState);
   const { resolvedTheme } = useAppTheme();
   const insets = useSafeAreaInsets();
+  const pathname = usePathname();
+  const setCurrentRoute = useNavigationStore((state) => state.setCurrentRoute);
+
+  React.useEffect(() => {
+    setCurrentRoute(pathname);
+  }, [pathname, setCurrentRoute]);
+
+  React.useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      clearBusinessState();
+      clearDashboardState();
+      clearInventoryState();
+      clearInvoiceState();
+      clearPartyState();
+      clearPaymentState();
+      return;
+    }
+
+    if (!session?.business_id) {
+      clearBusinessState();
+      clearDashboardState();
+      clearInventoryState();
+      clearInvoiceState();
+      clearPartyState();
+      clearPaymentState();
+      return;
+    }
+
+    void bootstrapForSession(session.business_id);
+  }, [
+    bootstrapForSession,
+    clearBusinessState,
+    clearDashboardState,
+    clearInventoryState,
+    clearInvoiceState,
+    clearPartyState,
+    clearPaymentState,
+    hasHydrated,
+    isAuthenticated,
+    session?.business_id,
+  ]);
 
   if (!hasHydrated || isLoading) {
-    return <FullScreenLoader label="Preparing workspace..." />;
+    return <AppLayoutSkeleton />;
   }
 
   if (!isAuthenticated) {
@@ -121,6 +198,9 @@ export default function AppLayout() {
         <Tabs.Screen name="payments" options={{ href: null }} />
         <Tabs.Screen name="profile" options={{ href: null }} />
         <Tabs.Screen name="settings" options={{ href: null }} />
+        <Tabs.Screen name="notifications" options={{ href: null }} />
+        <Tabs.Screen name="analytics" options={{ href: null }} />
+        <Tabs.Screen name="activity" options={{ href: null }} />
         <Tabs.Screen name="business" options={{ href: null }} />
         <Tabs.Screen name="business-settings" options={{ href: null }} />
         <Tabs.Screen name="invoice-settings" options={{ href: null }} />
@@ -136,8 +216,39 @@ export default function AppLayout() {
         <Tabs.Screen name="payment-detail" options={{ href: null }} />
         <Tabs.Screen name="payment-record" options={{ href: null }} />
         <Tabs.Screen name="reports" options={{ href: null }} />
+        <Tabs.Screen name="report-sales" options={{ href: null }} />
+        <Tabs.Screen name="report-purchase" options={{ href: null }} />
+        <Tabs.Screen name="report-profit-loss" options={{ href: null }} />
+        <Tabs.Screen name="report-gst" options={{ href: null }} />
+        <Tabs.Screen name="report-outstanding" options={{ href: null }} />
+        <Tabs.Screen name="report-low-stock" options={{ href: null }} />
       </Tabs>
     </PermissionsGate>
+  );
+}
+
+function AppLayoutSkeleton() {
+  return (
+    <SafeAreaView className="flex-1 bg-background">
+      <View className="flex-1 px-6 pt-4">
+        <View className="gap-6">
+          <Skeleton className="h-8 w-40 rounded-full" />
+          <Skeleton className="h-28 w-full rounded-[28px]" />
+          <Skeleton className="h-28 w-full rounded-[28px]" />
+          <Skeleton className="h-28 w-full rounded-[28px]" />
+        </View>
+      </View>
+      <View className="px-6 pb-8">
+        <View className="flex-row justify-between rounded-[30px] border border-border/70 bg-card px-5 py-4">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <View key={index} className="items-center gap-2">
+              <Skeleton className="h-10 w-10 rounded-2xl" />
+              <Skeleton className="h-3 w-12 rounded-full" />
+            </View>
+          ))}
+        </View>
+      </View>
+    </SafeAreaView>
   );
 }
 

@@ -1,9 +1,8 @@
 import * as React from 'react';
 import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Camera, FolderOpen, ShieldCheck, BellRing } from 'lucide-react-native';
+import { FolderOpen, ShieldCheck, BellRing } from 'lucide-react-native';
 import * as MediaLibrary from 'expo-media-library';
-import { Camera as ExpoCamera } from 'expo-camera';
 import { isRunningInExpoGo } from 'expo';
 
 import { Button } from '@/components/ui/button';
@@ -16,7 +15,6 @@ import type { NotificationPermissionsStatus } from 'expo-notifications';
 type PermissionState = 'granted' | 'denied' | 'undetermined';
 
 type PermissionSnapshot = {
-  camera: PermissionState;
   media: PermissionState;
   notifications: PermissionState;
 };
@@ -38,10 +36,9 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
         ? (await import('expo-notifications')).getPermissionsAsync()
         : Promise.resolve({ status: 'granted' } as NotificationPermissionResponse);
 
-      const [notificationPermission, mediaPermission, cameraPermission, handled] = await Promise.all([
+      const [notificationPermission, mediaPermission, handled] = await Promise.all([
         notificationPromise,
         MediaLibrary.getPermissionsAsync(),
-        ExpoCamera.getCameraPermissionsAsync(),
         hasHandledPermissionsPrompt(),
       ]);
 
@@ -50,7 +47,6 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
       }
 
       setSnapshot({
-        camera: normalizeStatus(cameraPermission.status),
         media: normalizeStatus(mediaPermission.status),
         notifications: normalizeStatus(notificationPermission.status),
       });
@@ -66,8 +62,7 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
   }, [notificationsSupported]);
 
   const notificationsGranted = !notificationsSupported || snapshot?.notifications === 'granted';
-  const allGranted =
-    snapshot?.camera === 'granted' && snapshot?.media === 'granted' && notificationsGranted;
+  const allGranted = snapshot?.media === 'granted' && notificationsGranted;
 
   if (isLoading) {
     return null;
@@ -97,14 +92,12 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
         notificationPermissionPromise = Notifications.requestPermissionsAsync();
       }
 
-      const [notificationPermission, mediaPermission, cameraPermission] = await Promise.all([
+      const [notificationPermission, mediaPermission] = await Promise.all([
         notificationPermissionPromise,
         MediaLibrary.requestPermissionsAsync(),
-        ExpoCamera.requestCameraPermissionsAsync(),
       ]);
 
       const nextSnapshot = {
-        camera: normalizeStatus(cameraPermission.status),
         media: normalizeStatus(mediaPermission.status),
         notifications: normalizeStatus(notificationPermission.status),
       };
@@ -123,7 +116,6 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
   }
 
   const anyDenied =
-    snapshot?.camera === 'denied' ||
     snapshot?.media === 'denied' ||
     (notificationsSupported && snapshot?.notifications === 'denied');
 
@@ -141,7 +133,7 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
             </View>
             <CardTitle className="text-center text-3xl">Enable essentials</CardTitle>
             <CardDescription className="text-center leading-6">
-              Notifications, storage access, and camera permission make invoices, media, and alerts work properly.
+              Storage access and notifications help with exports, attachments, and business alerts.
             </CardDescription>
           </CardHeader>
           <CardContent className="gap-3">
@@ -158,12 +150,6 @@ export function PermissionsGate({ children }: { children: React.ReactNode }) {
               icon={FolderOpen}
               status={snapshot?.media ?? 'undetermined'}
               title="Storage / Photos"
-            />
-            <PermissionRow
-              description="Scan documents, attach images, and support camera workflows."
-              icon={Camera}
-              status={snapshot?.camera ?? 'undetermined'}
-              title="Camera"
             />
 
             <View className="gap-3 pt-2">

@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ArrowRightLeft,
@@ -15,18 +15,15 @@ import {
   Users,
 } from 'lucide-react-native';
 
+import { ListScreenSkeleton } from '@/components/screen-skeleton';
 import { SubpageHeader } from '@/components/subpage-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
-import { authService } from '@/services/auth.service';
-import { businessService } from '@/services/business.service';
 import { useAuthStore } from '@/store/auth-store';
-import type { BusinessWithRole, CreateBusinessInput } from '@/types/business';
+import { useBusinessStore } from '@/store/business-store';
+import type { BusinessWithRole } from '@/types/business';
 
 const businessModules = [
   ['Business profile', 'Company identity and registration details', Building2],
@@ -37,185 +34,29 @@ const businessModules = [
   ['Members and roles', 'Team access and permission management', Users],
 ] as const;
 
-const initialCreateForm: CreateBusinessInput = {
-  address_line1: '',
-  address_line2: '',
-  bank_account_no: '',
-  bank_branch: '',
-  bank_ifsc: '',
-  bank_name: '',
-  city: '',
-  email: '',
-  gstin: '',
-  invoice_prefix: '',
-  purchase_prefix: '',
-  reset_numbering: 'never',
-  logo_url: '',
-  name: '',
-  pan: '',
-  phone: '',
-  pincode: '',
-  signature_url: '',
-  state: '',
-  state_code: '',
-  upi_id: '',
-  website: '',
-};
-
 export default function BusinessScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ open_create?: string }>();
   const insets = useSafeAreaInsets();
-  const { session, setAuth, setSession, setTokens, user } = useAuthStore();
-  const [businesses, setBusinesses] = React.useState<BusinessWithRole[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [switchingId, setSwitchingId] = React.useState<string | null>(null);
-  const [isCreating, setIsCreating] = React.useState(false);
-  const [showCreateForm, setShowCreateForm] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const [createForm, setCreateForm] = React.useState<CreateBusinessInput>({
-    ...initialCreateForm,
-    email: user?.email ?? '',
-    phone: user?.phone ?? '',
-  });
-
-  const loadBusinesses = React.useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const items = await businessService.listBusinesses();
-      setBusinesses(items);
-    } catch (loadError: any) {
-      setError(
-        loadError?.response?.data?.error?.message ??
-          loadError?.response?.data?.message ??
-          'Unable to load businesses right now.'
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const { session } = useAuthStore();
+  const {
+    businesses,
+    currentBusiness,
+    ensureBusinesses,
+    error,
+    isSwitchingBusinessId,
+    listStatus,
+    switchBusiness,
+  } = useBusinessStore();
 
   React.useEffect(() => {
-    void loadBusinesses();
-  }, [loadBusinesses]);
-
-  React.useEffect(() => {
-    setCreateForm((current) => ({
-      ...current,
-      email: current.email || user?.email || '',
-      phone: current.phone || user?.phone || '',
-    }));
-  }, [user?.email, user?.phone]);
-
-  React.useEffect(() => {
-    if (typeof params.open_create === 'string' && params.open_create.length > 0) {
-      setShowCreateForm(true);
-    }
-  }, [params.open_create]);
-
-  const currentBusiness = businesses.find((business) => business.id === session?.business_id) ?? null;
+    void ensureBusinesses();
+  }, [ensureBusinesses]);
 
   async function handleSwitchBusiness(business: BusinessWithRole) {
-    if (business.id === session?.business_id) {
-      return;
-    }
-
-    setSwitchingId(business.id);
-    setError(null);
-
     try {
-      const response = await authService.switchBusiness(business.id);
-
-      if (user) {
-        setAuth(user, response.tokens, response.session);
-      } else {
-        setTokens(response.tokens);
-        setSession(response.session);
-      }
-
+      await switchBusiness(business);
       router.replace('/(app)');
-    } catch (switchError: any) {
-      setError(
-        switchError?.response?.data?.error?.message ??
-          switchError?.response?.data?.message ??
-          'Unable to switch business right now.'
-      );
-    } finally {
-      setSwitchingId(null);
-    }
-  }
-
-  async function handleCreateBusiness() {
-    if (
-      !createForm.name.trim() ||
-      !createForm.state_code.trim() ||
-      !createForm.address_line1.trim() ||
-      !createForm.city.trim() ||
-      !createForm.state.trim() ||
-      !createForm.pincode.trim() ||
-      !createForm.phone.trim() ||
-      !createForm.email.trim()
-    ) {
-      setError('Complete the required business fields first.');
-      return;
-    }
-
-    setIsCreating(true);
-    setError(null);
-
-    try {
-      const response = await businessService.createBusiness({
-        ...createForm,
-        address_line1: createForm.address_line1.trim(),
-        address_line2: createForm.address_line2?.trim() || undefined,
-        bank_account_no: createForm.bank_account_no?.trim() || undefined,
-        bank_branch: createForm.bank_branch?.trim() || undefined,
-        bank_ifsc: createForm.bank_ifsc?.trim() || undefined,
-        bank_name: createForm.bank_name?.trim() || undefined,
-        city: createForm.city.trim(),
-        email: createForm.email.trim(),
-        gstin: createForm.gstin?.trim() || undefined,
-        invoice_prefix: createForm.invoice_prefix?.trim() || undefined,
-        purchase_prefix: createForm.purchase_prefix?.trim() || undefined,
-        reset_numbering: createForm.reset_numbering,
-        logo_url: createForm.logo_url?.trim() || undefined,
-        name: createForm.name.trim(),
-        pan: createForm.pan?.trim() || undefined,
-        phone: createForm.phone.trim(),
-        pincode: createForm.pincode.trim(),
-        signature_url: createForm.signature_url?.trim() || undefined,
-        state: createForm.state.trim(),
-        state_code: createForm.state_code.trim().toUpperCase(),
-        upi_id: createForm.upi_id?.trim() || undefined,
-        website: createForm.website?.trim() || undefined,
-      });
-
-      if (user) {
-        setAuth(user, response.tokens, response.session);
-      } else {
-        setTokens(response.tokens);
-        setSession(response.session);
-      }
-
-      setCreateForm({
-        ...initialCreateForm,
-        email: user?.email ?? '',
-        phone: user?.phone ?? '',
-      });
-      setShowCreateForm(false);
-      await loadBusinesses();
-      router.replace('/(app)');
-    } catch (createError: any) {
-      setError(
-        createError?.response?.data?.error?.message ??
-          createError?.response?.data?.message ??
-          'Unable to create business right now.'
-      );
-    } finally {
-      setIsCreating(false);
-    }
+    } catch {}
   }
 
   return (
@@ -297,10 +138,8 @@ export default function BusinessScreen() {
                 <CardDescription>Every business you have access to appears here.</CardDescription>
               </CardHeader>
               <CardContent className="gap-3">
-                {isLoading ? (
-                  <View className="items-center py-8">
-                    <ActivityIndicator />
-                  </View>
+                {listStatus === 'loading' ? (
+                  <ListScreenSkeleton rowCount={4} />
                 ) : (
                   businesses.map((business) => (
                     <Pressable
@@ -320,7 +159,7 @@ export default function BusinessScreen() {
                         <View className="rounded-full bg-primary/10 px-3 py-1">
                           <Text className="text-xs font-semibold uppercase tracking-[1px] text-primary">Current</Text>
                         </View>
-                      ) : switchingId === business.id ? (
+                      ) : isSwitchingBusinessId === business.id ? (
                         <ActivityIndicator />
                       ) : (
                         <Icon as={ArrowRightLeft} className="text-muted-foreground" size={18} />
@@ -334,7 +173,7 @@ export default function BusinessScreen() {
         </ScrollView>
 
         <Pressable
-          accessibilityLabel={showCreateForm ? 'Hide create business form' : 'Create business'}
+          accessibilityLabel="Create business"
           accessibilityRole="button"
           className="absolute right-6 z-50 h-16 w-16 items-center justify-center rounded-full bg-primary"
           style={{
@@ -345,107 +184,14 @@ export default function BusinessScreen() {
             shadowOpacity: 0.18,
             shadowRadius: 18,
           }}
-          onPress={() => setShowCreateForm((current) => !current)}>
+          onPress={() =>
+            router.push({
+              pathname: '/business-setup',
+              params: { mode: 'create', return_to: '/(app)/business' },
+            })
+          }>
           <Icon as={CirclePlus} className="text-primary-foreground" size={26} />
         </Pressable>
-
-        <Dialog open={showCreateForm} onOpenChange={setShowCreateForm}>
-          <DialogContent className="max-w-[440px] rounded-[28px]">
-            <DialogHeader>
-              <DialogTitle>Create business</DialogTitle>
-              <DialogDescription>Add another workspace without leaving the app.</DialogDescription>
-            </DialogHeader>
-            <ScrollView className="max-h-[70vh]">
-              <View className="gap-4">
-                <BusinessField label="Business name">
-                  <Input value={createForm.name} onChangeText={(value) => setCreateForm((current) => ({ ...current, name: value }))} />
-                </BusinessField>
-                <BusinessField label="Address line 1">
-                  <Input
-                    value={createForm.address_line1}
-                    onChangeText={(value) => setCreateForm((current) => ({ ...current, address_line1: value }))}
-                  />
-                </BusinessField>
-                <View className="flex-row gap-3">
-                  <View className="flex-1">
-                    <BusinessField label="City">
-                      <Input value={createForm.city} onChangeText={(value) => setCreateForm((current) => ({ ...current, city: value }))} />
-                    </BusinessField>
-                  </View>
-                  <View className="flex-1">
-                    <BusinessField label="State">
-                      <Input value={createForm.state} onChangeText={(value) => setCreateForm((current) => ({ ...current, state: value }))} />
-                    </BusinessField>
-                  </View>
-                </View>
-                <View className="flex-row gap-3">
-                  <View className="w-24">
-                    <BusinessField label="Code">
-                      <Input
-                        autoCapitalize="characters"
-                        maxLength={2}
-                        value={createForm.state_code}
-                        onChangeText={(value) => setCreateForm((current) => ({ ...current, state_code: value.toUpperCase() }))}
-                      />
-                    </BusinessField>
-                  </View>
-                  <View className="flex-1">
-                    <BusinessField label="Pincode">
-                      <Input
-                        keyboardType="number-pad"
-                        value={createForm.pincode}
-                        onChangeText={(value) => setCreateForm((current) => ({ ...current, pincode: value }))}
-                      />
-                    </BusinessField>
-                  </View>
-                </View>
-                <BusinessField label="Phone">
-                  <Input
-                    keyboardType="phone-pad"
-                    value={createForm.phone}
-                    onChangeText={(value) => setCreateForm((current) => ({ ...current, phone: value }))}
-                  />
-                </BusinessField>
-                <BusinessField label="Email">
-                  <Input
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    value={createForm.email}
-                    onChangeText={(value) => setCreateForm((current) => ({ ...current, email: value }))}
-                  />
-                </BusinessField>
-                <View className="flex-row gap-3">
-                  <View className="flex-1">
-                    <BusinessField label="Sales prefix">
-                      <Input
-                        autoCapitalize="characters"
-                        value={createForm.invoice_prefix ?? ''}
-                        onChangeText={(value) => setCreateForm((current) => ({ ...current, invoice_prefix: value.toUpperCase() }))}
-                      />
-                    </BusinessField>
-                  </View>
-                  <View className="flex-1">
-                    <BusinessField label="Purchase prefix">
-                      <Input
-                        autoCapitalize="characters"
-                        value={createForm.purchase_prefix ?? ''}
-                        onChangeText={(value) => setCreateForm((current) => ({ ...current, purchase_prefix: value.toUpperCase() }))}
-                      />
-                    </BusinessField>
-                  </View>
-                </View>
-                <View className="flex-row gap-3 pb-1">
-                  <Button variant="outline" className="h-14 flex-1 rounded-[22px]" onPress={() => setShowCreateForm(false)}>
-                    <Text>Close</Text>
-                  </Button>
-                  <Button className="h-14 flex-1 gap-2 rounded-[22px]" disabled={isCreating} onPress={handleCreateBusiness}>
-                    {isCreating ? <ActivityIndicator color="#ffffff" /> : <Text>Create and switch</Text>}
-                  </Button>
-                </View>
-              </View>
-            </ScrollView>
-          </DialogContent>
-        </Dialog>
       </View>
     </SafeAreaView>
   );
@@ -491,13 +237,4 @@ function formatRole(role?: string | null) {
   }
 
   return role.replace('_', ' ');
-}
-
-function BusinessField({ children, label }: { children: React.ReactNode; label: string }) {
-  return (
-    <View className="gap-2">
-      <Label>{label}</Label>
-      {children}
-    </View>
-  );
 }

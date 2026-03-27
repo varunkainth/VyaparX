@@ -1,28 +1,48 @@
 import * as React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
-import { Redirect } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowRight, BriefcaseBusiness, Building2, CirclePlus, Store } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  ArrowRight,
+  BriefcaseBusiness,
+  Building2,
+  ChevronDown,
+  CirclePlus,
+  MapPin,
+  Store,
+} from 'lucide-react-native';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
-import { authService } from '@/services/auth.service';
-import { businessService } from '@/services/business.service';
+import { INDIAN_STATES, formatStateDisplay } from '@/constants/indian-states';
 import { useAuthStore } from '@/store/auth-store';
+import { useBusinessStore } from '@/store/business-store';
 import type { BusinessWithRole } from '@/types/business';
 
 export default function BusinessSetupScreen() {
-  const { hasHydrated, isAuthenticated, session, setAuth, setSession, setTokens, user } = useAuthStore();
-  const [businesses, setBusinesses] = React.useState<BusinessWithRole[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [isCreating, setIsCreating] = React.useState(false);
-  const [isSwitchingId, setIsSwitchingId] = React.useState<string | null>(null);
+  const router = useRouter();
+  const params = useLocalSearchParams<{ mode?: string; return_to?: string }>();
+  const { hasHydrated, isAuthenticated, session, user } = useAuthStore();
+  const {
+    businesses,
+    createBusiness,
+    ensureBusinesses,
+    error,
+    isCreatingBusiness,
+    isSwitchingBusinessId,
+    listStatus,
+    switchBusiness,
+  } = useBusinessStore();
   const [showCreateForm, setShowCreateForm] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [isStatePickerOpen, setIsStatePickerOpen] = React.useState(false);
+  const forceCreateMode = params.mode === 'create';
+  const returnTo = typeof params.return_to === 'string' && params.return_to.length > 0 ? params.return_to : '/(app)';
   const [form, setForm] = React.useState({
     address_line1: '',
     city: '',
@@ -34,6 +54,7 @@ export default function BusinessSetupScreen() {
     purchase_prefix: '',
     state: '',
     state_code: '',
+    website: '',
   });
 
   React.useEffect(() => {
@@ -45,46 +66,14 @@ export default function BusinessSetupScreen() {
   }, [user?.email, user?.phone]);
 
   React.useEffect(() => {
-    let isMounted = true;
-
-    const loadBusinesses = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const items = await businessService.listBusinesses();
-
-        if (!isMounted) {
-          return;
-        }
-
-        setBusinesses(items);
-        setShowCreateForm(items.length === 0);
-      } catch (loadError: any) {
-        if (!isMounted) {
-          return;
-        }
-
-        setError(
-          loadError?.response?.data?.error?.message ??
-            loadError?.response?.data?.message ??
-            'Unable to load businesses right now.'
-        );
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    if (isAuthenticated && !session?.business_id) {
-      void loadBusinesses();
+    if (isAuthenticated && (!session?.business_id || forceCreateMode)) {
+      void ensureBusinesses(true);
     }
+  }, [ensureBusinesses, forceCreateMode, isAuthenticated, session?.business_id]);
 
-    return () => {
-      isMounted = false;
-    };
-  }, [isAuthenticated, session?.business_id]);
+  React.useEffect(() => {
+    setShowCreateForm(forceCreateMode || businesses.length === 0);
+  }, [businesses.length, forceCreateMode]);
 
   if (!hasHydrated) {
     return null;
@@ -94,32 +83,22 @@ export default function BusinessSetupScreen() {
     return <Redirect href="/(auth)/login" />;
   }
 
-  if (session?.business_id) {
+  if (session?.business_id && !forceCreateMode) {
     return <Redirect href="/(app)" />;
   }
 
+  if (listStatus === 'loading') {
+    return <BusinessSetupSkeleton showBackButton={forceCreateMode} onBack={() => router.replace(returnTo)} />;
+  }
+
   async function handleSwitchBusiness(businessId: string) {
-    setIsSwitchingId(businessId);
-    setError(null);
-
     try {
-      const response = await authService.switchBusiness(businessId);
-
-      if (user) {
-        setAuth(user, response.tokens, response.session);
-      } else {
-        setTokens(response.tokens);
-        setSession(response.session);
+      const business = businesses.find((item) => item.id === businessId);
+      if (!business) {
+        return;
       }
-    } catch (switchError: any) {
-      setError(
-        switchError?.response?.data?.error?.message ??
-          switchError?.response?.data?.message ??
-          'Unable to switch business right now.'
-      );
-    } finally {
-      setIsSwitchingId(null);
-    }
+      await switchBusiness(business);
+    } catch {}
   }
 
   async function handleCreateBusiness() {
@@ -133,15 +112,11 @@ export default function BusinessSetupScreen() {
       !form.phone.trim() ||
       !form.email.trim()
     ) {
-      setError('Complete all required business fields first.');
       return;
     }
 
-    setIsCreating(true);
-    setError(null);
-
     try {
-      const response = await businessService.createBusiness({
+      await createBusiness({
         address_line1: form.address_line1.trim(),
         city: form.city.trim(),
         email: form.email.trim(),
@@ -152,23 +127,11 @@ export default function BusinessSetupScreen() {
         purchase_prefix: form.purchase_prefix.trim() || undefined,
         state: form.state.trim(),
         state_code: form.state_code.trim(),
+        website: form.website.trim() || undefined,
       });
 
-      if (user) {
-        setAuth(user, response.tokens, response.session);
-      } else {
-        setTokens(response.tokens);
-        setSession(response.session);
-      }
-    } catch (createError: any) {
-      setError(
-        createError?.response?.data?.error?.message ??
-          createError?.response?.data?.message ??
-          'Unable to create business right now.'
-      );
-    } finally {
-      setIsCreating(false);
-    }
+      router.replace(returnTo);
+    } catch {}
   }
 
   return (
@@ -177,11 +140,24 @@ export default function BusinessSetupScreen() {
       <View className="absolute right-0 top-44 h-28 w-28 rounded-full bg-secondary/70" />
       <ScrollView className="flex-1 bg-background" contentContainerClassName="px-6 pb-12 pt-4">
         <View className="gap-6">
+          {forceCreateMode ? (
+            <Button
+              variant="outline"
+              className="h-11 self-start rounded-2xl px-4"
+              onPress={() => router.replace(returnTo)}>
+              <Icon as={ArrowLeft} className="text-foreground" size={16} />
+              <Text>Back</Text>
+            </Button>
+          ) : null}
           <View className="gap-2">
             <Text className="text-sm uppercase tracking-[2px] text-muted-foreground">Business setup</Text>
-            <Text className="text-3xl font-extrabold tracking-tight text-foreground">Create or choose a business</Text>
+            <Text className="text-3xl font-extrabold tracking-tight text-foreground">
+              {showCreateForm && !businesses.length ? 'Create your first business' : forceCreateMode ? 'Create a new business' : 'Create or choose a business'}
+            </Text>
             <Text className="text-base leading-6 text-muted-foreground">
-              You cannot enter the workspace until at least one business is selected.
+              {forceCreateMode
+                ? 'Create another workspace here. Once it is ready, the app will switch into it and take you home.'
+                : 'You cannot enter the workspace until at least one business is selected.'}
             </Text>
           </View>
 
@@ -191,25 +167,7 @@ export default function BusinessSetupScreen() {
             </View>
           ) : null}
 
-          {isLoading ? (
-            <Card className="overflow-hidden rounded-[28px]">
-              <View className="absolute -right-12 top-0 h-28 w-28 rounded-full bg-primary/10" />
-              <CardContent className="items-center gap-4 py-10">
-                <View className="rounded-[24px] bg-primary/10 px-4 py-4">
-                  <Icon as={Building2} className="text-primary" size={22} />
-                </View>
-                <ActivityIndicator />
-                <View className="items-center gap-1">
-                  <Text className="font-semibold text-foreground">Checking your businesses</Text>
-                  <Text className="text-center text-sm leading-5 text-muted-foreground">
-                    We&apos;re loading the businesses available for this account before opening the workspace.
-                  </Text>
-                </View>
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {!isLoading && businesses.length > 0 ? (
+          {businesses.length > 0 && !forceCreateMode ? (
             <Card className="rounded-[28px]">
               <CardHeader>
                 <CardTitle>Available businesses</CardTitle>
@@ -230,7 +188,7 @@ export default function BusinessSetupScreen() {
                         <RoleBadge role={business.role} />
                       </View>
                     </View>
-                    {isSwitchingId === business.id ? (
+                    {isSwitchingBusinessId === business.id ? (
                       <ActivityIndicator />
                     ) : (
                       <Icon as={ArrowRight} className="text-muted-foreground" size={18} />
@@ -253,7 +211,11 @@ export default function BusinessSetupScreen() {
             <Card className="rounded-[28px]">
               <CardHeader>
                 <CardTitle>Create business</CardTitle>
-                <CardDescription>Complete the minimum required business details to continue.</CardDescription>
+                <CardDescription>
+                  {businesses.length > 0
+                    ? 'Complete the minimum required business details to add another workspace.'
+                    : 'Complete the minimum required business details to continue.'}
+                </CardDescription>
               </CardHeader>
               <CardContent className="gap-4">
                 <Field label="Business name">
@@ -268,26 +230,14 @@ export default function BusinessSetupScreen() {
                 <Field label="City">
                   <Input value={form.city} onChangeText={(value) => setForm((current) => ({ ...current, city: value }))} />
                 </Field>
-                <View className="flex-row gap-3">
-                  <View className="flex-1">
-                    <Field label="State">
-                      <Input
-                        value={form.state}
-                        onChangeText={(value) => setForm((current) => ({ ...current, state: value }))}
-                      />
-                    </Field>
-                  </View>
-                  <View className="w-24">
-                    <Field label="Code">
-                      <Input
-                        autoCapitalize="characters"
-                        maxLength={2}
-                        value={form.state_code}
-                        onChangeText={(value) => setForm((current) => ({ ...current, state_code: value.toUpperCase() }))}
-                      />
-                    </Field>
-                  </View>
-                </View>
+                <Field label="State">
+                  <SelectionCard
+                    icon={MapPin}
+                    label="Select state"
+                    value={form.state_code ? formatStateDisplay({ code: form.state_code, name: form.state, type: 'state' as const }) : 'Choose state'}
+                    onPress={() => setIsStatePickerOpen(true)}
+                  />
+                </Field>
                 <Field label="Pincode">
                   <Input
                     keyboardType="number-pad"
@@ -310,6 +260,15 @@ export default function BusinessSetupScreen() {
                     onChangeText={(value) => setForm((current) => ({ ...current, email: value }))}
                   />
                 </Field>
+                <Field label="Website">
+                  <Input
+                    autoCapitalize="none"
+                    keyboardType="url"
+                    placeholder="https://example.com"
+                    value={form.website}
+                    onChangeText={(value) => setForm((current) => ({ ...current, website: value }))}
+                  />
+                </Field>
                 <View className="flex-row gap-3">
                   <View className="flex-1">
                     <Field label="Sales prefix">
@@ -330,16 +289,95 @@ export default function BusinessSetupScreen() {
                     </Field>
                   </View>
                 </View>
-
-                <Button className="h-14 gap-2 rounded-[22px]" disabled={isCreating} onPress={handleCreateBusiness}>
-                  {isCreating ? <ActivityIndicator color="#ffffff" /> : <>
-                    <Icon as={BriefcaseBusiness} className="text-primary-foreground" size={16} />
-                    <Text>Create business and continue</Text>
-                  </>}
+                <Button className="h-14 gap-2 rounded-[22px]" disabled={isCreatingBusiness} onPress={handleCreateBusiness}>
+                  {isCreatingBusiness ? (
+                    <ActivityIndicator color="#ffffff" />
+                  ) : (
+                    <>
+                      <Icon as={BriefcaseBusiness} className="text-primary-foreground" size={16} />
+                      <Text>{businesses.length > 0 ? 'Create, switch, and continue' : 'Create business and continue'}</Text>
+                    </>
+                  )}
                 </Button>
               </CardContent>
             </Card>
           ) : null}
+        </View>
+      </ScrollView>
+      <Dialog open={isStatePickerOpen} onOpenChange={setIsStatePickerOpen}>
+        <DialogContent className="max-w-[420px] rounded-[28px]">
+          <DialogHeader>
+            <DialogTitle>Select state</DialogTitle>
+            <DialogDescription>Choose the business billing state.</DialogDescription>
+          </DialogHeader>
+          <ScrollView className="max-h-[360px]">
+            <View className="gap-3">
+              {INDIAN_STATES.map((state) => (
+                <PickerOption
+                  key={state.code}
+                  title={formatStateDisplay(state)}
+                  selected={form.state_code === state.code}
+                  onPress={() => {
+                    setForm((current) => ({
+                      ...current,
+                      state: state.name,
+                      state_code: state.code,
+                    }));
+                    setIsStatePickerOpen(false);
+                  }}
+                />
+              ))}
+            </View>
+          </ScrollView>
+        </DialogContent>
+      </Dialog>
+    </SafeAreaView>
+  );
+}
+
+function BusinessSetupSkeleton({
+  onBack,
+  showBackButton,
+}: {
+  onBack: () => void;
+  showBackButton: boolean;
+}) {
+  return (
+    <SafeAreaView className="flex-1 bg-background">
+      <ScrollView className="flex-1 bg-background" contentContainerClassName="px-6 pb-12 pt-4">
+        <View className="gap-6">
+          {showBackButton ? (
+            <Button variant="outline" className="h-11 self-start rounded-2xl px-4" onPress={onBack}>
+              <Icon as={ArrowLeft} className="text-foreground" size={16} />
+              <Text>Back</Text>
+            </Button>
+          ) : null}
+          <View className="gap-3">
+            <View className="h-4 w-28 rounded-full bg-muted" />
+            <View className="h-10 w-64 rounded-full bg-muted" />
+            <View className="h-5 w-full rounded-full bg-muted" />
+            <View className="h-5 w-5/6 rounded-full bg-muted" />
+          </View>
+          <Card className="rounded-[28px]">
+            <CardHeader>
+              <View className="h-6 w-40 rounded-full bg-muted" />
+              <View className="mt-2 h-4 w-60 rounded-full bg-muted" />
+            </CardHeader>
+            <CardContent className="gap-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <View
+                  key={index}
+                  className="flex-row items-center gap-4 rounded-2xl border border-border/70 bg-background px-4 py-4">
+                  <View className="h-12 w-12 rounded-2xl bg-muted" />
+                  <View className="flex-1 gap-2">
+                    <View className="h-5 w-36 rounded-full bg-muted" />
+                    <View className="h-4 w-20 rounded-full bg-muted" />
+                  </View>
+                  <View className="h-5 w-5 rounded-full bg-muted" />
+                </View>
+              ))}
+            </CardContent>
+          </Card>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -371,4 +409,49 @@ function formatRole(role?: string | null) {
   }
 
   return role.replace('_', ' ');
+}
+
+function SelectionCard({
+  icon,
+  label,
+  onPress,
+  value,
+}: {
+  icon: typeof Building2;
+  label: string;
+  onPress: () => void;
+  value: string;
+}) {
+  return (
+    <Pressable
+      className="flex-row items-center gap-4 rounded-[24px] border border-border/70 bg-background px-4 py-4"
+      onPress={onPress}>
+      <View className="rounded-2xl bg-primary/10 px-3 py-3">
+        <Icon as={icon} className="text-primary" size={18} />
+      </View>
+      <View className="flex-1 gap-1">
+        <Text className="text-sm text-muted-foreground">{label}</Text>
+        <Text className="font-semibold text-foreground">{value}</Text>
+      </View>
+      <Icon as={ChevronDown} className="text-muted-foreground" size={18} />
+    </Pressable>
+  );
+}
+
+function PickerOption({
+  onPress,
+  selected,
+  title,
+}: {
+  onPress: () => void;
+  selected: boolean;
+  title: string;
+}) {
+  return (
+    <Pressable
+      className={`rounded-[22px] border px-4 py-4 ${selected ? 'border-primary bg-primary/10' : 'border-border/70 bg-background'}`}
+      onPress={onPress}>
+      <Text className="font-semibold text-foreground">{title}</Text>
+    </Pressable>
+  );
 }

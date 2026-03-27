@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ArrowDown, ArrowUp, PackageSearch, Search } from "lucide-react-native";
 
-import { FullScreenLoader } from "@/components/full-screen-loader";
+import { FormScreenSkeleton } from "@/components/screen-skeleton";
 import { SubpageHeader } from "@/components/subpage-header";
 import {
   Dialog,
@@ -183,7 +183,7 @@ export default function InventoryUpdateStockScreen() {
   }
 
   if (isLoading) {
-    return <FullScreenLoader label="Loading inventory items" />;
+    return <FormScreenSkeleton rowCount={4} showActionCard />;
   }
 
   return (

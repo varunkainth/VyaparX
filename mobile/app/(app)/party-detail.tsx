@@ -6,8 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronDown, Mail, MapPin, PenLine, Phone, Trash2, UserRound } from 'lucide-react-native';
 
 import { INDIAN_STATES, formatStateDisplay } from '@/constants/indian-states';
-import { FullScreenLoader } from '@/components/full-screen-loader';
+import { DetailScreenSkeleton } from '@/components/screen-skeleton';
 import { SubpageHeader } from '@/components/subpage-header';
+import { DevCacheIndicator } from '@/components/dev-cache-indicator';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,9 +28,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
 import { Textarea } from '@/components/ui/textarea';
+import { CACHE_TTL_MS, formatCacheAge, isCacheStale } from '@/lib/cache-policy';
 import { formatCurrency, formatShortDate } from '@/lib/formatters';
-import { partyService } from '@/services/party.service';
 import { useAuthStore } from '@/store/auth-store';
+import { usePartyStore } from '@/store/party-store';
 import type { OpeningBalanceType, Party, PartyType } from '@/types/party';
 
 type PartyForm = {
@@ -53,8 +55,10 @@ export default function PartyDetailScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ id?: string }>();
   const { session } = useAuthStore();
+  const deleteParty = usePartyStore((state) => state.deleteParty);
+  const ensurePartyDetail = usePartyStore((state) => state.ensurePartyDetail);
+  const updateParty = usePartyStore((state) => state.updateParty);
   const { message, showToast } = useTimedToast();
-  const [party, setParty] = React.useState<Party | null>(null);
   const [form, setForm] = React.useState<PartyForm | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -67,6 +71,18 @@ export default function PartyDetailScreen() {
   const hasFocusedOnceRef = React.useRef(false);
 
   const partyId = typeof params.id === 'string' ? params.id : undefined;
+  const party = usePartyStore((state) => (partyId ? state.detailById[partyId] ?? null : null));
+  const detailError = usePartyStore((state) => (partyId ? state.detailErrorById[partyId] ?? null : null));
+  const detailStatus = usePartyStore((state) => (partyId ? state.detailStatusById[partyId] ?? 'idle' : 'idle'));
+  const detailUpdatedAt = usePartyStore((state) => (partyId ? state.detailUpdatedAtById[partyId] ?? null : null));
+  const partyCacheState =
+    detailStatus === 'loading'
+      ? 'refreshing'
+      : party
+        ? isCacheStale(detailUpdatedAt, CACHE_TTL_MS.partyDetail)
+          ? 'stale'
+          : 'cached'
+        : 'empty';
 
   const loadParty = React.useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
     if (!session?.business_id || !partyId) {
@@ -83,8 +99,7 @@ export default function PartyDetailScreen() {
     }
     try {
       setError(null);
-      const nextParty = await partyService.getParty(session.business_id, partyId);
-      setParty(nextParty);
+      const nextParty = await ensurePartyDetail(session.business_id, partyId, mode === 'refresh');
       setForm({
         name: nextParty.name,
         party_type: nextParty.party_type === 'both' ? 'customer' : nextParty.party_type,
@@ -112,7 +127,7 @@ export default function PartyDetailScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [partyId, session?.business_id]);
+  }, [ensurePartyDetail, partyId, session?.business_id]);
 
   React.useEffect(() => {
     void loadParty();
@@ -182,7 +197,7 @@ export default function PartyDetailScreen() {
     setError(null);
 
     try {
-      const updatedParty = await partyService.updateParty(session.business_id, party.id, {
+      const updatedParty = await updateParty(session.business_id, party.id, {
         name: form.name.trim(),
         party_type: form.party_type,
         gstin: normalizeOptional(form.gstin),
@@ -199,7 +214,6 @@ export default function PartyDetailScreen() {
         notes: normalizeOptional(form.notes),
       });
 
-      setParty(updatedParty);
       setIsEditing(false);
       showToast(`${updatedParty.name} updated successfully.`);
       setTimeout(() => {
@@ -230,7 +244,7 @@ export default function PartyDetailScreen() {
     setError(null);
 
     try {
-      await partyService.deleteParty(session.business_id, party.id);
+      await deleteParty(session.business_id, party.id);
       setIsDeleteDialogOpen(false);
       showToast(`${party.name} deleted successfully.`);
       setTimeout(() => {
@@ -252,7 +266,7 @@ export default function PartyDetailScreen() {
   }
 
   if (isLoading || !party || !form) {
-    return <FullScreenLoader label="Loading party details" />;
+    return <DetailScreenSkeleton rowCount={3} />;
   }
 
   return (
@@ -276,6 +290,11 @@ export default function PartyDetailScreen() {
             eyebrow="Parties"
             subtitle="View and manage the full customer or supplier record from mobile."
             title={party.name}
+          />
+          <DevCacheIndicator
+            label="party"
+            state={partyCacheState}
+            detail={formatCacheAge(detailUpdatedAt)}
           />
 
           {!isEditing ? (
@@ -406,9 +425,9 @@ export default function PartyDetailScreen() {
                 </CardContent>
               </Card>
 
-              {error ? (
+              {error || detailError ? (
                 <View className="rounded-[24px] border border-destructive/30 bg-destructive/10 px-4 py-4">
-                  <Text className="text-sm text-destructive">{error}</Text>
+                  <Text className="text-sm text-destructive">{error ?? detailError}</Text>
                 </View>
               ) : null}
 

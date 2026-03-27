@@ -1,0 +1,8 @@
+ORIGIN_1 = "https://vyaparx-production.up.railway.app"
+ORIGIN_2 = "https://vyaparx.onrender.com"
+ORIGIN_3 = "https://vyaparx-jsrc.onrender.com"
+ORIGIN_4 = "https://vyaparx-production-7e1a.up.railway.app"
+READ_ORIGINS = "https://vyaparx-production.up.railway.app,https://vyaparx.onrender.com,https://vyaparx-jsrc.onrender.com,https://vyaparx-production-7e1a.up.railway.app"
+WRITE_ORIGIN = "https://vyaparx-production.up.railway.app"
+EMAIL_ORIGIN = "https://vyaparx.onrender.com"
+HEALTH_PATH = "/health"

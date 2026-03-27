@@ -110,14 +110,13 @@ export function RecordPaymentPage() {
 
   useEffect(() => {
     if (currentBusiness) {
-      // Load parties first, then invoice to ensure party dropdown is populated
       const loadData = async () => {
-        await fetchParties()
-        if (invoiceId) {
-          await fetchInvoice()
-        }
+        await Promise.all([
+          fetchParties(),
+          invoiceId ? fetchInvoice() : Promise.resolve(),
+        ])
       }
-      loadData()
+      void loadData()
     }
   }, [currentBusiness, invoiceId])
 

@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Text } from "@/components/ui/text";
 import { Textarea } from "@/components/ui/textarea";
+import { ToastBanner, useTimedToast } from "@/components/ui/toast-banner";
 import { invoiceSettingsService } from "@/services/invoice-settings.service";
 import { useAuthStore } from "@/store/auth-store";
 import {
@@ -51,6 +52,7 @@ const INITIAL_FORM: UpdateInvoiceSettingsInput = {
 
 export default function InvoiceSettingsScreen() {
   const { session } = useAuthStore();
+  const { message, showToast } = useTimedToast();
   const [form, setForm] = React.useState<UpdateInvoiceSettingsInput>(INITIAL_FORM);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -138,6 +140,7 @@ export default function InvoiceSettingsScreen() {
       });
 
       setSuccessMessage("Invoice settings saved successfully.");
+      showToast("Invoice settings saved successfully.");
     } catch (saveError: any) {
       setError(
         saveError?.response?.data?.error?.message ??
@@ -162,6 +165,7 @@ export default function InvoiceSettingsScreen() {
       const settings = await invoiceSettingsService.resetToDefaults(session.business_id);
       applySettings(settings);
       setSuccessMessage("Invoice settings reset to defaults.");
+      showToast("Invoice settings reset to defaults.");
     } catch (resetError: any) {
       setError(
         resetError?.response?.data?.error?.message ??
@@ -428,6 +432,7 @@ export default function InvoiceSettingsScreen() {
           </View>
         </View>
       </ScrollView>
+      <ToastBanner message={message} variant="success" />
     </SafeAreaView>
   );
 }

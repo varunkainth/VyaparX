@@ -13,7 +13,7 @@ import {
   UserRound,
 } from "lucide-react-native";
 
-import { FullScreenLoader } from "@/components/full-screen-loader";
+import { FormScreenSkeleton } from "@/components/screen-skeleton";
 import { SubpageHeader } from "@/components/subpage-header";
 import {
   Dialog,
@@ -96,13 +96,15 @@ export default function PaymentRecordScreen() {
     setIsLoading(true);
     try {
       setError(null);
-      const nextParties = await partyService.listParties(session.business_id, {
-        include_inactive: "false",
-      });
+      const [nextParties, nextInvoice] = await Promise.all([
+        partyService.listParties(session.business_id, {
+          include_inactive: "false",
+        }),
+        invoiceId ? invoiceService.getInvoice(session.business_id, invoiceId) : Promise.resolve(null),
+      ]);
       setParties(nextParties);
 
-      if (invoiceId) {
-        const nextInvoice = await invoiceService.getInvoice(session.business_id, invoiceId);
+      if (nextInvoice) {
         setInvoice(nextInvoice);
         setSelectedInvoiceIds([nextInvoice.id]);
         setAllocationDrafts({ [nextInvoice.id]: String(nextInvoice.balance_due) });
@@ -415,7 +417,7 @@ export default function PaymentRecordScreen() {
   }
 
   if (isLoading) {
-    return <FullScreenLoader label="Loading payment form" />;
+    return <FormScreenSkeleton rowCount={4} showActionCard />;
   }
 
   return (

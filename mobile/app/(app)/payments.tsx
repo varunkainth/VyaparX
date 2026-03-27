@@ -15,17 +15,19 @@ import {
   Wallet,
 } from "lucide-react-native";
 
-import { FullScreenLoader } from "@/components/full-screen-loader";
+import { CollectionScreenSkeleton } from "@/components/screen-skeleton";
 import { SubpageHeader } from "@/components/subpage-header";
 import { ToastBanner, useTimedToast } from "@/components/ui/toast-banner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DevCacheIndicator } from "@/components/dev-cache-indicator";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
+import { CACHE_TTL_MS, formatCacheAge, isCacheStale } from "@/lib/cache-policy";
 import { formatCompactNumber, formatCurrency, formatShortDate } from "@/lib/formatters";
-import { paymentService } from "@/services/payment.service";
 import { useAuthStore } from "@/store/auth-store";
+import { getPaymentCacheKey, usePaymentStore } from "@/store/payment-store";
 import type { Payment, PaymentType } from "@/types/payment";
 
 const PAYMENT_TYPE_FILTERS: Array<{ label: string; value: PaymentType | "all" }> = [
@@ -38,8 +40,8 @@ export default function PaymentsScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ refresh?: string; toast?: string }>();
   const { session } = useAuthStore();
+  const ensurePayments = usePaymentStore((state) => state.ensurePayments);
   const { message, showToast } = useTimedToast();
-  const [payments, setPayments] = React.useState<Payment[]>([]);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [paymentTypeFilter, setPaymentTypeFilter] = React.useState<PaymentType | "all">("all");
   const [onlyUnreconciled, setOnlyUnreconciled] = React.useState(false);
@@ -50,11 +52,23 @@ export default function PaymentsScreen() {
   const handledRefreshRef = React.useRef<string | null>(null);
   const handledToastRef = React.useRef<string | null>(null);
   const hasFocusedOnceRef = React.useRef(false);
+  const paymentCache = usePaymentStore((state) =>
+    session?.business_id ? state.cache[getPaymentCacheKey(session.business_id, onlyUnreconciled)] : undefined
+  );
+  const payments = paymentCache?.items ?? [];
+  const cacheError = paymentCache?.error ?? null;
+  const paymentCacheState =
+    paymentCache?.status === "loading"
+      ? "refreshing"
+      : payments.length
+        ? isCacheStale(paymentCache?.updatedAt, CACHE_TTL_MS.paymentList)
+          ? "stale"
+          : "cached"
+        : "empty";
 
   const loadPayments = React.useCallback(
     async (mode: "initial" | "refresh" = "initial") => {
       if (!session?.business_id) {
-        setPayments([]);
         setError("Select a business to view payments.");
         setIsLoading(false);
         setIsRefreshing(false);
@@ -69,11 +83,7 @@ export default function PaymentsScreen() {
 
       try {
         setError(null);
-        const response = await paymentService.listPayments(session.business_id, {
-          is_reconciled: onlyUnreconciled ? false : undefined,
-          limit: 100,
-        });
-        setPayments(response.items);
+        await ensurePayments(session.business_id, onlyUnreconciled, mode === "refresh");
       } catch (loadError: any) {
         setError(
           loadError?.response?.data?.error?.message ??
@@ -86,7 +96,7 @@ export default function PaymentsScreen() {
         setIsRefreshing(false);
       }
     },
-    [onlyUnreconciled, session?.business_id],
+    [ensurePayments, onlyUnreconciled, session?.business_id],
   );
 
   React.useEffect(() => {
@@ -150,7 +160,7 @@ export default function PaymentsScreen() {
   }, [payments]);
 
   if (isLoading) {
-    return <FullScreenLoader label="Loading payments" />;
+    return <CollectionScreenSkeleton metricCount={4} rowCount={5} />;
   }
 
   return (
@@ -165,6 +175,11 @@ export default function PaymentsScreen() {
             eyebrow="Payments"
             subtitle="Review money received and paid against billing activity for the active business."
             title="Collections desk"
+          />
+          <DevCacheIndicator
+            label="payments"
+            state={paymentCacheState}
+            detail={formatCacheAge(paymentCache?.updatedAt)}
           />
 
           <View className="flex-row flex-wrap gap-4">
@@ -224,11 +239,11 @@ export default function PaymentsScreen() {
             </CardContent>
           </Card>
 
-          {error ? (
+          {error || cacheError ? (
             <Card className="rounded-[28px] border-destructive/20 bg-destructive/5">
               <CardContent className="gap-4 px-5 py-5">
                 <Text className="font-semibold text-foreground">Payment sync failed</Text>
-                <Text className="text-sm leading-6 text-muted-foreground">{error}</Text>
+                <Text className="text-sm leading-6 text-muted-foreground">{error ?? cacheError}</Text>
                 <Button className="h-12 rounded-2xl" onPress={() => void loadPayments()}>
                   <Text>Retry payment sync</Text>
                 </Button>
