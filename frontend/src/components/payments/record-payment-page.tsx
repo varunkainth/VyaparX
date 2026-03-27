@@ -67,6 +67,7 @@ const recordPaymentSchema = z.object({
   payment_date: z.string().min(1, "Payment date is required"),
   payment_mode: z.enum(["cash", "bank_transfer", "upi", "card", "cheque", "other"]),
   upi_ref: z.string().max(100).optional(),
+  bank_ref_no: z.string().max(100).optional(),
   cheque_no: z.string().max(50).optional(),
   cheque_date: z.string().optional(),
   notes: z.string().optional(),
@@ -630,23 +631,21 @@ export function RecordPaymentPage() {
                       <Field>
                         <FieldLabel>Bank Reference (Optional)</FieldLabel>
                         <Input
-                          {...register("upi_ref")}
+                          {...register("bank_ref_no")}
                           placeholder="Enter bank transaction reference"
                           disabled={isSubmitting}
                         />
                         <p className="text-xs text-muted-foreground">
-                          Add reference number for easier reconciliation
+                          Optional reference number for the transfer
                         </p>
                       </Field>
                     )}
 
-                    {paymentMode === "cash" && (
-                      <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
-                        <AlertDescription className="text-xs">
-                          <span className="font-semibold">Cash Payment:</span> This payment will be marked as &quot;Pending Verification&quot; until you manually verify it after receiving the cash. You can verify it later from the payment details page.
-                        </AlertDescription>
-                      </Alert>
-                    )}
+                    <Alert className="border-green-200 bg-green-50 dark:bg-green-950/20 dark:border-green-800">
+                      <AlertDescription className="text-xs">
+                        <span className="font-semibold">Auto-reconciled:</span> Payments are marked reconciled when recorded. Add UPI, cheque, or bank references when available for cleaner audit history.
+                      </AlertDescription>
+                    </Alert>
                   </FieldGroup>
                 </CardContent>
               </Card>

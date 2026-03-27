@@ -3,6 +3,7 @@ import axios, {
   type AxiosInstance,
   type InternalAxiosRequestConfig,
 } from "axios";
+import { Platform } from "react-native";
 
 import { API_BASE_URL, REQUEST_ORIGIN, REQUEST_REFERER } from "./env";
 import { refreshSession } from "./session";
@@ -24,7 +25,7 @@ apiClient.interceptors.request.use((config) => {
   const { tokens } = useAuthStore.getState();
   const method = config.method?.toUpperCase();
 
-  if (method && ["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+  if (Platform.OS !== "web" && method && ["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
     config.headers.Origin = config.headers.Origin ?? REQUEST_ORIGIN;
     config.headers.Referer = config.headers.Referer ?? REQUEST_REFERER;
   }

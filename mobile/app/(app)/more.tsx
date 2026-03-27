@@ -5,6 +5,7 @@ import {
   BriefcaseBusiness,
   ChartColumnBig,
   ChevronRight,
+  CircleDollarSign,
   LogOut,
   Settings2,
   UserRound,
@@ -42,6 +43,12 @@ const moreLinks = [
     href: '/(app)/reports' as const,
     icon: ChartColumnBig,
     title: 'Reports',
+  },
+  {
+    description: 'Manual receipts, payouts, reconciliation, and payment history.',
+    href: '/(app)/payments' as const,
+    icon: CircleDollarSign,
+    title: 'Payments',
   },
 ] as const;
 

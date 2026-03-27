@@ -1,5 +1,11 @@
 export type PaymentType = "received" | "made";
-export type PaymentMode = "cash" | "bank_transfer" | "upi" | "card" | "cheque" | "other";
+export type PaymentMode =
+  | "cash"
+  | "bank_transfer"
+  | "upi"
+  | "card"
+  | "cheque"
+  | "other";
 
 export interface Payment {
   id: string;
@@ -64,6 +70,12 @@ export interface RecordPaymentResult {
   payment_id: string;
 }
 
+export interface ReconcilePaymentInput {
+  bank_statement_date?: string;
+  bank_ref_no?: string;
+  notes?: string;
+}
+
 export interface ListPaymentsQuery {
   party_id?: string;
   payment_type?: PaymentType;
@@ -75,15 +87,9 @@ export interface ListPaymentsQuery {
   limit?: number;
 }
 
-export interface ReconcilePaymentInput {
-  bank_statement_date?: string;
-  bank_ref_no?: string;
-  notes?: string;
-}
-
 export const PAYMENT_MODES: { value: PaymentMode; label: string }[] = [
   { value: "cash", label: "Cash" },
-  { value: "bank_transfer", label: "Bank Transfer" },
+  { value: "bank_transfer", label: "Bank transfer" },
   { value: "upi", label: "UPI" },
   { value: "card", label: "Card" },
   { value: "cheque", label: "Cheque" },

@@ -86,6 +86,7 @@ export interface InvoiceRecord {
     id: string;
     business_id: string;
     party_id: string;
+    party_email?: string | null;
     invoice_number: string;
     invoice_date: string;
     due_date?: string | null;
@@ -117,6 +118,24 @@ export interface InvoiceDetail extends InvoiceRecord {
         invoice_type: string;
         is_cancelled: boolean;
     } | null;
+    referencing_invoices?: Array<{
+        id: string;
+        invoice_number: string;
+        invoice_type: string;
+        is_cancelled: boolean;
+        created_at: string;
+    }>;
+    payments?: Array<{
+        id: string;
+        payment_type: "received" | "made";
+        payment_mode: "cash" | "bank_transfer" | "upi" | "card" | "cheque" | "other";
+        payment_date: string;
+        bank_ref_no: string | null;
+        is_reconciled: boolean;
+        created_at: string;
+        allocated_amount: string | number;
+        party_name: string;
+    }>;
 }
 
 export interface InvoicePdfData {

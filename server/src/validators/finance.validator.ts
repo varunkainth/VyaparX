@@ -51,6 +51,11 @@ export const recordPaymentSchema = z.object({
     payment_date: dateString,
     payment_mode: z.enum(["cash", "bank_transfer", "upi", "card", "cheque", "other"]),
     bank_account_id: z.string().uuid().optional(),
+    upi_ref: z.string().max(100).optional(),
+    cheque_no: z.string().max(50).optional(),
+    cheque_date: dateString.optional(),
+    bank_ref_no: z.string().max(100).optional(),
+    notes: z.string().max(500).optional(),
     allocations: z
         .array(
             z.object({
@@ -58,5 +63,5 @@ export const recordPaymentSchema = z.object({
                 allocated_amount: z.number().positive(),
             })
         )
-        .min(1),
+        .default([]),
 });

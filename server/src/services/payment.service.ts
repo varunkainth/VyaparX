@@ -25,8 +25,8 @@ export async function recordPayment(data: RecordPaymentInput) {
             );
         }
 
-        if (!Array.isArray(data.allocations) || data.allocations.length === 0) {
-            throw new AppError("At least one allocation is required", 400, ERROR_CODES.BAD_REQUEST);
+        if (!Array.isArray(data.allocations)) {
+            throw new AppError("Allocations must be an array", 400, ERROR_CODES.BAD_REQUEST);
         }
 
         if (data.amount <= 0) {
@@ -39,7 +39,7 @@ export async function recordPayment(data: RecordPaymentInput) {
         );
         const paymentAmountCents = toCents(data.amount);
 
-        if (totalAllocatedCents !== paymentAmountCents) {
+        if (data.allocations.length > 0 && totalAllocatedCents !== paymentAmountCents) {
             throw new AppError("Allocated amount does not match payment amount", 400, ERROR_CODES.BAD_REQUEST);
         }
 
@@ -58,9 +58,14 @@ export async function recordPayment(data: RecordPaymentInput) {
             return idempotencyStart.cachedResponse as { success: boolean; payment_id: string };
         }
 
-        // Note: Cash payments are NOT auto-reconciled anymore
-        // Users should manually verify when cash is actually received
-        // This gives better control over cash flow tracking
+        const shouldAutoReconcile = true;
+        const bankStatementDate = data.payment_date;
+        const autoRef =
+            (data.payment_mode === "cash" ? "CASH" : undefined) ??
+            data.bank_ref_no ??
+            data.upi_ref ??
+            data.cheque_no ??
+            (data.payment_mode === "card" ? "CARD" : data.payment_mode === "other" ? "OTHER" : undefined);
 
         const paymentId = await paymentRepository.insertPayment(client, [
             data.business_id,
@@ -69,7 +74,16 @@ export async function recordPayment(data: RecordPaymentInput) {
             data.amount,
             data.payment_date,
             data.payment_mode,
+            data.upi_ref || null,
+            data.cheque_no || null,
+            data.cheque_date || null,
             data.bank_account_id || null,
+            autoRef || null,
+            bankStatementDate || null,
+            shouldAutoReconcile,
+            shouldAutoReconcile ? new Date().toISOString() : null,
+            shouldAutoReconcile ? data.createdBy : null,
+            data.notes || null,
             data.createdBy,
         ]);
 

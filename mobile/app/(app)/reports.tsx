@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BarChart3, Boxes, FileSpreadsheet, TrendingUp } from 'lucide-react-native';
 
@@ -26,6 +27,7 @@ function getDefaultDateRange() {
 }
 
 export default function ReportsScreen() {
+  const router = useRouter();
   const { session } = useAuthStore();
   const [businessName, setBusinessName] = React.useState<string | null>(null);
   const [monthlySales, setMonthlySales] = React.useState<MonthlySalesReportItem[]>([]);
@@ -105,27 +107,31 @@ export default function ReportsScreen() {
           />
 
           <View className="flex-row flex-wrap gap-4">
-            <Card className="min-w-[145px] flex-1 rounded-[28px]">
-              <CardHeader>
-                <CardTitle>Sales period total</CardTitle>
-                <CardDescription>Last 6 months billed value</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Text className="text-2xl font-extrabold text-foreground">{formatCurrency(monthlySalesTotal)}</Text>
-              </CardContent>
-            </Card>
+            <Pressable className="min-w-[145px] flex-1" onPress={() => router.push('/(app)/invoices')}>
+              <Card className="rounded-[28px]">
+                <CardHeader>
+                  <CardTitle>Sales period total</CardTitle>
+                  <CardDescription>Last 6 months billed value</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Text className="text-2xl font-extrabold text-foreground">{formatCurrency(monthlySalesTotal)}</Text>
+                </CardContent>
+              </Card>
+            </Pressable>
 
-            <Card className="min-w-[145px] flex-1 rounded-[28px]">
-              <CardHeader>
-                <CardTitle>Receivable</CardTitle>
-                <CardDescription>Open customer balances</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Text className="text-2xl font-extrabold text-foreground">
-                  {formatCurrency(Number(outstanding?.summary.total_receivable ?? 0))}
-                </Text>
-              </CardContent>
-            </Card>
+            <Pressable className="min-w-[145px] flex-1" onPress={() => router.push('/(app)/customers')}>
+              <Card className="rounded-[28px]">
+                <CardHeader>
+                  <CardTitle>Receivable</CardTitle>
+                  <CardDescription>Open customer balances</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Text className="text-2xl font-extrabold text-foreground">
+                    {formatCurrency(Number(outstanding?.summary.total_receivable ?? 0))}
+                  </Text>
+                </CardContent>
+              </Card>
+            </Pressable>
           </View>
 
           <Card className="rounded-[28px]">
@@ -167,9 +173,10 @@ export default function ReportsScreen() {
               )}
 
               {monthlySales.slice(0, 4).map((item) => (
-                <View
+                <Pressable
                   key={item.month}
-                  className="flex-row items-center gap-4 rounded-2xl border border-border/70 bg-background px-4 py-4">
+                  className="flex-row items-center gap-4 rounded-2xl border border-border/70 bg-background px-4 py-4"
+                  onPress={() => router.push('/(app)/invoices')}>
                   <View className="rounded-2xl bg-primary/10 px-3 py-3">
                     <Icon as={TrendingUp} className="text-primary" size={18} />
                   </View>
@@ -178,7 +185,7 @@ export default function ReportsScreen() {
                     <Text className="text-sm leading-5 text-muted-foreground">{item.invoice_count} invoices raised</Text>
                   </View>
                   <Text className="font-semibold text-foreground">{formatCurrency(Number(item.grand_total))}</Text>
-                </View>
+                </Pressable>
               ))}
             </CardContent>
           </Card>
@@ -203,11 +210,14 @@ export default function ReportsScreen() {
                   </Text>
                 </View>
                 {outstanding?.parties.slice(0, 3).map((party) => (
-                  <View key={party.id} className="gap-1 rounded-2xl border border-border/70 bg-background px-4 py-3">
+                  <Pressable
+                    key={party.id}
+                    className="gap-1 rounded-2xl border border-border/70 bg-background px-4 py-3"
+                    onPress={() => router.push({ pathname: '/(app)/party-detail', params: { id: party.id } })}>
                     <Text className="font-semibold text-foreground">{party.name}</Text>
                     <Text className="text-sm text-muted-foreground">{party.party_type}</Text>
                     <Text className="text-sm font-semibold text-foreground">{formatCurrency(Number(party.current_balance))}</Text>
-                  </View>
+                  </Pressable>
                 ))}
               </CardContent>
             </Card>
@@ -248,9 +258,10 @@ export default function ReportsScreen() {
             <CardContent className="gap-3">
               {lowStock.length ? (
                 lowStock.slice(0, 5).map((item) => (
-                  <View
+                  <Pressable
                     key={item.id}
-                    className="flex-row items-center gap-4 rounded-2xl border border-border/70 bg-background px-4 py-4">
+                    className="flex-row items-center gap-4 rounded-2xl border border-border/70 bg-background px-4 py-4"
+                    onPress={() => router.push({ pathname: '/(app)/inventory-edit', params: { id: item.id } })}>
                     <View className="rounded-2xl bg-primary/10 px-3 py-3">
                       <Icon as={Boxes} className="text-primary" size={18} />
                     </View>
@@ -261,7 +272,7 @@ export default function ReportsScreen() {
                       </Text>
                     </View>
                     <Text className="font-semibold text-foreground">{formatCurrency(Number(item.selling_price))}</Text>
-                  </View>
+                  </Pressable>
                 ))
               ) : (
                 <View className="flex-row items-center gap-4 rounded-2xl border border-border/70 bg-background px-4 py-4">

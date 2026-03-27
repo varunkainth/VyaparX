@@ -30,9 +30,9 @@ function DialogOverlay({
     <FullWindowOverlay>
       <DialogPrimitive.Overlay
         className={cn(
-          'absolute bottom-0 left-0 right-0 top-0 flex items-center justify-center bg-black/50 p-2',
+          'absolute bottom-0 left-0 right-0 top-0 flex items-center justify-center bg-black/60 p-3',
           Platform.select({
-            web: 'animate-in fade-in-0 fixed cursor-default [&>*]:cursor-auto',
+            web: 'animate-in fade-in-0 fixed cursor-default backdrop-blur-[3px] [&>*]:cursor-auto',
           }),
           className
         )}
@@ -61,19 +61,21 @@ function DialogContent({
       <DialogOverlay>
         <DialogPrimitive.Content
           className={cn(
-            'bg-background border-border z-50 mx-auto flex w-full max-w-[calc(100%-2rem)] flex-col gap-4 rounded-lg border p-6 shadow-lg shadow-black/5 sm:max-w-lg',
+            'bg-background border-border z-50 mx-auto flex w-full max-w-[calc(100%-2rem)] flex-col gap-5 overflow-hidden rounded-[30px] border px-6 py-6 shadow-2xl shadow-black/15 sm:max-w-lg',
             Platform.select({
               web: 'animate-in fade-in-0 zoom-in-95 duration-200',
             }),
             className
           )}
           {...props}>
+          <View className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-primary/10" />
+          <View className="pointer-events-none absolute -bottom-12 left-0 h-24 w-24 rounded-full bg-secondary/80" />
           <>{children}</>
           <DialogPrimitive.Close
             className={cn(
-              'absolute right-4 top-4 rounded opacity-70 active:opacity-100',
+              'absolute right-4 top-4 rounded-full border border-border/70 bg-background/85 p-2.5 opacity-80 active:opacity-100',
               Platform.select({
-                web: 'ring-offset-background focus:ring-ring data-[state=open]:bg-accent transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-offset-2',
+                web: 'ring-offset-background focus:ring-ring data-[state=open]:bg-accent transition-all hover:opacity-100 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-offset-2',
               })
             )}
             hitSlop={12}>
@@ -91,7 +93,7 @@ function DialogContent({
 
 function DialogHeader({ className, ...props }: ViewProps) {
   return (
-    <View className={cn('flex flex-col gap-2 text-center sm:text-left', className)} {...props} />
+    <View className={cn('flex flex-col gap-2.5 text-center sm:text-left', className)} {...props} />
   );
 }
 
@@ -110,7 +112,7 @@ function DialogTitle({
 }: DialogPrimitive.TitleProps & React.RefAttributes<DialogPrimitive.TitleRef>) {
   return (
     <DialogPrimitive.Title
-      className={cn('text-foreground text-lg font-semibold leading-none', className)}
+      className={cn('text-foreground pr-10 text-xl font-bold leading-tight', className)}
       {...props}
     />
   );
@@ -122,7 +124,7 @@ function DialogDescription({
 }: DialogPrimitive.DescriptionProps & React.RefAttributes<DialogPrimitive.DescriptionRef>) {
   return (
     <DialogPrimitive.Description
-      className={cn('text-muted-foreground text-sm', className)}
+      className={cn('text-muted-foreground text-sm leading-6', className)}
       {...props}
     />
   );

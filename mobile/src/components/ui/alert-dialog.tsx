@@ -28,9 +28,9 @@ function AlertDialogOverlay({
     <FullWindowOverlay>
       <AlertDialogPrimitive.Overlay
         className={cn(
-          'absolute bottom-0 left-0 right-0 top-0 z-50 flex items-center justify-center bg-black/50 p-2',
+          'absolute bottom-0 left-0 right-0 top-0 z-50 flex items-center justify-center bg-black/60 p-3',
           Platform.select({
-            web: 'animate-in fade-in-0 fixed',
+            web: 'animate-in fade-in-0 fixed backdrop-blur-[3px]',
           }),
           className
         )}
@@ -48,6 +48,7 @@ function AlertDialogOverlay({
 function AlertDialogContent({
   className,
   portalHost,
+  children,
   ...props
 }: AlertDialogPrimitive.ContentProps &
   React.RefAttributes<AlertDialogPrimitive.ContentRef> & {
@@ -58,14 +59,17 @@ function AlertDialogContent({
       <AlertDialogOverlay>
         <AlertDialogPrimitive.Content
           className={cn(
-            'bg-background border-border z-50 flex w-full max-w-[calc(100%-2rem)] flex-col gap-4 rounded-lg border p-6 shadow-lg shadow-black/5 sm:max-w-lg',
+            'bg-background border-border z-50 flex w-full max-w-[calc(100%-2rem)] flex-col gap-5 overflow-hidden rounded-[30px] border px-6 py-6 shadow-2xl shadow-black/15 sm:max-w-lg',
             Platform.select({
               web: 'animate-in fade-in-0 zoom-in-95 duration-200',
             }),
             className
           )}
-          {...props}
-        />
+          {...props}>
+          <View className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-primary/10" />
+          <View className="pointer-events-none absolute -bottom-12 left-0 h-24 w-24 rounded-full bg-secondary/80" />
+          <>{children}</>
+        </AlertDialogPrimitive.Content>
       </AlertDialogOverlay>
     </AlertDialogPortal>
   );
@@ -74,7 +78,7 @@ function AlertDialogContent({
 function AlertDialogHeader({ className, ...props }: ViewProps) {
   return (
     <TextClassContext.Provider value="text-center sm:text-left">
-      <View className={cn('flex flex-col gap-2', className)} {...props} />
+      <View className={cn('flex flex-col gap-2.5', className)} {...props} />
     </TextClassContext.Provider>
   );
 }
@@ -94,7 +98,7 @@ function AlertDialogTitle({
 }: AlertDialogPrimitive.TitleProps & React.RefAttributes<AlertDialogPrimitive.TitleRef>) {
   return (
     <AlertDialogPrimitive.Title
-      className={cn('text-foreground text-lg font-semibold', className)}
+      className={cn('text-foreground text-xl font-bold leading-tight', className)}
       {...props}
     />
   );
@@ -107,7 +111,7 @@ function AlertDialogDescription({
   React.RefAttributes<AlertDialogPrimitive.DescriptionRef>) {
   return (
     <AlertDialogPrimitive.Description
-      className={cn('text-muted-foreground text-sm', className)}
+      className={cn('text-muted-foreground text-sm leading-6', className)}
       {...props}
     />
   );

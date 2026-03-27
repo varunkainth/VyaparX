@@ -222,9 +222,9 @@ export default function BusinessSetupScreen() {
                     </View>
                     <View className="flex-1 gap-1">
                       <Text className="font-semibold text-foreground">{business.name}</Text>
-                      <Text className="text-sm leading-5 text-muted-foreground">
-                        Role: {business.role}
-                      </Text>
+                      <View className="flex-row flex-wrap items-center gap-2">
+                        <RoleBadge role={business.role} />
+                      </View>
                     </View>
                     {isSwitchingId === business.id ? (
                       <ActivityIndicator />
@@ -329,4 +329,22 @@ function Field({ children, label }: { children: React.ReactNode; label: string }
       {children}
     </View>
   );
+}
+
+function RoleBadge({ role }: { role?: BusinessWithRole['role'] | null }) {
+  return (
+    <View className="rounded-full bg-secondary px-3 py-1">
+      <Text className="text-xs font-semibold uppercase tracking-[1px] text-foreground">
+        {formatRole(role)}
+      </Text>
+    </View>
+  );
+}
+
+function formatRole(role?: string | null) {
+  if (!role) {
+    return 'unknown role';
+  }
+
+  return role.replace('_', ' ');
 }

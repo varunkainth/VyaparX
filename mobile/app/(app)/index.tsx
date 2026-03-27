@@ -1,11 +1,14 @@
 import * as React from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ArrowUpRight,
   BadgeIndianRupee,
   Building2,
   ChartColumnBig,
+  CirclePlus,
+  Repeat,
   PackageCheck,
   ReceiptText,
   Users,
@@ -23,6 +26,7 @@ import { useAuthStore } from '@/store/auth-store';
 import type { DashboardData } from '@/types/dashboard';
 
 export default function HomeScreen() {
+  const router = useRouter();
   const { session, user } = useAuthStore();
   const [dashboard, setDashboard] = React.useState<DashboardData | null>(null);
   const [currentBusinessName, setCurrentBusinessName] = React.useState<string | null>(null);
@@ -99,16 +103,19 @@ export default function HomeScreen() {
       icon: ReceiptText,
       label: `${dashboard?.stats.invoices.sales ?? 0} sales invoices`,
       meta: 'Open invoicing and stay on top of billing volume.',
+      onPress: () => router.push('/(app)/invoices'),
     },
     {
       icon: Users,
       label: `${dashboard?.stats.parties.customers ?? 0} active customers`,
       meta: 'Customer and supplier relationships tracked in one place.',
+      onPress: () => router.push('/(app)/customers'),
     },
     {
       icon: PackageCheck,
       label: formatCompactNumber(dashboard?.stats.inventory.total_value ?? 0),
       meta: 'Approximate stock value available in your active business.',
+      onPress: () => router.push('/(app)/inventory'),
     },
   ];
 
@@ -141,6 +148,26 @@ export default function HomeScreen() {
                 <Text className="font-semibold text-foreground">{currentBusinessName ?? 'No business selected'}</Text>
               </View>
             </View>
+            <View className="mt-3 flex-row gap-3">
+              <Button
+                variant="outline"
+                className="h-12 flex-1 rounded-2xl"
+                onPress={() => router.push('/(app)/business')}>
+                <Icon as={Repeat} className="text-foreground" size={16} />
+                <Text>Switch business</Text>
+              </Button>
+              <Button
+                className="h-12 flex-1 rounded-2xl"
+                onPress={() =>
+                  router.push({
+                    pathname: '/(app)/business',
+                    params: { open_create: String(Date.now()) },
+                  })
+                }>
+                <Icon as={CirclePlus} className="text-primary-foreground" size={16} />
+                <Text>Create business</Text>
+              </Button>
+            </View>
           </View>
 
           <Card className="overflow-hidden rounded-[32px] border-border bg-card">
@@ -157,24 +184,41 @@ export default function HomeScreen() {
             </CardHeader>
             <CardContent className="gap-3">
               <View className="flex-row flex-wrap gap-3">
-                <View className="min-w-[120px] flex-1 rounded-2xl border border-border/70 bg-background/85 px-4 py-4">
+                <Pressable
+                  className="min-w-[120px] flex-1 rounded-2xl border border-border/70 bg-background/85 px-4 py-4"
+                  onPress={() => router.push('/(app)/reports')}>
                   <Text className="text-sm text-muted-foreground">Growth this month</Text>
                   <Text className="mt-2 text-2xl font-bold text-foreground">
                     {formatPercent(dashboard?.stats.revenue.growth_percentage ?? 0)}
                   </Text>
-                </View>
-                <View className="min-w-[120px] flex-1 rounded-2xl border border-border/70 bg-background/85 px-4 py-4">
+                </Pressable>
+                <Pressable
+                  className="min-w-[120px] flex-1 rounded-2xl border border-border/70 bg-background/85 px-4 py-4"
+                  onPress={() => router.push('/(app)/payments')}>
                   <Text className="text-sm text-muted-foreground">Payments received</Text>
                   <Text className="mt-2 text-2xl font-bold text-foreground">
                     {dashboard?.stats.payments.received ?? 0}
                   </Text>
-                </View>
+                </Pressable>
               </View>
 
               {quickStats.map((item) => (
-                <View
+                <Pressable
                   key={item.label}
-                  className="flex-row items-center justify-between rounded-2xl border border-border/70 bg-background/85 px-4 py-4">
+                  className="flex-row items-center justify-between rounded-2xl border border-border/70 bg-background/85 px-4 py-4"
+                  onPress={() => {
+                    if (item.label === 'Net revenue') {
+                      router.push('/(app)/reports');
+                      return;
+                    }
+
+                    if (item.label === 'Unpaid invoices') {
+                      router.push('/(app)/invoices');
+                      return;
+                    }
+
+                    router.push('/(app)/inventory');
+                  }}>
                   <View className="flex-row items-center gap-3">
                     <View className={`rounded-2xl px-3 py-3 ${item.tone}`}>
                       <Icon as={item.icon} size={18} />
@@ -182,7 +226,7 @@ export default function HomeScreen() {
                     <Text className="text-sm font-medium text-muted-foreground">{item.label}</Text>
                   </View>
                   <Text className="text-lg font-bold text-foreground">{item.value}</Text>
-                </View>
+                </Pressable>
               ))}
             </CardContent>
           </Card>
@@ -194,9 +238,10 @@ export default function HomeScreen() {
             </CardHeader>
             <CardContent className="gap-3">
               {quickActions.map((item) => (
-                <View
+                <Pressable
                   key={item.label}
-                  className="flex-row items-center gap-4 rounded-2xl border border-border/70 bg-background px-4 py-4">
+                  className="flex-row items-center gap-4 rounded-2xl border border-border/70 bg-background px-4 py-4"
+                  onPress={item.onPress}>
                   <View className="rounded-2xl bg-primary/10 px-3 py-3">
                     <Icon as={item.icon} className="text-primary" size={18} />
                   </View>
@@ -205,7 +250,7 @@ export default function HomeScreen() {
                     <Text className="text-sm leading-5 text-muted-foreground">{item.meta}</Text>
                   </View>
                   <Icon as={ArrowUpRight} className="text-muted-foreground" size={18} />
-                </View>
+                </Pressable>
               ))}
             </CardContent>
           </Card>
@@ -227,9 +272,15 @@ export default function HomeScreen() {
             <CardContent className="gap-3">
               {dashboard?.recent_invoices.length ? (
                 dashboard.recent_invoices.map((invoice) => (
-                  <View
+                  <Pressable
                     key={invoice.id}
-                    className="flex-row items-center gap-4 rounded-2xl border border-border/70 bg-background px-4 py-4">
+                    className="flex-row items-center gap-4 rounded-2xl border border-border/70 bg-background px-4 py-4"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/(app)/invoice-detail',
+                        params: { id: invoice.id },
+                      })
+                    }>
                     <View className="rounded-2xl bg-primary/10 px-3 py-3">
                       <Icon as={ReceiptText} className="text-primary" size={18} />
                     </View>
@@ -245,7 +296,7 @@ export default function HomeScreen() {
                         {invoice.payment_status}
                       </Text>
                     </View>
-                  </View>
+                  </Pressable>
                 ))
               ) : (
                 <Text className="text-sm leading-6 text-muted-foreground">
@@ -263,13 +314,21 @@ export default function HomeScreen() {
               <CardContent className="gap-3">
                 {recentPayments.length ? (
                   recentPayments.map((payment) => (
-                    <View key={payment.id} className="gap-1 rounded-2xl border border-border/70 bg-background px-4 py-3">
+                    <Pressable
+                      key={payment.id}
+                      className="gap-1 rounded-2xl border border-border/70 bg-background px-4 py-3"
+                      onPress={() =>
+                        router.push({
+                          pathname: '/(app)/payment-detail',
+                          params: { id: payment.id },
+                        })
+                      }>
                       <Text className="font-semibold text-foreground">{payment.party_name}</Text>
                       <Text className="text-sm text-muted-foreground">
                         {payment.payment_type} • {formatShortDate(payment.payment_date)}
                       </Text>
                       <Text className="text-sm font-semibold text-foreground">{formatCurrency(payment.amount)}</Text>
-                    </View>
+                    </Pressable>
                   ))
                 ) : (
                   <Text className="text-sm leading-6 text-muted-foreground">No recent payments yet.</Text>
@@ -284,7 +343,15 @@ export default function HomeScreen() {
               <CardContent className="gap-3">
                 {lowStockItems.length ? (
                   lowStockItems.map((item) => (
-                    <View key={item.id} className="gap-1 rounded-2xl border border-border/70 bg-background px-4 py-3">
+                    <Pressable
+                      key={item.id}
+                      className="gap-1 rounded-2xl border border-border/70 bg-background px-4 py-3"
+                      onPress={() =>
+                        router.push({
+                          pathname: '/(app)/inventory-edit',
+                          params: { id: item.id },
+                        })
+                      }>
                       <Text className="font-semibold text-foreground">{item.name}</Text>
                       <Text className="text-sm text-muted-foreground">
                         {item.current_stock} {item.unit} left
@@ -292,7 +359,7 @@ export default function HomeScreen() {
                       <Text className="text-xs uppercase tracking-[1px] text-muted-foreground">
                         Threshold {item.low_stock_threshold}
                       </Text>
-                    </View>
+                    </Pressable>
                   ))
                 ) : (
                   <Text className="text-sm leading-6 text-muted-foreground">Stock health looks stable.</Text>
@@ -301,7 +368,7 @@ export default function HomeScreen() {
             </Card>
           </View>
 
-          <Button className="h-14 rounded-[22px]">
+          <Button className="h-14 rounded-[22px]" onPress={() => router.push('/(app)/invoice-create-sales')}>
             <Text className="text-base">Keep building today&apos;s sales</Text>
           </Button>
         </View>

@@ -178,10 +178,11 @@ export const invoiceRepository = {
     async getInvoiceById(businessId: string, invoiceId: string) {
         const result = await pool.query(
             `
-            SELECT *
-            FROM invoices
+            SELECT i.*, p.name AS party_name, p.email AS party_email
+            FROM invoices i
+            JOIN parties p ON p.id = i.party_id
             WHERE business_id = $1
-              AND id = $2
+              AND i.id = $2
             `,
             [businessId, invoiceId]
         );
@@ -227,6 +228,45 @@ export const invoiceRepository = {
             [businessId, referenceInvoiceId]
         );
         return result.rows[0] ?? null;
+    },
+
+    async getReferencingInvoices(businessId: string, referenceInvoiceId: string) {
+        const result = await pool.query(
+            `
+            SELECT id, invoice_number, invoice_type, is_cancelled, created_at
+            FROM invoices
+            WHERE business_id = $1
+              AND reference_invoice_id = $2
+            ORDER BY created_at DESC
+            `,
+            [businessId, referenceInvoiceId]
+        );
+        return result.rows;
+    },
+
+    async getInvoicePayments(businessId: string, invoiceId: string) {
+        const result = await pool.query(
+            `
+            SELECT
+                p.id,
+                p.payment_type,
+                p.payment_mode,
+                p.payment_date,
+                p.bank_ref_no,
+                p.is_reconciled,
+                p.created_at,
+                pa.allocated_amount,
+                parties.name AS party_name
+            FROM payment_allocations pa
+            JOIN payments p ON p.id = pa.payment_id
+            JOIN parties ON parties.id = p.party_id
+            WHERE p.business_id = $1
+              AND pa.invoice_id = $2
+            ORDER BY p.payment_date DESC, p.created_at DESC
+            `,
+            [businessId, invoiceId]
+        );
+        return result.rows;
     },
 
     async lockInvoiceForCancel(client: PoolClient, businessId: string, invoiceId: string) {

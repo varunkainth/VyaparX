@@ -8,9 +8,11 @@ export const paymentRepository = {
         const result = await client.query(
             `
             INSERT INTO payments(
-                business_id,party_id,payment_type,amount,payment_date,payment_mode,bank_account_id,created_by
+                business_id,party_id,payment_type,amount,payment_date,payment_mode,
+                upi_ref,cheque_no,cheque_date,bank_account_id,bank_ref_no,bank_statement_date,
+                is_reconciled,reconciled_at,reconciled_by,notes,created_by
             )
-            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
             RETURNING id
             `,
             values

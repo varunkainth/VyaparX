@@ -999,12 +999,14 @@ export async function getInvoiceById(businessId: string, invoiceId: string) {
         throw new AppError("Invoice not found", 404, ERROR_CODES.INVOICE_NOT_FOUND);
     }
 
-    const [items, referenceInvoice, revisedInvoice] = await Promise.all([
+    const [items, referenceInvoice, revisedInvoice, referencingInvoices, payments] = await Promise.all([
         invoiceRepository.getInvoiceItems(invoiceId),
         invoice.reference_invoice_id
             ? invoiceRepository.getInvoiceSummary(businessId, invoice.reference_invoice_id)
             : Promise.resolve(null),
         invoiceRepository.getFirstReferencingInvoice(businessId, invoiceId),
+        invoiceRepository.getReferencingInvoices(businessId, invoiceId),
+        invoiceRepository.getInvoicePayments(businessId, invoiceId),
     ]);
 
     return {
@@ -1012,6 +1014,8 @@ export async function getInvoiceById(businessId: string, invoiceId: string) {
         items: items as InvoiceItemRecord[],
         reference_invoice: referenceInvoice,
         revised_invoice: revisedInvoice,
+        referencing_invoices: referencingInvoices,
+        payments,
     } as InvoiceDetail;
 }
 

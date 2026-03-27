@@ -51,10 +51,32 @@ const TAB_PARENT_BY_ROUTE: Record<string, string> = {
   '(app)/business': 'more',
   'business-settings': 'more',
   '(app)/business-settings': 'more',
+  'invoice-settings': 'more',
+  '(app)/invoice-settings': 'more',
   'business-members': 'more',
   '(app)/business-members': 'more',
+  'inventory-create': 'inventory',
+  '(app)/inventory-create': 'inventory',
+  'inventory-edit': 'inventory',
+  '(app)/inventory-edit': 'inventory',
+  'inventory-update-stock': 'inventory',
+  '(app)/inventory-update-stock': 'inventory',
+  'invoice-create-purchase': 'invoices',
+  '(app)/invoice-create-purchase': 'invoices',
+  'invoice-create-sales': 'invoices',
+  '(app)/invoice-create-sales': 'invoices',
+  'invoice-detail': 'invoices',
+  '(app)/invoice-detail': 'invoices',
+  'party-create': 'customers',
+  '(app)/party-create': 'customers',
+  'party-detail': 'customers',
+  '(app)/party-detail': 'customers',
   ledger: 'customers',
   '(app)/ledger': 'customers',
+  'payment-detail': 'invoices',
+  '(app)/payment-detail': 'invoices',
+  'payment-record': 'invoices',
+  '(app)/payment-record': 'invoices',
   payments: 'invoices',
   '(app)/payments': 'invoices',
   profile: 'more',
@@ -101,7 +123,18 @@ export default function AppLayout() {
         <Tabs.Screen name="settings" options={{ href: null }} />
         <Tabs.Screen name="business" options={{ href: null }} />
         <Tabs.Screen name="business-settings" options={{ href: null }} />
+        <Tabs.Screen name="invoice-settings" options={{ href: null }} />
         <Tabs.Screen name="business-members" options={{ href: null }} />
+        <Tabs.Screen name="inventory-create" options={{ href: null }} />
+        <Tabs.Screen name="inventory-edit" options={{ href: null }} />
+        <Tabs.Screen name="inventory-update-stock" options={{ href: null }} />
+        <Tabs.Screen name="invoice-create-purchase" options={{ href: null }} />
+        <Tabs.Screen name="invoice-create-sales" options={{ href: null }} />
+        <Tabs.Screen name="invoice-detail" options={{ href: null }} />
+        <Tabs.Screen name="party-create" options={{ href: null }} />
+        <Tabs.Screen name="party-detail" options={{ href: null }} />
+        <Tabs.Screen name="payment-detail" options={{ href: null }} />
+        <Tabs.Screen name="payment-record" options={{ href: null }} />
         <Tabs.Screen name="reports" options={{ href: null }} />
       </Tabs>
     </PermissionsGate>

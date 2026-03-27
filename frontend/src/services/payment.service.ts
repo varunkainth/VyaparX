@@ -3,6 +3,7 @@ import type {
   Payment,
   PaymentWithAllocations,
   RecordPaymentInput,
+  RecordPaymentResult,
   ListPaymentsQuery,
   ReconcilePaymentInput,
 } from "@/types/payment";
@@ -72,12 +73,12 @@ export const paymentService = {
     return transformPaymentWithAllocations(response.data.data);
   },
 
-  async recordPayment(data: RecordPaymentInput): Promise<PaymentWithAllocations> {
-    const response = await apiClient.post<ApiResponse<any>>(
+  async recordPayment(data: RecordPaymentInput): Promise<RecordPaymentResult> {
+    const response = await apiClient.post<ApiResponse<RecordPaymentResult>>(
       `/api/v1/payments`,
       data
     );
-    return transformPaymentWithAllocations(response.data.data);
+    return response.data.data;
   },
 
   async reconcilePayment(
