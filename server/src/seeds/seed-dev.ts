@@ -19,6 +19,8 @@ const DEV_BUSINESS = {
     phone: "9988776655",
     email: "billing@demo.vyaparx.local",
     invoice_prefix: "INV",
+    purchase_prefix: "PUR",
+    reset_numbering: "never",
     bank_name: "HDFC Bank",
     bank_account_no: "123456789012",
     bank_ifsc: "HDFC0001234",
@@ -59,11 +61,11 @@ async function run() {
             `
             INSERT INTO businesses (
                 owner_id, name, gstin, pan, state_code, address_line1, city, state, pincode,
-                phone, email, invoice_prefix, bank_name, bank_account_no, bank_ifsc, bank_branch
+                phone, email, invoice_prefix, purchase_prefix, reset_numbering, bank_name, bank_account_no, bank_ifsc, bank_branch
             )
             VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8, $9,
-                $10, $11, $12, $13, $14, $15, $16
+                $10, $11, $12, $13, $14, $15, $16, $17, $18
             )
             ON CONFLICT (gstin)
             DO UPDATE SET
@@ -87,6 +89,8 @@ async function run() {
                 DEV_BUSINESS.phone,
                 DEV_BUSINESS.email,
                 DEV_BUSINESS.invoice_prefix,
+                DEV_BUSINESS.purchase_prefix,
+                DEV_BUSINESS.reset_numbering,
                 DEV_BUSINESS.bank_name,
                 DEV_BUSINESS.bank_account_no,
                 DEV_BUSINESS.bank_ifsc,
@@ -188,4 +192,3 @@ run().catch((error) => {
     console.error("Seed failed:", error);
     process.exit(1);
 });
-

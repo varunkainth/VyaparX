@@ -48,6 +48,9 @@ export const createBusinessSchema = z.object({
     .string({ error: "Email is required" })
     .trim()
     .email("Invalid email address"),
+  invoice_prefix: z.string().trim().max(10, "Sales prefix is too long").optional().or(z.literal("")),
+  purchase_prefix: z.string().trim().max(10, "Purchase prefix is too long").optional().or(z.literal("")),
+  reset_numbering: z.enum(["never", "yearly", "monthly"]).optional(),
 });
 
 // Update business validation schema (all fields optional)
@@ -100,6 +103,9 @@ export const updateBusinessSchema = z.object({
     .optional()
     .or(z.literal("")),
   email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  invoice_prefix: z.string().trim().max(10, "Sales prefix is too long").optional().or(z.literal("")),
+  purchase_prefix: z.string().trim().max(10, "Purchase prefix is too long").optional().or(z.literal("")),
+  reset_numbering: z.enum(["never", "yearly", "monthly"]).optional(),
   is_active: z.boolean().optional(),
 });
 

@@ -1,10 +1,13 @@
 import * as React from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ChevronRight } from 'lucide-react-native';
 
 import { SubpageHeader } from '@/components/subpage-header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Text } from '@/components/ui/text';
@@ -23,6 +26,8 @@ const initialForm: CreateBusinessInput = {
   email: '',
   gstin: '',
   invoice_prefix: '',
+  purchase_prefix: '',
+  reset_numbering: 'never',
   logo_url: '',
   name: '',
   pan: '',
@@ -36,6 +41,7 @@ const initialForm: CreateBusinessInput = {
 };
 
 export default function BusinessSettingsScreen() {
+  const router = useRouter();
   const { session } = useAuthStore();
   const [form, setForm] = React.useState<CreateBusinessInput>(initialForm);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -74,6 +80,8 @@ export default function BusinessSettingsScreen() {
           email: business.email ?? '',
           gstin: business.gstin ?? '',
           invoice_prefix: business.invoice_prefix ?? '',
+          purchase_prefix: business.purchase_prefix ?? '',
+          reset_numbering: business.reset_numbering ?? 'never',
           name: business.name ?? '',
           pan: business.pan ?? '',
           phone: business.phone ?? '',
@@ -129,6 +137,8 @@ export default function BusinessSettingsScreen() {
         email: form.email.trim() || undefined,
         gstin: form.gstin?.trim() || undefined,
         invoice_prefix: form.invoice_prefix?.trim() || undefined,
+        purchase_prefix: form.purchase_prefix?.trim() || undefined,
+        reset_numbering: form.reset_numbering,
         name: form.name.trim() || undefined,
         pan: form.pan?.trim() || undefined,
         phone: form.phone.trim() || undefined,
@@ -286,15 +296,52 @@ export default function BusinessSettingsScreen() {
           <Card className="rounded-[28px]">
             <CardHeader>
               <CardTitle>Invoice and banking</CardTitle>
-              <CardDescription>Invoice prefix, bank details, and UPI details for customer-facing documents.</CardDescription>
+              <CardDescription>Sales and purchase prefixes, bank details, and UPI details for business documents.</CardDescription>
             </CardHeader>
             <CardContent className="gap-4">
-              <BusinessField label="Invoice prefix">
-                <Input
-                  value={form.invoice_prefix}
-                  onChangeText={(value) => setForm((current) => ({ ...current, invoice_prefix: value }))}
-                />
+              <View className="flex-row gap-3">
+                <View className="flex-1">
+                  <BusinessField label="Sales prefix">
+                    <Input
+                      autoCapitalize="characters"
+                      value={form.invoice_prefix}
+                      onChangeText={(value) => setForm((current) => ({ ...current, invoice_prefix: value.toUpperCase() }))}
+                    />
+                  </BusinessField>
+                </View>
+                <View className="flex-1">
+                  <BusinessField label="Purchase prefix">
+                    <Input
+                      autoCapitalize="characters"
+                      value={form.purchase_prefix ?? ''}
+                      onChangeText={(value) => setForm((current) => ({ ...current, purchase_prefix: value.toUpperCase() }))}
+                    />
+                  </BusinessField>
+                </View>
+              </View>
+              <BusinessField label="Reset numbering">
+                <View className="flex-row flex-wrap gap-3">
+                  {([
+                    { label: 'Never', value: 'never' },
+                    { label: 'Yearly', value: 'yearly' },
+                    { label: 'Monthly', value: 'monthly' },
+                  ] as const).map((option) => (
+                    <ChoiceChip
+                      key={option.value}
+                      label={option.label}
+                      selected={form.reset_numbering === option.value}
+                      onPress={() => setForm((current) => ({ ...current, reset_numbering: option.value }))}
+                    />
+                  ))}
+                </View>
               </BusinessField>
+              <Button
+                variant="outline"
+                className="h-12 justify-between rounded-[20px]"
+                onPress={() => router.push('/(app)/invoice-settings')}>
+                <Text>Open advanced invoice settings</Text>
+                <Icon as={ChevronRight} className="text-foreground" size={16} />
+              </Button>
               <BusinessField label="Bank name">
                 <Input value={form.bank_name} onChangeText={(value) => setForm((current) => ({ ...current, bank_name: value }))} />
               </BusinessField>
@@ -344,5 +391,23 @@ function BusinessField({ children, label }: { children: React.ReactNode; label: 
       <Label>{label}</Label>
       {children}
     </View>
+  );
+}
+
+function ChoiceChip({
+  label,
+  onPress,
+  selected,
+}: {
+  label: string;
+  onPress: () => void;
+  selected: boolean;
+}) {
+  return (
+    <Pressable
+      className={`rounded-full border px-4 py-2.5 ${selected ? 'border-primary bg-primary' : 'border-border/70 bg-background'}`}
+      onPress={onPress}>
+      <Text className={selected ? 'text-primary-foreground' : 'text-foreground'}>{label}</Text>
+    </Pressable>
   );
 }

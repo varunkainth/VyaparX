@@ -8,25 +8,35 @@ interface CreateBusinessResponse {
   tokens: Tokens;
 }
 
+function transformBusiness(business: BusinessWithRole & { user_role?: BusinessWithRole["role"] }): BusinessWithRole {
+  return {
+    ...business,
+    role: business.user_role ?? business.role,
+  };
+}
+
 export const businessService = {
   async listBusinesses(): Promise<BusinessWithRole[]> {
-    const response = await apiClient.get<ApiResponse<BusinessWithRole[]>>('/api/v1/businesses');
-    return response.data.data;
+    const response = await apiClient.get<ApiResponse<Array<BusinessWithRole & { user_role?: BusinessWithRole["role"] }>>>('/api/v1/businesses');
+    return response.data.data.map(transformBusiness);
   },
 
   async getBusiness(business_id: string): Promise<BusinessWithRole> {
-    const response = await apiClient.get<ApiResponse<BusinessWithRole>>(`/api/v1/businesses/${business_id}`);
-    return response.data.data;
+    const response = await apiClient.get<ApiResponse<BusinessWithRole & { user_role?: BusinessWithRole["role"] }>>(`/api/v1/businesses/${business_id}`);
+    return transformBusiness(response.data.data);
   },
 
   async createBusiness(payload: CreateBusinessInput): Promise<CreateBusinessResponse> {
     const response = await apiClient.post<ApiResponse<CreateBusinessResponse>>('/api/v1/businesses', payload);
-    return response.data.data;
+    return {
+      ...response.data.data,
+      business: transformBusiness(response.data.data.business),
+    };
   },
 
   async updateBusiness(business_id: string, payload: Partial<CreateBusinessInput>): Promise<BusinessWithRole> {
-    const response = await apiClient.patch<ApiResponse<BusinessWithRole>>(`/api/v1/businesses/${business_id}`, payload);
-    return response.data.data;
+    const response = await apiClient.patch<ApiResponse<BusinessWithRole & { user_role?: BusinessWithRole["role"] }>>(`/api/v1/businesses/${business_id}`, payload);
+    return transformBusiness(response.data.data);
   },
 
   async listBusinessMembers(business_id: string): Promise<BusinessMember[]> {

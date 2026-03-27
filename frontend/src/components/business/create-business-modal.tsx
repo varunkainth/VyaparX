@@ -67,6 +67,8 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
       email: "",
       address_line1: "",
       city: "",
+      invoice_prefix: "",
+      purchase_prefix: "",
       state_code: "",
       state: "",
       pincode: "",
@@ -260,6 +262,57 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                       <FieldDescription>10-character PAN (optional)</FieldDescription>
                     </Field>
                   </FieldGroup>
+                  </CardContent>
+                </Card>
+
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <FileText className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle>Document Prefixes</CardTitle>
+                      <CardDescription>Optional defaults for sales and purchase numbering</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field>
+                      <FieldLabel htmlFor="invoice_prefix">Sales Prefix</FieldLabel>
+                      <Input
+                        id="invoice_prefix"
+                        type="text"
+                        placeholder="INV"
+                        {...register("invoice_prefix")}
+                        disabled={isSubmitting}
+                        className="uppercase"
+                      />
+                      {errors.invoice_prefix && (
+                        <p className="text-sm text-destructive mt-1">
+                          {errors.invoice_prefix.message}
+                        </p>
+                      )}
+                    </Field>
+
+                    <Field>
+                      <FieldLabel htmlFor="purchase_prefix">Purchase Prefix</FieldLabel>
+                      <Input
+                        id="purchase_prefix"
+                        type="text"
+                        placeholder="PUR"
+                        {...register("purchase_prefix")}
+                        disabled={isSubmitting}
+                        className="uppercase"
+                      />
+                      {errors.purchase_prefix && (
+                        <p className="text-sm text-destructive mt-1">
+                          {errors.purchase_prefix.message}
+                        </p>
+                      )}
+                    </Field>
+                  </div>
                 </CardContent>
               </Card>
 

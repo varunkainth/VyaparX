@@ -13,6 +13,9 @@ export interface Business {
   pincode?: string | null;
   phone?: string | null;
   email?: string | null;
+  invoice_prefix?: string | null;
+  purchase_prefix?: string | null;
+  reset_numbering?: "never" | "yearly" | "monthly" | null;
   owner_id: string;
   owner_name?: string | null;
   owner_email?: string | null;
@@ -51,6 +54,9 @@ export interface CreateBusinessInput {
   pincode?: string;
   phone?: string;
   email?: string;
+  invoice_prefix?: string;
+  purchase_prefix?: string;
+  reset_numbering?: "never" | "yearly" | "monthly";
 }
 
 export interface UpdateBusinessInput {
@@ -64,6 +70,9 @@ export interface UpdateBusinessInput {
   pincode?: string;
   phone?: string;
   email?: string;
+  invoice_prefix?: string;
+  purchase_prefix?: string;
+  reset_numbering?: "never" | "yearly" | "monthly";
   is_active?: boolean;
 }
 

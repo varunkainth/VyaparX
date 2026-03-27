@@ -12,12 +12,27 @@ export const invoiceSettingsRepository = {
             );
 
             if (result.rows.length === 0) {
+                const businessResult = await client.query(
+                    `
+                    SELECT invoice_prefix, purchase_prefix, reset_numbering
+                    FROM businesses
+                    WHERE id = $1
+                    `,
+                    [businessId]
+                );
+                const business = businessResult.rows[0] ?? {};
+
                 // Create default settings
                 result = await client.query(
-                    `INSERT INTO invoice_settings (business_id) 
-                     VALUES ($1) 
+                    `INSERT INTO invoice_settings (business_id, invoice_prefix, purchase_prefix, reset_numbering) 
+                     VALUES ($1, $2, $3, $4) 
                      RETURNING *`,
-                    [businessId]
+                    [
+                        businessId,
+                        business.invoice_prefix ?? "INV",
+                        business.purchase_prefix ?? "PUR",
+                        business.reset_numbering ?? "never",
+                    ]
                 );
             }
 
@@ -56,7 +71,24 @@ export const invoiceSettingsRepository = {
         `;
 
         const result = await pool.query(query, values);
-        return result.rows[0];
+        const settings = result.rows[0];
+
+        if (settings && (data.invoice_prefix !== undefined || data.purchase_prefix !== undefined || data.reset_numbering !== undefined)) {
+            await pool.query(
+                `
+                UPDATE businesses
+                SET
+                    invoice_prefix = $1,
+                    purchase_prefix = $2,
+                    reset_numbering = $3,
+                    updated_at = NOW()
+                WHERE id = $4
+                `,
+                [settings.invoice_prefix, settings.purchase_prefix, settings.reset_numbering, businessId]
+            );
+        }
+
+        return settings;
     },
 
     async resetToDefaults(businessId: string): Promise<InvoiceSettings> {
@@ -91,6 +123,23 @@ export const invoiceSettingsRepository = {
             [businessId]
         );
 
-        return result.rows[0];
+        const settings = result.rows[0];
+
+        if (settings) {
+            await pool.query(
+                `
+                UPDATE businesses
+                SET
+                    invoice_prefix = $1,
+                    purchase_prefix = $2,
+                    reset_numbering = $3,
+                    updated_at = NOW()
+                WHERE id = $4
+                `,
+                [settings.invoice_prefix, settings.purchase_prefix, settings.reset_numbering, businessId]
+            );
+        }
+
+        return settings;
     },
 };

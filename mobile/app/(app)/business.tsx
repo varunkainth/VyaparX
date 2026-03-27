@@ -48,6 +48,8 @@ const initialCreateForm: CreateBusinessInput = {
   email: '',
   gstin: '',
   invoice_prefix: '',
+  purchase_prefix: '',
+  reset_numbering: 'never',
   logo_url: '',
   name: '',
   pan: '',
@@ -176,6 +178,8 @@ export default function BusinessScreen() {
         email: createForm.email.trim(),
         gstin: createForm.gstin?.trim() || undefined,
         invoice_prefix: createForm.invoice_prefix?.trim() || undefined,
+        purchase_prefix: createForm.purchase_prefix?.trim() || undefined,
+        reset_numbering: createForm.reset_numbering,
         logo_url: createForm.logo_url?.trim() || undefined,
         name: createForm.name.trim(),
         pan: createForm.pan?.trim() || undefined,
@@ -410,6 +414,26 @@ export default function BusinessScreen() {
                     onChangeText={(value) => setCreateForm((current) => ({ ...current, email: value }))}
                   />
                 </BusinessField>
+                <View className="flex-row gap-3">
+                  <View className="flex-1">
+                    <BusinessField label="Sales prefix">
+                      <Input
+                        autoCapitalize="characters"
+                        value={createForm.invoice_prefix ?? ''}
+                        onChangeText={(value) => setCreateForm((current) => ({ ...current, invoice_prefix: value.toUpperCase() }))}
+                      />
+                    </BusinessField>
+                  </View>
+                  <View className="flex-1">
+                    <BusinessField label="Purchase prefix">
+                      <Input
+                        autoCapitalize="characters"
+                        value={createForm.purchase_prefix ?? ''}
+                        onChangeText={(value) => setCreateForm((current) => ({ ...current, purchase_prefix: value.toUpperCase() }))}
+                      />
+                    </BusinessField>
+                  </View>
+                </View>
                 <View className="flex-row gap-3 pb-1">
                   <Button variant="outline" className="h-14 flex-1 rounded-[22px]" onPress={() => setShowCreateForm(false)}>
                     <Text>Close</Text>

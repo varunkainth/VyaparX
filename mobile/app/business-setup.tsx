@@ -27,9 +27,11 @@ export default function BusinessSetupScreen() {
     address_line1: '',
     city: '',
     email: user?.email ?? '',
+    invoice_prefix: '',
     name: '',
     phone: user?.phone ?? '',
     pincode: '',
+    purchase_prefix: '',
     state: '',
     state_code: '',
   });
@@ -143,9 +145,11 @@ export default function BusinessSetupScreen() {
         address_line1: form.address_line1.trim(),
         city: form.city.trim(),
         email: form.email.trim(),
+        invoice_prefix: form.invoice_prefix.trim() || undefined,
         name: form.name.trim(),
         phone: form.phone.trim(),
         pincode: form.pincode.trim(),
+        purchase_prefix: form.purchase_prefix.trim() || undefined,
         state: form.state.trim(),
         state_code: form.state_code.trim(),
       });
@@ -306,6 +310,26 @@ export default function BusinessSetupScreen() {
                     onChangeText={(value) => setForm((current) => ({ ...current, email: value }))}
                   />
                 </Field>
+                <View className="flex-row gap-3">
+                  <View className="flex-1">
+                    <Field label="Sales prefix">
+                      <Input
+                        autoCapitalize="characters"
+                        value={form.invoice_prefix}
+                        onChangeText={(value) => setForm((current) => ({ ...current, invoice_prefix: value.toUpperCase() }))}
+                      />
+                    </Field>
+                  </View>
+                  <View className="flex-1">
+                    <Field label="Purchase prefix">
+                      <Input
+                        autoCapitalize="characters"
+                        value={form.purchase_prefix}
+                        onChangeText={(value) => setForm((current) => ({ ...current, purchase_prefix: value.toUpperCase() }))}
+                      />
+                    </Field>
+                  </View>
+                </View>
 
                 <Button className="h-14 gap-2 rounded-[22px]" disabled={isCreating} onPress={handleCreateBusiness}>
                   {isCreating ? <ActivityIndicator color="#ffffff" /> : <>

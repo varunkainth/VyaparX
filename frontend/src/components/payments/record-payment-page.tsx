@@ -334,7 +334,7 @@ export function RecordPaymentPage() {
           )}
 
           {invoice && (
-            <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+            <Card className="border-primary/20 bg-linear-to-br from-primary/5 to-primary/10">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-primary/10">

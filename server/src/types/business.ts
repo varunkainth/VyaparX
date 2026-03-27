@@ -17,6 +17,8 @@ export interface CreateBusinessInput {
     logo_url?: string;
     signature_url?: string;
     invoice_prefix?: string;
+    purchase_prefix?: string;
+    reset_numbering?: "never" | "yearly" | "monthly";
     bank_name?: string;
     bank_account_no?: string;
     bank_ifsc?: string;

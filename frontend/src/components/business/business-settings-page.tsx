@@ -27,6 +27,7 @@ import {
   Building2,
   Phone,
   CreditCard,
+  FileText,
   MapPinned,
   Save,
   AlertCircle,
@@ -115,9 +116,13 @@ export function BusinessSettingsPage() {
       address_line1: currentBusiness?.address_line1 || "",
       city: currentBusiness?.city || "",
       state: currentBusiness?.state || "",
+      state_code: currentBusiness?.state_code || "",
       pincode: currentBusiness?.pincode || "",
       phone: currentBusiness?.phone || "",
       email: currentBusiness?.email || "",
+      invoice_prefix: currentBusiness?.invoice_prefix || "",
+      purchase_prefix: currentBusiness?.purchase_prefix || "",
+      reset_numbering: currentBusiness?.reset_numbering || "never",
     },
   })
 
@@ -143,9 +148,13 @@ export function BusinessSettingsPage() {
         address_line1: currentBusiness.address_line1 || "",
         city: currentBusiness.city || "",
         state: currentBusiness.state || "",
+        state_code: currentBusiness.state_code || "",
         pincode: currentBusiness.pincode || "",
         phone: currentBusiness.phone || "",
         email: currentBusiness.email || "",
+        invoice_prefix: currentBusiness.invoice_prefix || "",
+        purchase_prefix: currentBusiness.purchase_prefix || "",
+        reset_numbering: currentBusiness.reset_numbering || "never",
       })
     }
   }, [currentBusiness, reset])
@@ -445,6 +454,74 @@ export function BusinessSettingsPage() {
                         )}
                       </Field>
                     </FieldGroup>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 rounded-lg bg-primary/10 shrink-0">
+                        <FileText className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base md:text-lg">Document Prefixes</CardTitle>
+                        <CardDescription className="text-xs md:text-sm">Business-level numbering prefixes for sales and purchase documents</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-3 md:gap-4 sm:grid-cols-2">
+                      <Field>
+                        <FieldLabel htmlFor="invoice_prefix" className="text-xs md:text-sm">Sales Prefix</FieldLabel>
+                        <Input
+                          id="invoice_prefix"
+                          type="text"
+                          placeholder="INV"
+                          {...register("invoice_prefix")}
+                          disabled={isSubmitting}
+                          className="uppercase text-sm"
+                        />
+                        {errors.invoice_prefix && (
+                          <p className="text-xs text-destructive mt-1">
+                            {errors.invoice_prefix.message}
+                          </p>
+                        )}
+                      </Field>
+
+                      <Field>
+                        <FieldLabel htmlFor="purchase_prefix" className="text-xs md:text-sm">Purchase Prefix</FieldLabel>
+                        <Input
+                          id="purchase_prefix"
+                          type="text"
+                          placeholder="PUR"
+                          {...register("purchase_prefix")}
+                          disabled={isSubmitting}
+                          className="uppercase text-sm"
+                        />
+                        {errors.purchase_prefix && (
+                          <p className="text-xs text-destructive mt-1">
+                            {errors.purchase_prefix.message}
+                          </p>
+                        )}
+                      </Field>
+                    </div>
+                    <Field>
+                      <FieldLabel htmlFor="reset_numbering" className="text-xs md:text-sm">Reset Numbering</FieldLabel>
+                      <Select
+                        value={watch("reset_numbering") || "never"}
+                        onValueChange={(value: "never" | "yearly" | "monthly") => setValue("reset_numbering", value, { shouldDirty: true })}
+                        disabled={isSubmitting}
+                      >
+                        <SelectTrigger className="w-full">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="never">Never</SelectItem>
+                          <SelectItem value="yearly">Every Year</SelectItem>
+                          <SelectItem value="monthly">Every Month</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </Field>
                   </CardContent>
                 </Card>
 

@@ -16,12 +16,12 @@ export const businessRepository = {
             `
             INSERT INTO businesses (
                 owner_id,name,gstin,pan,state_code,address_line1,address_line2,city,state,pincode,
-                phone,email,website,logo_url,signature_url,invoice_prefix,bank_name,bank_account_no,
+                phone,email,website,logo_url,signature_url,invoice_prefix,purchase_prefix,reset_numbering,bank_name,bank_account_no,
                 bank_ifsc,bank_branch,upi_id
             )
             VALUES (
                 $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
-                $11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21
+                $11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23
             )
             RETURNING *
             `,
@@ -42,6 +42,8 @@ export const businessRepository = {
                 input.logo_url ?? null,
                 input.signature_url ?? null,
                 input.invoice_prefix ?? "INV",
+                input.purchase_prefix ?? "PUR",
+                input.reset_numbering ?? "never",
                 input.bank_name ?? null,
                 input.bank_account_no ?? null,
                 input.bank_ifsc ?? null,
@@ -49,7 +51,27 @@ export const businessRepository = {
                 input.upi_id ?? null,
             ]
         );
-        return result.rows[0];
+        const business = result.rows[0];
+
+        await db.query(
+            `
+            INSERT INTO invoice_settings (business_id, invoice_prefix, purchase_prefix, reset_numbering)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (business_id)
+            DO UPDATE SET
+                invoice_prefix = EXCLUDED.invoice_prefix,
+                purchase_prefix = EXCLUDED.purchase_prefix,
+                reset_numbering = EXCLUDED.reset_numbering,
+                updated_at = NOW()
+            `,
+            [
+                business.id,
+                business.invoice_prefix ?? input.invoice_prefix ?? "INV",
+                business.purchase_prefix ?? input.purchase_prefix ?? "PUR",
+                business.reset_numbering ?? input.reset_numbering ?? "never",
+            ]
+        );
+        return business;
     },
 
     async upsertOwnerMember(businessId: string, ownerId: string, client?: PoolClient) {
@@ -136,7 +158,34 @@ export const businessRepository = {
             `,
             [...values, businessId]
         );
-        return result.rows[0] ?? null;
+        const business = result.rows[0] ?? null;
+
+        if (!business) {
+            return null;
+        }
+
+        if ("invoice_prefix" in patch || "purchase_prefix" in patch || "reset_numbering" in patch) {
+            await pool.query(
+                `
+                INSERT INTO invoice_settings (business_id, invoice_prefix, purchase_prefix, reset_numbering)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (business_id)
+                DO UPDATE SET
+                    invoice_prefix = EXCLUDED.invoice_prefix,
+                    purchase_prefix = EXCLUDED.purchase_prefix,
+                    reset_numbering = EXCLUDED.reset_numbering,
+                    updated_at = NOW()
+                `,
+                [
+                    businessId,
+                    business.invoice_prefix ?? "INV",
+                    business.purchase_prefix ?? "PUR",
+                    business.reset_numbering ?? "never",
+                ]
+            );
+        }
+
+        return business;
     },
 
     async inviteOrUpsertBusinessMember(args: BusinessMemberInviteInput) {

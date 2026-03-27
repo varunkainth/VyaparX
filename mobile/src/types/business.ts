@@ -15,6 +15,8 @@ export interface BusinessWithRole {
   logo_url?: string | null;
   signature_url?: string | null;
   invoice_prefix?: string | null;
+  purchase_prefix?: string | null;
+  reset_numbering?: 'never' | 'yearly' | 'monthly' | null;
   bank_name?: string | null;
   bank_account_no?: string | null;
   bank_ifsc?: string | null;
@@ -54,6 +56,8 @@ export interface CreateBusinessInput {
   logo_url?: string;
   signature_url?: string;
   invoice_prefix?: string;
+  purchase_prefix?: string;
+  reset_numbering?: 'never' | 'yearly' | 'monthly';
   bank_name?: string;
   bank_account_no?: string;
   bank_ifsc?: string;
