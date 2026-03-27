@@ -63,3 +63,4 @@ server/docs/
 .qoder
 .vscode
 temp
+.wrangler

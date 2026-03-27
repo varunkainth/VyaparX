@@ -1,4 +1,3 @@
-import { Buffer } from 'buffer';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as SecureStore from 'expo-secure-store';
 import * as Sharing from 'expo-sharing';
@@ -59,10 +58,9 @@ export async function exportCsvText(args: {
   baseName: string;
   content: string;
 }) {
-  const bytes = Buffer.from(args.content, 'utf-8');
   return exportBinaryReportFile({
     baseName: args.baseName,
-    bytes: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
+    bytes: encodeUtf8(args.content),
     format: 'csv',
   });
 }
@@ -100,10 +98,15 @@ async function saveBinaryFile(args: {
     return { fileName, location: 'download' as const };
   }
 
-  const base64 = Buffer.from(bytes).toString('base64');
+  const base64 = arrayBufferToBase64(bytes);
 
   if (Platform.OS === 'android') {
-    const uri = await saveIntoAndroidExportFolder(fileName, mimeType, base64);
+    const uri = await saveIntoAndroidExportFolder({
+      displayFileName: fileName,
+      fileStem: `${sanitizeFileName(baseName)}-${buildTimestamp()}`,
+      mimeType,
+      base64,
+    });
     return { fileName, location: 'device-folder' as const, uri };
   }
 
@@ -128,7 +131,12 @@ async function saveBinaryFile(args: {
   return { fileName, location: 'share-sheet' as const, uri };
 }
 
-async function saveIntoAndroidExportFolder(fileName: string, mimeType: string, base64: string) {
+async function saveIntoAndroidExportFolder(args: {
+  displayFileName: string;
+  fileStem: string;
+  mimeType: string;
+  base64: string;
+}) {
   const StorageAccessFramework = FileSystem.StorageAccessFramework;
   const savedDirectoryUri = await SecureStore.getItemAsync(EXPORT_DIRECTORY_URI_KEY);
   const directoryUri = await resolveExportDirectoryUri(savedDirectoryUri);
@@ -138,15 +146,47 @@ async function saveIntoAndroidExportFolder(fileName: string, mimeType: string, b
   }
 
   try {
-    const fileUri = await StorageAccessFramework.createFileAsync(directoryUri, fileName, mimeType);
-    await FileSystem.writeAsStringAsync(fileUri, base64, {
-      encoding: FileSystem.EncodingType.Base64,
+    return await writeIntoSafDirectory({
+      directoryUri,
+      fileStem: args.fileStem,
+      mimeType: args.mimeType,
+      base64: args.base64,
     });
-    return fileUri;
   } catch (error) {
     await SecureStore.deleteItemAsync(EXPORT_DIRECTORY_URI_KEY);
-    throw error;
+
+    const retryDirectoryUri = await resolveExportDirectoryUri(null);
+    if (!retryDirectoryUri) {
+      throw new Error(
+        `Unable to save ${args.displayFileName}. Choose a device folder and try again.`
+      );
+    }
+
+    return await writeIntoSafDirectory({
+      directoryUri: retryDirectoryUri,
+      fileStem: args.fileStem,
+      mimeType: args.mimeType,
+      base64: args.base64,
+    });
   }
+}
+
+async function writeIntoSafDirectory(args: {
+  directoryUri: string;
+  fileStem: string;
+  mimeType: string;
+  base64: string;
+}) {
+  const StorageAccessFramework = FileSystem.StorageAccessFramework;
+  const fileUri = await StorageAccessFramework.createFileAsync(
+    args.directoryUri,
+    args.fileStem,
+    args.mimeType
+  );
+  await StorageAccessFramework.writeAsStringAsync(fileUri, args.base64, {
+      encoding: FileSystem.EncodingType.Base64,
+  });
+  return fileUri;
 }
 
 async function resolveExportDirectoryUri(savedDirectoryUri: string | null) {
@@ -182,4 +222,30 @@ function buildTimestamp() {
 
 function sanitizeFileName(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'vyaparx-export';
+}
+
+function encodeUtf8(value: string) {
+  return new TextEncoder().encode(value).buffer;
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer);
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+  let output = '';
+
+  for (let index = 0; index < bytes.length; index += 3) {
+    const byte1 = bytes[index] ?? 0;
+    const byte2 = bytes[index + 1] ?? 0;
+    const byte3 = bytes[index + 2] ?? 0;
+    const hasByte2 = index + 1 < bytes.length;
+    const hasByte3 = index + 2 < bytes.length;
+    const chunk = (byte1 << 16) | (byte2 << 8) | byte3;
+
+    output += alphabet[(chunk >> 18) & 63];
+    output += alphabet[(chunk >> 12) & 63];
+    output += hasByte2 ? alphabet[(chunk >> 6) & 63] : '=';
+    output += hasByte3 ? alphabet[chunk & 63] : '=';
+  }
+
+  return output;
 }
