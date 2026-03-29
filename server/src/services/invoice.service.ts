@@ -944,34 +944,34 @@ export async function createInvoiceNote(data: CreateInvoiceNoteInput) {
 
 export async function listInvoices(input: ListInvoicesInput) {
     const values: unknown[] = [input.business_id];
-    const where: string[] = ["business_id = $1"];
+    const where: string[] = ["i.business_id = $1"];
 
     if (!input.include_cancelled) {
-        where.push("is_cancelled = false");
+        where.push("i.is_cancelled = false");
     }
     if (input.party_id) {
         values.push(input.party_id);
-        where.push(`party_id = $${values.length}`);
+        where.push(`i.party_id = $${values.length}`);
     }
     if (input.payment_status) {
         values.push(input.payment_status);
-        where.push(`payment_status = $${values.length}::payment_status`);
+        where.push(`i.payment_status = $${values.length}::payment_status`);
     }
     if (input.invoice_type) {
         values.push(input.invoice_type);
-        where.push(`invoice_type = $${values.length}::invoice_type`);
+        where.push(`i.invoice_type = $${values.length}::invoice_type`);
     }
     if (input.from_date) {
         values.push(input.from_date);
-        where.push(`invoice_date >= $${values.length}::date`);
+        where.push(`i.invoice_date >= $${values.length}::date`);
     }
     if (input.to_date) {
         values.push(input.to_date);
-        where.push(`invoice_date <= $${values.length}::date`);
+        where.push(`i.invoice_date <= $${values.length}::date`);
     }
     if (input.search) {
         values.push(`%${input.search}%`);
-        where.push(`invoice_number ILIKE $${values.length}`);
+        where.push(`(i.invoice_number ILIKE $${values.length} OR p.name ILIKE $${values.length})`);
     }
 
     const limit = Math.min(Math.max(input.limit ?? 20, 1), 100);
@@ -984,11 +984,15 @@ export async function listInvoices(input: ListInvoicesInput) {
     const offsetParam = values.length;
 
     const query = `
-        SELECT *,
+        SELECT i.*,
+               p.name AS party_name,
+               p.party_type,
+               p.email AS party_email,
                COUNT(*) OVER() AS total_count
-        FROM invoices
+        FROM invoices i
+        JOIN parties p ON p.id = i.party_id
         WHERE ${where.join(" AND ")}
-        ORDER BY invoice_date DESC, created_at DESC
+        ORDER BY i.invoice_date DESC, i.created_at DESC
         LIMIT $${limitParam}
         OFFSET $${offsetParam}
     `;
