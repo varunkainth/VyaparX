@@ -65,6 +65,24 @@ const parseUrl = (
     return parsed.toString().replace(/\/$/, "")
 }
 
+const parseRedisUrl = (name: string, value: string | undefined): string => {
+    const trimmed = value?.trim() ?? ""
+    if (!trimmed) return ""
+
+    let parsed: URL
+    try {
+        parsed = new URL(trimmed)
+    } catch {
+        throw new Error(`Environment variable ${name} must be a valid Redis URL`)
+    }
+
+    if (!["redis:", "rediss:"].includes(parsed.protocol)) {
+        throw new Error(`Environment variable ${name} must use redis or rediss`)
+    }
+
+    return parsed.toString()
+}
+
 const parseOriginList = (name: string, value: string | undefined): string[] => {
     const trimmed = value?.trim() ?? ""
     if (!trimmed) return []
@@ -155,9 +173,17 @@ const optionalEnvVars = [
     "RATE_LIMIT_MAX_REQUESTS",
     "AUTH_RATE_LIMIT_WINDOW_MS",
     "AUTH_RATE_LIMIT_MAX_REQUESTS",
+    "CACHE_ENABLED",
+    "CACHE_TTL_DASHBOARD_SECONDS",
+    "CACHE_TTL_INVOICE_LIST_SECONDS",
+    "CACHE_TTL_INVOICE_DETAIL_SECONDS",
+    "CACHE_TTL_PUBLIC_INVOICE_SECONDS",
     "COOKIE_SECURE",
     "COOKIE_SAME_SITE",
     "COOKIE_DOMAIN",
+    "REDIS_URL",
+    "UPSTASH_REDIS_REST_URL",
+    "UPSTASH_REDIS_REST_TOKEN",
     "WEBAUTHN_RP_ID",
     "WEBAUTHN_RP_NAME",
     "WEBAUTHN_ORIGIN",
@@ -213,6 +239,23 @@ const webauthnRpId = parseHost(
     process.env.WEBAUTHN_RP_ID || new URL(webauthnOrigin).hostname
 )
 const webauthnRpName = process.env.WEBAUTHN_RP_NAME?.trim() || "VyaparX"
+const redisUrl = parseRedisUrl("REDIS_URL", process.env.REDIS_URL)
+const upstashRedisRestUrl = parseUrl(
+    "UPSTASH_REDIS_REST_URL",
+    process.env.UPSTASH_REDIS_REST_URL,
+    { requireHttpsInProduction: true }
+)
+const upstashRedisRestToken = process.env.UPSTASH_REDIS_REST_TOKEN?.trim() ?? ""
+
+if ((upstashRedisRestUrl && !upstashRedisRestToken) || (!upstashRedisRestUrl && upstashRedisRestToken)) {
+    throw new Error(
+        "UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must both be set together"
+    )
+}
+
+const defaultCacheEnabled = Boolean(
+    redisUrl || (upstashRedisRestUrl && upstashRedisRestToken)
+)
 
 // Export all env vars in one place
 const env = {
@@ -248,6 +291,27 @@ const env = {
         process.env.RATE_LIMIT_MAX_REQUESTS,
         300
     ),
+    CACHE_ENABLED: parseBoolean("CACHE_ENABLED", process.env.CACHE_ENABLED, defaultCacheEnabled),
+    CACHE_TTL_DASHBOARD_SECONDS: parseInteger(
+        "CACHE_TTL_DASHBOARD_SECONDS",
+        process.env.CACHE_TTL_DASHBOARD_SECONDS,
+        120
+    ),
+    CACHE_TTL_INVOICE_LIST_SECONDS: parseInteger(
+        "CACHE_TTL_INVOICE_LIST_SECONDS",
+        process.env.CACHE_TTL_INVOICE_LIST_SECONDS,
+        60
+    ),
+    CACHE_TTL_INVOICE_DETAIL_SECONDS: parseInteger(
+        "CACHE_TTL_INVOICE_DETAIL_SECONDS",
+        process.env.CACHE_TTL_INVOICE_DETAIL_SECONDS,
+        180
+    ),
+    CACHE_TTL_PUBLIC_INVOICE_SECONDS: parseInteger(
+        "CACHE_TTL_PUBLIC_INVOICE_SECONDS",
+        process.env.CACHE_TTL_PUBLIC_INVOICE_SECONDS,
+        180
+    ),
     AUTH_RATE_LIMIT_WINDOW_MS: parseInteger(
         "AUTH_RATE_LIMIT_WINDOW_MS",
         process.env.AUTH_RATE_LIMIT_WINDOW_MS,
@@ -271,9 +335,10 @@ const env = {
     JWT_ACCESS_EXPIRY: process.env.JWT_ACCESS_EXPIRY || "15m",
     JWT_REFRESH_EXPIRY: process.env.JWT_REFRESH_EXPIRY || "7d",
 
-    // Add more variables below as needed
-    // REDIS_URL: process.env.REDIS_URL || "",
-    // API_KEY: process.env.API_KEY as string,
+    // Cache
+    REDIS_URL: redisUrl,
+    UPSTASH_REDIS_REST_URL: upstashRedisRestUrl,
+    UPSTASH_REDIS_REST_TOKEN: upstashRedisRestToken,
 } as const
 
 const resolveDatabaseUrl = (): string => {

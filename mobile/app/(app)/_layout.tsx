@@ -317,7 +317,7 @@ function AppTabBar({
       mass: 0.9,
       stiffness: 180,
       toValue: indicatorLeft,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
   }, [indicatorLeft, indicatorX]);
 
@@ -326,7 +326,7 @@ function AppTabBar({
   }
 
   return (
-    <View pointerEvents="box-none" style={{ bottom: bottomInset, left: 14, position: 'absolute', right: 14 }}>
+    <View style={{ bottom: bottomInset, left: 14, position: 'absolute', right: 14, pointerEvents: 'box-none' }}>
       <View
         onLayout={onDockLayout}
         style={{

@@ -26,6 +26,7 @@ import analyticsDashboardRouter from "./src/routes/analytics-dashboard.routes";
 import invoiceSettingsRouter from "./src/routes/invoice-settings.routes";
 import emailRouter from "./src/routes/email.routes";
 import notificationRouter from "./src/routes/notification.routes";
+import { getCacheHealth } from "./src/services/cache.service";
 import { errorHandler } from "./src/utils/errorHandler";
 import { sendSuccess } from "./src/utils/responseHandler";
 
@@ -53,6 +54,14 @@ app.get("/health", (_req, res) => {
             uptime: process.uptime(),
             timestamp: new Date().toISOString(),
         },
+    });
+});
+
+app.get("/health/cache", async (_req, res) => {
+    const data = await getCacheHealth();
+
+    return sendSuccess(res, {
+        data,
     });
 });
 
@@ -154,6 +163,22 @@ const server = app.listen(PORT, HOST, async () => {
         console.error("✗ Failed to connect to database on startup:", err.message);
         process.exit(1);
     }
+
+    const cacheHealth = await getCacheHealth();
+    console.log("\n--- Cache Status ---");
+    if (cacheHealth.status === "ok" || cacheHealth.status === "degraded") {
+        console.log(`âœ“ Cache is enabled (${cacheHealth.provider})`);
+        console.log(`  Status: ${cacheHealth.status}`);
+        console.log(`  Ping: ${cacheHealth.response ?? "n/a"}`);
+    } else if (cacheHealth.status === "disabled") {
+        console.log("â„¹ Cache is disabled");
+    } else if (cacheHealth.status === "unconfigured") {
+        console.warn("âš  Cache is enabled but not configured");
+    } else {
+        console.warn(`âš  Cache health check failed (${cacheHealth.provider})`);
+        console.warn(`  Error: ${cacheHealth.error ?? "Unknown cache error"}`);
+    }
+    console.log("--------------------");
 
     // Email service health check
     console.log("\n--- Email Service Status ---");

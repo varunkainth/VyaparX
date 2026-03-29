@@ -81,7 +81,7 @@ export function OptimizedInvoicesList({
                 {invoice.payment_status}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">{invoice.party_name}</p>
+            <p className="text-sm text-muted-foreground mt-1">{invoice.party_name.trim().toUpperCase()}</p>
           </div>
           <div className="text-right">
             <p className="font-semibold">{formatCurrency(invoice.grand_total)}</p>

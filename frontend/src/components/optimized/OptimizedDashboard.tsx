@@ -347,7 +347,7 @@ export function OptimizedDashboard() {
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground truncate">
-                        {invoice.party_name} • {formatDate(invoice.invoice_date)}
+                        {invoice.party_name.trim().toUpperCase()} • {formatDate(invoice.invoice_date)}
                       </p>
                     </div>
                     <div className="text-right">

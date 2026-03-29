@@ -77,10 +77,6 @@ export default function AnalyticsScreen() {
     void loadAnalytics();
   }, [loadAnalytics]);
 
-  if (isLoading) {
-    return <CollectionScreenSkeleton metricCount={3} rowCount={4} showActionCard />;
-  }
-
   const currentMonth = analytics?.monthly_comparison.current_month ?? { profit: 0, purchases: 0, sales: 0 };
   const lastMonth = analytics?.monthly_comparison.last_month ?? { profit: 0, purchases: 0, sales: 0 };
   const paymentModes = analytics?.payment_modes ?? [];
@@ -126,6 +122,10 @@ export default function AnalyticsScreen() {
   const visibleTrendLabel = visibleTrendPoints.length
     ? formatTrendWindowLabel(visibleTrendPoints[0]?.date, visibleTrendPoints[visibleTrendPoints.length - 1]?.date)
     : null;
+
+  if (isLoading) {
+    return <CollectionScreenSkeleton metricCount={3} rowCount={4} showActionCard />;
+  }
 
   return (
     <SafeAreaView className="flex-1 bg-background">

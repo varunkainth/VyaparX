@@ -669,7 +669,7 @@ const renderCompact = (
   });
 
   y += 15;
-  doc.text(`Bill To: ${getText(data.partyName)}`, x, y);
+  doc.text(`Bill To: ${getText(data.partyName).toUpperCase()}`, x, y);
 
   y += 15;
   drawDashedLine(y);

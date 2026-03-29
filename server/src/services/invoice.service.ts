@@ -18,6 +18,7 @@ import type {
     PriceMode,
 } from "../types/invoice";
 import { trackAnalyticsEvent } from "./analytics.service";
+import { invalidateBusinessFinancialCache } from "./cache.service";
 import { handleLowStockTransition, maybeSendLowStockEmail } from "./notification.service";
 
 const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
@@ -397,6 +398,8 @@ export async function createSaleInvoice(data: CreateInvoiceInput) {
             },
         });
 
+        await invalidateBusinessFinancialCache(data.business_id, [invoiceId]);
+
         return response;
     } catch (err: any) {
         await client.query("ROLLBACK");
@@ -634,6 +637,8 @@ export async function createPurchaseInvoice(data: CreateInvoiceInput) {
                 uses_inclusive_price: computedItems.some((item) => item.price_mode === "inclusive"),
             },
         });
+
+        await invalidateBusinessFinancialCache(data.business_id, [invoiceId]);
 
         return response;
     } catch (err: any) {
@@ -912,6 +917,11 @@ export async function createInvoiceNote(data: CreateInvoiceNoteInput) {
                 invoice_type: data.note_type,
             },
         });
+
+        await invalidateBusinessFinancialCache(data.business_id, [
+            invoiceId,
+            data.reference_invoice_id,
+        ]);
 
         return response;
     } catch (err: any) {
@@ -1220,6 +1230,8 @@ export async function cancelInvoice(args: CancelInvoiceInput) {
                 invoice_type: invoice.invoice_type,
             },
         });
+
+        await invalidateBusinessFinancialCache(args.business_id, [args.invoice_id]);
 
         return { success: true, invoice_id: args.invoice_id, is_cancelled: true };
     } catch (err) {

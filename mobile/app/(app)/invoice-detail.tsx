@@ -81,6 +81,7 @@ export default function InvoiceDetailScreen() {
           ? "stale"
           : "cached"
         : "empty";
+  const invoicePartyName = invoice?.party_name?.trim().toUpperCase() || "PARTY DETAILS UNAVAILABLE";
 
   const loadInvoice = React.useCallback(async (mode: "initial" | "refresh" = "initial") => {
     if (!session?.business_id || !invoiceId) {
@@ -198,7 +199,7 @@ export default function InvoiceDetailScreen() {
     try {
       const shareLink = await invoiceService.createInvoiceShareLink(session.business_id, invoice.id);
       await Share.share({
-        message: `${invoice.invoice_number} from ${invoice.party_name}\n${shareLink.share_url}`,
+        message: `${invoice.invoice_number} from ${invoicePartyName}\n${shareLink.share_url}`,
         title: invoice.invoice_number,
         url: shareLink.share_url,
       });
@@ -409,7 +410,7 @@ export default function InvoiceDetailScreen() {
                   <CardDescription>Party, dates, and tax setup for this invoice.</CardDescription>
                 </CardHeader>
                 <CardContent className="gap-3">
-                  <DetailRow icon={UserRound} label="Party" value={invoice.party_name?.trim() || "Party details unavailable"} />
+                  <DetailRow icon={UserRound} label="Party" value={invoicePartyName} />
                   <DetailRow icon={ScrollText} label="Invoice date" value={formatShortDate(invoice.invoice_date)} />
                   <DetailRow icon={ScrollText} label="Due date" value={invoice.due_date ? formatShortDate(invoice.due_date) : "Not set"} />
                   <DetailRow icon={ReceiptText} label="Invoice type" value={formatInvoiceType(invoice.invoice_type)} />

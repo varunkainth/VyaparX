@@ -291,7 +291,7 @@ export default function InvoicesScreen() {
                         <View className="flex-row items-start justify-between gap-4">
                           <View className="flex-1 gap-1">
                             <Text className="font-semibold text-foreground">{invoice.invoice_number}</Text>
-                            <Text className="text-sm leading-5 text-muted-foreground">{invoice.party_name}</Text>
+                            <Text className="text-sm leading-5 text-muted-foreground">{invoice.party_name.trim().toUpperCase()}</Text>
                           </View>
                           <Text className="text-sm font-semibold text-foreground">{formatCurrency(invoice.grand_total)}</Text>
                         </View>

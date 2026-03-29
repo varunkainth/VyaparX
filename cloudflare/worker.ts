@@ -1,6 +1,7 @@
 interface Env {
   EMAIL_ORIGIN?: string;
   HEALTH_PATH?: string;
+  WARM_PATHS?: string;
   ORIGIN_1: string;
   ORIGIN_2?: string;
   ORIGIN_3?: string;
@@ -69,7 +70,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 }
 
 async function keepOriginsWarm(env: Env) {
-  const healthPath = env.HEALTH_PATH?.trim() || "/health";
+  const warmPaths = getWarmPaths(env);
   const targets = Array.from(
     new Set([
       ...getConfiguredOrigins(env),
@@ -78,20 +79,22 @@ async function keepOriginsWarm(env: Env) {
   );
 
   await Promise.all(
-    targets.map(async (origin) => {
-      const healthUrl = `${origin}${healthPath}`;
-      try {
-        const response = await fetch(healthUrl, {
-          method: "GET",
-          headers: {
-            "user-agent": "vyaparx-edge-keepalive",
-          },
-        });
-        console.log(`[keepalive] ${healthUrl} -> ${response.status}`);
-      } catch (error) {
-        console.error(`[keepalive] ${healthUrl} failed:`, formatError(error));
-      }
-    }),
+    targets.flatMap((origin) =>
+      warmPaths.map(async (path) => {
+        const healthUrl = `${origin}${path}`;
+        try {
+          const response = await fetch(healthUrl, {
+            method: "GET",
+            headers: {
+              "user-agent": "vyaparx-edge-keepalive",
+            },
+          });
+          console.log(`[keepalive] ${healthUrl} -> ${response.status}`);
+        } catch (error) {
+          console.error(`[keepalive] ${healthUrl} failed:`, formatError(error));
+        }
+      }),
+    ),
   );
 }
 
@@ -161,6 +164,26 @@ function parseOriginList(value: string | undefined, fallbackOrigins: string[]) {
   return parsed.length ? parsed : fallbackOrigins;
 }
 
+function getWarmPaths(env: Env) {
+  if (env.WARM_PATHS?.trim()) {
+    const parsed = env.WARM_PATHS
+      .split(",")
+      .map((path) => path.trim())
+      .filter(Boolean)
+      .map((path) => normalizePath(path));
+
+    if (parsed.length > 0) {
+      return parsed;
+    }
+  }
+
+  if (env.HEALTH_PATH?.trim()) {
+    return [normalizePath(env.HEALTH_PATH)];
+  }
+
+  return ["/health", "/health/cache"];
+}
+
 function orderOriginsForRequest(origins: string[], request: Request) {
   if (origins.length <= 1) {
     return origins;
@@ -184,6 +207,10 @@ function normalizeOrigin(origin: string | undefined) {
   }
 
   return origin.replace(/\/+$/, "");
+}
+
+function normalizePath(path: string) {
+  return path.startsWith("/") ? path : `/${path}`;
 }
 
 function stableBucket(request: Request, modulo: number) {

@@ -365,7 +365,7 @@ export default function HomeScreen() {
                     <View className="flex-1 gap-1">
                       <Text className="font-semibold text-foreground">{invoice.invoice_number}</Text>
                       <Text className="text-sm text-muted-foreground">
-                        {invoice.party_name} • {formatShortDate(invoice.invoice_date)}
+                        {invoice.party_name.trim().toUpperCase()} • {formatShortDate(invoice.invoice_date)}
                       </Text>
                     </View>
                     <View className="items-end gap-1">

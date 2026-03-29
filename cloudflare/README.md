@@ -5,7 +5,7 @@ This Worker now uses a safer routing model:
 1. Read traffic is balanced across the configured read origins.
 2. Write and mutation traffic is sent to a single primary write origin.
 3. Email-related routes are forced to Render.
-4. A cron pings `/health` every 5 minutes on all configured origins.
+4. A cron pings both `/health` and `/health/cache` every 5 minutes on all configured origins.
 
 ## Why this is safer
 
@@ -23,7 +23,7 @@ This setup is safer because:
 - `READ_ORIGINS`: comma-separated list used for read balancing
 - `WRITE_ORIGIN`: the single primary write backend
 - `EMAIL_ORIGIN`: the backend that should handle email routes
-- `HEALTH_PATH`: health check path, usually `/health`
+- `WARM_PATHS`: comma-separated warmup paths, recommended `/health,/health/cache`
 
 ## Current defaults
 

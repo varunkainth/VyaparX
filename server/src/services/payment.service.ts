@@ -9,6 +9,7 @@ import {
 } from "./idempotency.service";
 import { AppError } from "../utils/appError";
 import { trackAnalyticsEvent } from "./analytics.service";
+import { invalidateBusinessFinancialCache } from "./cache.service";
 
 const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 const toCents = (value: number) => Math.round((value + Number.EPSILON) * 100);
@@ -58,6 +59,7 @@ export async function recordPayment(data: RecordPaymentInput) {
             return idempotencyStart.cachedResponse as { success: boolean; payment_id: string };
         }
 
+        const touchedInvoiceIds: string[] = [];
         const shouldAutoReconcile = true;
         const bankStatementDate = data.payment_date;
         const autoRef =
@@ -148,6 +150,7 @@ export async function recordPayment(data: RecordPaymentInput) {
                 nextBalanceDue,
                 nextStatus
             );
+            touchedInvoiceIds.push(allocation.invoice_id);
         }
 
         const ledgerDebit = data.payment_type === "made" ? data.amount : 0;
@@ -209,6 +212,8 @@ export async function recordPayment(data: RecordPaymentInput) {
                 allocations: data.allocations.length,
             },
         });
+
+        await invalidateBusinessFinancialCache(data.business_id, touchedInvoiceIds);
 
         return response;
     } catch (err: any) {

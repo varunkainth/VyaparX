@@ -169,6 +169,7 @@ export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
   }
 
   const { invoice, business, party } = data
+  const invoicePartyName = String(invoice.party_name || "").trim().toUpperCase() || "PARTY DETAILS UNAVAILABLE"
   const businessPhone = typeof business?.phone === "string" ? business.phone : business?.phone ? String(business.phone) : ""
   const partyAddress = typeof party?.address === "string" ? party.address : party?.address ? String(party.address) : ""
   const partyPhone = typeof party?.phone === "string" ? party.phone : party?.phone ? String(party.phone) : ""
@@ -242,7 +243,7 @@ export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
 
                 <div>
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Bill To</p>
-                  <p className="mt-2 font-semibold">{invoice.party_name}</p>
+                  <p className="mt-2 font-semibold">{invoicePartyName}</p>
                   {partyAddress ? <p className="text-sm text-muted-foreground">{partyAddress}</p> : null}
                   {partyPhone ? <p className="text-sm text-muted-foreground">{partyPhone}</p> : null}
                   {partyEmail ? <p className="text-sm text-muted-foreground">{partyEmail}</p> : null}

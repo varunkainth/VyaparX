@@ -4,6 +4,13 @@ import env from "../config/env";
 import { ERROR_CODES } from "../constants/errorCodes";
 import { businessRepository } from "../repository/business.repository";
 import { partyRepository } from "../repository/party.repository";
+import {
+    buildInvoiceDetailCacheKey,
+    buildInvoiceListCacheKey,
+    buildPublicInvoiceCacheKey,
+    cacheTtlSeconds,
+    getOrSetCache,
+} from "../services/cache.service";
 import { invoiceSettingsRepository } from "../repository/invoice-settings.repository";
 import { cancelInvoice, getInvoiceById, listInvoices } from "../services/invoice.service";
 import { logAuditEvent } from "../services/audit.service";
@@ -104,10 +111,12 @@ export const listInvoicesHandler = async (
         throw new AppError("Validation failed", 400, ERROR_CODES.VALIDATION_ERROR, parsed.error.issues);
     }
 
-    const result = await listInvoices({
+    const payload = {
         business_id: businessId,
         ...parsed.data,
-    });
+    };
+    const cacheKey = await buildInvoiceListCacheKey(businessId, payload);
+    const result = await getOrSetCache(cacheKey, cacheTtlSeconds.invoiceList, () => listInvoices(payload));
 
     return sendSuccess(res, {
         message: "Invoices fetched",
@@ -119,7 +128,10 @@ export const getInvoiceHandler = async (req: Request<InvoiceParams>, res: Respon
     const businessId = getBusinessId(req);
     const invoiceId = getInvoiceId(req);
 
-    const invoice = await getInvoiceById(businessId, invoiceId);
+    const cacheKey = await buildInvoiceDetailCacheKey(businessId, invoiceId);
+    const invoice = await getOrSetCache(cacheKey, cacheTtlSeconds.invoiceDetail, () =>
+        getInvoiceById(businessId, invoiceId)
+    );
     return sendSuccess(res, {
         message: "Invoice fetched",
         data: invoice,
@@ -259,7 +271,10 @@ export const getPublicInvoiceHandler = async (
     }
 
     const { business_id: businessId } = verifyInvoiceShareToken(token, invoiceId);
-    const data = await buildInvoicePublicData(businessId, invoiceId);
+    const cacheKey = await buildPublicInvoiceCacheKey(businessId, invoiceId);
+    const data = await getOrSetCache(cacheKey, cacheTtlSeconds.publicInvoice, () =>
+        buildInvoicePublicData(businessId, invoiceId)
+    );
 
     return sendSuccess(res, {
         message: "Public invoice fetched",

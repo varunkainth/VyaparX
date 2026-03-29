@@ -824,7 +824,7 @@ export function InvoicesListPage() {
                                 {getLifecycleBadge(invoice)}
                               </div>
                               <div className={`flex items-center gap-4 mt-1 text-sm ${invoice.is_cancelled ? "text-red-600/80 dark:text-red-300/80" : "text-muted-foreground"}`}>
-                                <span className="truncate">{invoice.party_name}</span>
+                                <span className="truncate">{invoice.party_name.trim().toUpperCase()}</span>
                                 <span>{formatDate(invoice.invoice_date)}</span>
                                 {invoice.due_date && (
                                   <span>Due: {formatDate(invoice.due_date)}</span>
@@ -935,7 +935,7 @@ export function InvoicesListPage() {
                                 >
                                   {invoice.invoice_number}
                                 </p>
-                                <p className="text-xs text-muted-foreground truncate mt-0.5">{invoice.party_name}</p>
+                                <p className="text-xs text-muted-foreground truncate mt-0.5">{invoice.party_name.trim().toUpperCase()}</p>
                               </div>
                             </div>
                             <div className="flex gap-1.5 flex-shrink-0">
