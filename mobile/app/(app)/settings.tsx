@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, ScrollView, View } from 'react-native';
 import { Bell, CheckCircle2, ChevronRight, Fingerprint, Info, LockKeyhole, MoonStar, Smartphone, SunMedium, Trash2, Wallet, AlertTriangle, Package, type LucideIcon } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Passkey } from 'react-native-passkey';
@@ -185,7 +185,7 @@ export default function SettingsScreen() {
       const options = await authService.beginPasskeyRegistration();
       const response = await Passkey.create(options);
       const credential = await authService.verifyPasskeyRegistration({
-        label: 'This device',
+        label: buildPasskeyLabel(),
         response,
       });
 
@@ -513,7 +513,10 @@ export default function SettingsScreen() {
                         <View className="flex-1 gap-1">
                           <Text className="font-semibold text-foreground">{passkey.label}</Text>
                           <Text className="text-sm text-muted-foreground">
-                            Device type: {passkey.credential_device_type}
+                            Device type: {formatPasskeyDeviceType(passkey)}
+                          </Text>
+                          <Text className="text-sm text-muted-foreground">
+                            Sync status: {passkey.credential_backed_up ? 'Synced or multi-device passkey' : 'Saved only on one device'}
                           </Text>
                           <Text className="text-sm text-muted-foreground">
                             Last used: {passkey.last_used_at ? new Date(passkey.last_used_at).toLocaleString() : 'Never'}
@@ -588,6 +591,29 @@ function PreferenceGroup({
       <View className="gap-3">{children}</View>
     </View>
   );
+}
+
+function buildPasskeyLabel() {
+  const platformLabel =
+    Platform.OS === 'android'
+      ? 'Android device'
+      : Platform.OS === 'ios'
+        ? 'iPhone or iPad'
+        : 'This device';
+
+  return `${platformLabel} ${new Date().toLocaleDateString()}`;
+}
+
+function formatPasskeyDeviceType(passkey: PasskeyCredential) {
+  if (passkey.credential_device_type === 'multiDevice') {
+    return 'Synced passkey';
+  }
+
+  if (passkey.credential_device_type === 'singleDevice') {
+    return 'This device only';
+  }
+
+  return passkey.credential_device_type;
 }
 
 function PreferenceRow({

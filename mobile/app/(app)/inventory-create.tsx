@@ -186,35 +186,34 @@ export default function InventoryCreateScreen() {
                 />
               </Field>
 
-              <View className="flex-row gap-4">
-                <Field className="flex-1" label="SKU">
-                  <View className="flex-row items-center gap-3 rounded-[22px] border border-border/70 bg-muted/35 px-4">
-                    <Icon as={Barcode} className="text-muted-foreground" size={18} />
-                    <Input
-                      className="h-14 flex-1 rounded-none border-0 bg-transparent px-0 text-base shadow-none"
-                      placeholder="SKU-1024"
-                      value={form.sku}
-                      onChangeText={(value) => updateField("sku", value)}
-                    />
-                    <Button
-                      className="h-10 rounded-full px-3"
-                      size="sm"
-                      variant="outline"
-                      onPress={generateSKU}>
-                      <Icon as={Wand2} className="text-foreground" size={14} />
-                      <Text>Auto</Text>
-                    </Button>
-                  </View>
-                </Field>
-                <Field className="flex-1" label="HSN code">
+              <Field label="SKU">
+                <View className="flex-row items-center gap-3 rounded-[22px] border border-border/70 bg-muted/35 px-4">
+                  <Icon as={Barcode} className="text-muted-foreground" size={18} />
                   <Input
-                    keyboardType="number-pad"
-                    placeholder="1905"
-                    value={form.hsn_code}
-                    onChangeText={(value) => updateField("hsn_code", value)}
+                    className="h-14 flex-1 rounded-none border-0 bg-transparent px-0 text-base shadow-none"
+                    placeholder="SKU-1024"
+                    value={form.sku}
+                    onChangeText={(value) => updateField("sku", value)}
                   />
-                </Field>
-              </View>
+                  <Button
+                    className="h-10 rounded-full px-3"
+                    size="sm"
+                    variant="outline"
+                    onPress={generateSKU}>
+                    <Icon as={Wand2} className="text-foreground" size={14} />
+                    <Text>Auto</Text>
+                  </Button>
+                </View>
+              </Field>
+
+              <Field label="HSN code">
+                <Input
+                  keyboardType="number-pad"
+                  placeholder="1905"
+                  value={form.hsn_code}
+                  onChangeText={(value) => updateField("hsn_code", value)}
+                />
+              </Field>
 
               <Field label="Description">
                 <Textarea
@@ -376,6 +375,7 @@ export default function InventoryCreateScreen() {
           </View>
         </DialogContent>
       </Dialog>
+      {isSubmitting ? <SubmittingOverlay label="Creating item..." /> : null}
       <ToastBanner message={message} variant="success" />
     </SafeAreaView>
   );
@@ -479,6 +479,20 @@ function MessageCard({
       <View className="flex-row items-center gap-3">
         <Icon as={icon} className={textTone} size={18} />
         <Text className={`flex-1 text-sm ${textTone}`}>{text}</Text>
+      </View>
+    </View>
+  );
+}
+
+function SubmittingOverlay({ label }: { label: string }) {
+  return (
+    <View className="absolute bottom-0 left-0 right-0 top-0 items-center justify-center bg-black/25 px-8">
+      <View className="w-full max-w-[280px] items-center gap-4 rounded-[28px] border border-border/70 bg-background px-6 py-6">
+        <ActivityIndicator color="#2563eb" size="large" />
+        <Text className="text-base font-semibold text-foreground">{label}</Text>
+        <Text className="text-center text-sm leading-5 text-muted-foreground">
+          Please wait while we save your item.
+        </Text>
       </View>
     </View>
   );

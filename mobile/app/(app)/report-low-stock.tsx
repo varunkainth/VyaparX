@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Icon } from '@/components/ui/icon';
 import { Text } from '@/components/ui/text';
 import { ToastBanner, useTimedToast } from '@/components/ui/toast-banner';
-import { exportBinaryReportFile } from '@/lib/report-export';
+import { exportBinaryReportFile, formatSavedFileMessage } from '@/lib/report-export';
 import { formatCurrency } from '@/lib/formatters';
 import { reportService, type ReportExportFormat } from '@/services/report.service';
 import { useAuthStore } from '@/store/auth-store';
@@ -62,8 +62,8 @@ export default function ReportLowStockScreen() {
     setError(null);
     try {
       const bytes = await reportService.exportLowStockReport(session.business_id, format);
-      await exportBinaryReportFile({ baseName: 'low-stock-report', bytes, format });
-      showToast(`Low stock report exported as ${format === 'excel' ? 'Excel' : 'CSV'}.`);
+      const result = await exportBinaryReportFile({ baseName: 'low-stock-report', bytes, format });
+      showToast(formatSavedFileMessage(result));
     } catch (exportError) {
       setError(exportError instanceof Error ? exportError.message : 'Unable to export low stock report.');
     } finally {

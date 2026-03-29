@@ -12,7 +12,7 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { ToastBanner, useTimedToast } from '@/components/ui/toast-banner';
-import { exportBinaryReportFile, getDefaultReportRange } from '@/lib/report-export';
+import { exportBinaryReportFile, formatSavedFileMessage, getDefaultReportRange } from '@/lib/report-export';
 import { formatCurrency } from '@/lib/formatters';
 import { reportService, type ReportExportFormat } from '@/services/report.service';
 import { useAuthStore } from '@/store/auth-store';
@@ -77,8 +77,8 @@ export default function ReportGstScreen() {
     setError(null);
     try {
       const bytes = await reportService.exportGstSummaryReport(session.business_id, format, filters);
-      await exportBinaryReportFile({ baseName: 'gst-report', bytes, format });
-      showToast(`GST report exported as ${format === 'excel' ? 'Excel' : 'CSV'}.`);
+      const result = await exportBinaryReportFile({ baseName: 'gst-report', bytes, format });
+      showToast(formatSavedFileMessage(result));
     } catch (exportError) {
       setError(exportError instanceof Error ? exportError.message : 'Unable to export GST report.');
     } finally {

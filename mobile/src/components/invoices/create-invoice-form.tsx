@@ -463,17 +463,16 @@ export function CreateInvoiceForm({ invoiceType }: { invoiceType: InvoiceType })
                 />
               </Field>
 
-              <View className="flex-row gap-4">
-                <Field className="flex-1" label="Invoice date" required>
-                  <Input value={form.invoice_date} onChangeText={(value) => updateForm("invoice_date", value)} placeholder="YYYY-MM-DD" />
-                </Field>
-                <Field className="flex-1" label="Price mode">
-                  <View className="flex-row gap-3">
-                    <ChoiceChip label="Exclusive" selected={form.price_mode === "exclusive"} onPress={() => updateForm("price_mode", "exclusive")} />
-                    <ChoiceChip label="Inclusive" selected={form.price_mode === "inclusive"} onPress={() => updateForm("price_mode", "inclusive")} />
-                  </View>
-                </Field>
-              </View>
+              <Field label="Invoice date" required>
+                <Input value={form.invoice_date} onChangeText={(value) => updateForm("invoice_date", value)} placeholder="YYYY-MM-DD" />
+              </Field>
+
+              <Field label="Price mode">
+                <View className="flex-row gap-3">
+                  <ChoiceChip label="Exclusive" selected={form.price_mode === "exclusive"} onPress={() => updateForm("price_mode", "exclusive")} />
+                  <ChoiceChip label="Inclusive" selected={form.price_mode === "inclusive"} onPress={() => updateForm("price_mode", "inclusive")} />
+                </View>
+              </Field>
 
               <Field label="Place of supply" required>
                 <SelectionCard
@@ -563,23 +562,22 @@ export function CreateInvoiceForm({ invoiceType }: { invoiceType: InvoiceType })
                         </Field>
                       </View>
 
-                      <View className="flex-row gap-4">
-                        <Field className="flex-1" label="Discount %">
-                          <Input value={item.discount_pct} onChangeText={(value) => updateItem(index, "discount_pct", sanitizePercent(value))} keyboardType="decimal-pad" />
-                        </Field>
-                        <Field className="flex-1" label="GST rate" required>
-                          <View className="flex-row flex-wrap gap-2">
-                            {GST_RATES.map((rate) => (
-                              <TinyChip
-                                key={`${index}-gst-${rate}`}
-                                label={`${rate}%`}
-                                selected={item.gst_rate === rate}
-                                onPress={() => updateItem(index, "gst_rate", rate)}
-                              />
-                            ))}
-                          </View>
-                        </Field>
-                      </View>
+                      <Field label="Discount %">
+                        <Input value={item.discount_pct} onChangeText={(value) => updateItem(index, "discount_pct", sanitizePercent(value))} keyboardType="decimal-pad" />
+                      </Field>
+
+                      <Field label="GST rate" required>
+                        <View className="flex-row flex-wrap gap-2">
+                          {GST_RATES.map((rate) => (
+                            <TinyChip
+                              key={`${index}-gst-${rate}`}
+                              label={`${rate}%`}
+                              selected={item.gst_rate === rate}
+                              onPress={() => updateItem(index, "gst_rate", rate)}
+                            />
+                          ))}
+                        </View>
+                      </Field>
 
                       <Field label="Description">
                         <Textarea
@@ -766,6 +764,7 @@ export function CreateInvoiceForm({ invoiceType }: { invoiceType: InvoiceType })
           </ScrollView>
         </DialogContent>
       </Dialog>
+      {isSubmitting ? <SubmittingOverlay label="Creating invoice..." /> : null}
     </SafeAreaView>
   );
 }
@@ -920,6 +919,20 @@ function InfoRow({ text }: { text: string }) {
         <Icon as={Info} className="text-primary" size={18} />
       </View>
       <Text className="flex-1 text-sm leading-6 text-muted-foreground">{text}</Text>
+    </View>
+  );
+}
+
+function SubmittingOverlay({ label }: { label: string }) {
+  return (
+    <View className="absolute bottom-0 left-0 right-0 top-0 items-center justify-center bg-black/25 px-8">
+      <View className="w-full max-w-[280px] items-center gap-4 rounded-[28px] border border-border/70 bg-background px-6 py-6">
+        <ActivityIndicator color="#2563eb" size="large" />
+        <Text className="text-base font-semibold text-foreground">{label}</Text>
+        <Text className="text-center text-sm leading-5 text-muted-foreground">
+          Please wait while we save your invoice.
+        </Text>
+      </View>
     </View>
   );
 }

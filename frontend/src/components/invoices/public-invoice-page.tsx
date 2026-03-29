@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import type { PublicInvoicePayload } from "@/services/invoice.service"
+import { API_BASE_URL } from "@/lib/env"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -58,11 +59,8 @@ export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
       setError(null)
 
       try {
-        const response = await fetch(`/api/public/invoices/${invoiceId}`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/public/invoices/${invoiceId}?token=${encodeURIComponent(token)}`, {
           cache: "no-store",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
         })
 
         const payload = await response.json().catch(() => null)
@@ -115,11 +113,8 @@ export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
     if (!token) return
     void (async () => {
       try {
-        const response = await fetch(`/api/public/invoices/${invoiceId}/pdf`, {
+        const response = await fetch(`${API_BASE_URL}/api/v1/public/invoices/${invoiceId}/pdf?token=${encodeURIComponent(token)}`, {
           cache: "no-store",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
         })
 
         if (!response.ok) {

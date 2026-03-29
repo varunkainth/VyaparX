@@ -43,7 +43,7 @@ import { ToastBanner, useTimedToast } from "@/components/ui/toast-banner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CACHE_TTL_MS, formatCacheAge, isCacheStale } from "@/lib/cache-policy";
 import { formatCurrency, formatShortDate } from "@/lib/formatters";
-import { savePdfFile } from "@/lib/report-export";
+import { formatSavedFileMessage, savePdfFile } from "@/lib/report-export";
 import { invoiceService } from "@/services/invoice.service";
 import { useAuthStore } from "@/store/auth-store";
 import { useInvoiceStore } from "@/store/invoice-store";
@@ -172,11 +172,11 @@ export default function InvoiceDetailScreen() {
       }
 
       const bytes = await response.arrayBuffer();
-      await savePdfFile({
+      const result = await savePdfFile({
         baseName: invoice.invoice_number,
         bytes,
       });
-      showToast("Invoice PDF saved.");
+      showToast(formatSavedFileMessage(result));
     } catch (downloadError: any) {
       setError(
         downloadError?.response?.data?.error?.message ??

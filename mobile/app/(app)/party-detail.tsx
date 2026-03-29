@@ -380,14 +380,12 @@ export default function PartyDetailScreen() {
                       <Input keyboardType="email-address" autoCapitalize="none" value={form.email} onChangeText={(value) => updateField('email', value)} />
                     </Field>
                   </View>
-                  <View className="flex-row gap-4">
-                    <Field className="flex-1" label="GSTIN">
-                      <Input autoCapitalize="characters" value={form.gstin} onChangeText={(value) => updateField('gstin', value.toUpperCase())} />
-                    </Field>
-                    <Field className="flex-1" label="PAN">
-                      <Input autoCapitalize="characters" value={form.pan} onChangeText={(value) => updateField('pan', value.toUpperCase())} />
-                    </Field>
-                  </View>
+                  <Field label="GSTIN">
+                    <Input autoCapitalize="characters" value={form.gstin} onChangeText={(value) => updateField('gstin', value.toUpperCase())} />
+                  </Field>
+                  <Field label="PAN">
+                    <Input autoCapitalize="characters" value={form.pan} onChangeText={(value) => updateField('pan', value.toUpperCase())} />
+                  </Field>
                   <Field label="Street address" required>
                     <Input value={form.address} onChangeText={(value) => updateField('address', value)} />
                   </Field>

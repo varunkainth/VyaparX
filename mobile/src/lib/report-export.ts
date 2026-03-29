@@ -76,6 +76,22 @@ export function getDefaultReportRange() {
   };
 }
 
+export function formatSavedFileMessage(result: {
+  fileName: string;
+  location: "device-folder" | "download" | "share-sheet";
+  locationLabel?: string;
+}) {
+  if (result.locationLabel) {
+    return `${result.fileName} saved to ${result.locationLabel}.`;
+  }
+
+  if (result.location === "download") {
+    return `${result.fileName} downloaded successfully.`;
+  }
+
+  return `${result.fileName} is ready.`;
+}
+
 async function saveBinaryFile(args: {
   baseName: string;
   bytes: ArrayBuffer;
@@ -95,19 +111,18 @@ async function saveBinaryFile(args: {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    return { fileName, location: 'download' as const };
+    return { fileName, location: 'download' as const, locationLabel: 'your Downloads folder' };
   }
 
   const base64 = arrayBufferToBase64(bytes);
 
   if (Platform.OS === 'android') {
-    const uri = await saveIntoAndroidExportFolder({
+    const result = await saveIntoAndroidExportFolder({
       displayFileName: fileName,
-      fileStem: `${sanitizeFileName(baseName)}-${buildTimestamp()}`,
       mimeType,
       base64,
     });
-    return { fileName, location: 'device-folder' as const, uri };
+    return { fileName, location: 'device-folder' as const, uri: result.uri, locationLabel: result.locationLabel };
   }
 
   if (!FileSystem.documentDirectory) {
@@ -128,12 +143,11 @@ async function saveBinaryFile(args: {
     mimeType,
   });
 
-  return { fileName, location: 'share-sheet' as const, uri };
+  return { fileName, location: 'share-sheet' as const, uri, locationLabel: 'the system share sheet' };
 }
 
 async function saveIntoAndroidExportFolder(args: {
   displayFileName: string;
-  fileStem: string;
   mimeType: string;
   base64: string;
 }) {
@@ -148,9 +162,9 @@ async function saveIntoAndroidExportFolder(args: {
   try {
     return await writeIntoSafDirectory({
       directoryUri,
-      fileStem: args.fileStem,
       mimeType: args.mimeType,
       base64: args.base64,
+      displayFileName: args.displayFileName,
     });
   } catch (error) {
     await SecureStore.deleteItemAsync(EXPORT_DIRECTORY_URI_KEY);
@@ -164,29 +178,32 @@ async function saveIntoAndroidExportFolder(args: {
 
     return await writeIntoSafDirectory({
       directoryUri: retryDirectoryUri,
-      fileStem: args.fileStem,
       mimeType: args.mimeType,
       base64: args.base64,
+      displayFileName: args.displayFileName,
     });
   }
 }
 
 async function writeIntoSafDirectory(args: {
   directoryUri: string;
-  fileStem: string;
   mimeType: string;
   base64: string;
+  displayFileName: string;
 }) {
   const StorageAccessFramework = FileSystem.StorageAccessFramework;
   const fileUri = await StorageAccessFramework.createFileAsync(
     args.directoryUri,
-    args.fileStem,
+    args.displayFileName,
     args.mimeType
   );
   await StorageAccessFramework.writeAsStringAsync(fileUri, args.base64, {
       encoding: FileSystem.EncodingType.Base64,
   });
-  return fileUri;
+  return {
+    uri: fileUri,
+    locationLabel: `${describeAndroidDirectory(args.directoryUri)}/${args.displayFileName}`,
+  };
 }
 
 async function resolveExportDirectoryUri(savedDirectoryUri: string | null) {
@@ -248,4 +265,17 @@ function arrayBufferToBase64(buffer: ArrayBuffer) {
   }
 
   return output;
+}
+
+function describeAndroidDirectory(directoryUri: string) {
+  const decoded = decodeURIComponent(directoryUri);
+  const match = decoded.match(/(?:tree|document)\/([^/?#]+)/);
+  const rawValue = match?.[1];
+
+  if (!rawValue) {
+    return 'your selected folder';
+  }
+
+  const normalized = rawValue.replace(/^primary:/i, '').replace(/^raw:/i, '');
+  return normalized.replace(/:/g, '/').replace(/^\/+/, '') || 'your selected folder';
 }

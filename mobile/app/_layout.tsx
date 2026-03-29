@@ -3,12 +3,13 @@ import "../global.css";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { PortalHost } from "@rn-primitives/portal";
+import * as React from "react";
 import { Text, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AuthProvider } from "../src/components/auth-provider";
 import { ENV_CONFIG_ERROR } from "../src/lib/env";
-import { AppThemeProvider } from "../src/theme/theme-provider";
+import { AppThemeProvider, useAppTheme } from "../src/theme/theme-provider";
 
 export default function RootLayout() {
   if (ENV_CONFIG_ERROR) {
@@ -41,11 +42,66 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AppThemeProvider>
         <AuthProvider>
-          <StatusBar style="auto" />
-          <Stack screenOptions={{ headerShown: false }} />
-          <PortalHost />
+          <AppShell />
         </AuthProvider>
       </AppThemeProvider>
     </SafeAreaProvider>
+  );
+}
+
+function AppShell() {
+  const { resolvedTheme } = useAppTheme();
+  const [showSplashOverlay, setShowSplashOverlay] = React.useState(true);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplashOverlay(false);
+    }, 900);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <>
+      <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
+      <Stack screenOptions={{ headerShown: false }} />
+      <PortalHost />
+      {showSplashOverlay ? <LaunchSplash /> : null}
+    </>
+  );
+}
+
+function LaunchSplash() {
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        top: 0,
+        right: 0,
+        bottom: 0,
+        left: 0,
+        backgroundColor: "#ffffff",
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 24,
+      }}>
+      <View
+        style={{
+          width: 88,
+          height: 88,
+          borderRadius: 28,
+          backgroundColor: "#e6f4fe",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 20,
+        }}>
+        <Text style={{ color: "#0f172a", fontSize: 28, fontWeight: "800" }}>V</Text>
+      </View>
+      <Text style={{ color: "#0f172a", fontSize: 24, fontWeight: "800", marginBottom: 6 }}>
+        VyaparX
+      </Text>
+      <Text style={{ color: "#64748b", fontSize: 14 }}>Business billing and reporting</Text>
+    </View>
   );
 }

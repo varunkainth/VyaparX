@@ -11,7 +11,7 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { ToastBanner, useTimedToast } from '@/components/ui/toast-banner';
-import { exportBinaryReportFile, getDefaultReportRange } from '@/lib/report-export';
+import { exportBinaryReportFile, formatSavedFileMessage, getDefaultReportRange } from '@/lib/report-export';
 import { formatCurrency, formatMonthLabel } from '@/lib/formatters';
 import { reportService, type ReportExportFormat } from '@/services/report.service';
 import { useAuthStore } from '@/store/auth-store';
@@ -65,12 +65,12 @@ export default function ReportSalesScreen() {
     setError(null);
     try {
       const bytes = await reportService.exportMonthlySalesReport(session.business_id, format, filters);
-      await exportBinaryReportFile({
+      const result = await exportBinaryReportFile({
         baseName: 'sales-report',
         bytes,
         format,
       });
-      showToast(`Sales report exported as ${format === 'excel' ? 'Excel' : 'CSV'}.`);
+      showToast(formatSavedFileMessage(result));
     } catch (exportError) {
       setError(exportError instanceof Error ? exportError.message : 'Unable to export sales report.');
     } finally {

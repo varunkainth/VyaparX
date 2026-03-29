@@ -1,11 +1,9 @@
 import { Icon } from '@/components/ui/icon';
-import { NativeOnlyAnimatedView } from '@/components/ui/native-only-animated-view';
 import { cn } from '@/lib/utils';
 import * as DialogPrimitive from '@rn-primitives/dialog';
 import { X } from 'lucide-react-native';
 import * as React from 'react';
-import { Platform, Text, View, type ViewProps } from 'react-native';
-import { FadeIn, FadeOut } from 'react-native-reanimated';
+import { Platform, Pressable, Text, View, type ViewProps } from 'react-native';
 import { FullWindowOverlay as RNFullWindowOverlay } from 'react-native-screens';
 
 const Dialog = DialogPrimitive.Root;
@@ -36,13 +34,8 @@ function DialogOverlay({
           }),
           className
         )}
-        {...props}
-        asChild={Platform.OS !== 'web'}>
-        <NativeOnlyAnimatedView entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)}>
-          <NativeOnlyAnimatedView entering={FadeIn.delay(50)} exiting={FadeOut.duration(150)}>
-            <>{children}</>
-          </NativeOnlyAnimatedView>
-        </NativeOnlyAnimatedView>
+        {...props}>
+        <>{children}</>
       </DialogPrimitive.Overlay>
     </FullWindowOverlay>
   );
@@ -71,19 +64,23 @@ function DialogContent({
           <View className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-primary/10" />
           <View className="pointer-events-none absolute -bottom-12 left-0 h-24 w-24 rounded-full bg-secondary/80" />
           <>{children}</>
-          <DialogPrimitive.Close
-            className={cn(
-              'absolute right-4 top-4 rounded-full border border-border/70 bg-background/85 p-2.5 opacity-80 active:opacity-100',
-              Platform.select({
-                web: 'ring-offset-background focus:ring-ring data-[state=open]:bg-accent transition-all hover:opacity-100 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-offset-2',
-              })
-            )}
-            hitSlop={12}>
-            <Icon
-              as={X}
-              className={cn('text-accent-foreground web:pointer-events-none size-4 shrink-0')}
-            />
-            <Text className="sr-only">Close</Text>
+          <DialogPrimitive.Close asChild>
+            <Pressable
+              accessibilityLabel="Close dialog"
+              accessibilityRole="button"
+              className={cn(
+                'absolute right-4 top-4 rounded-full border border-border/70 bg-background/85 p-2.5 opacity-80 active:opacity-100',
+                Platform.select({
+                  web: 'ring-offset-background focus:ring-ring data-[state=open]:bg-accent transition-all hover:opacity-100 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-offset-2',
+                })
+              )}
+              hitSlop={12}>
+              <Icon
+                as={X}
+                className={cn('text-accent-foreground web:pointer-events-none size-4 shrink-0')}
+              />
+              <Text className="sr-only">Close</Text>
+            </Pressable>
           </DialogPrimitive.Close>
         </DialogPrimitive.Content>
       </DialogOverlay>

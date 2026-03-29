@@ -73,8 +73,8 @@ export function AppThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   React.useEffect(() => {
-    setColorScheme(themeMode === 'system' ? 'system' : themeMode);
-  }, [setColorScheme, themeMode]);
+    setColorScheme(resolvedTheme);
+  }, [resolvedTheme, setColorScheme]);
 
   React.useEffect(() => {
     if (!hasHydratedTheme) {

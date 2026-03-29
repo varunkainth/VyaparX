@@ -11,7 +11,7 @@ import { Icon } from '@/components/ui/icon';
 import { Input } from '@/components/ui/input';
 import { Text } from '@/components/ui/text';
 import { ToastBanner, useTimedToast } from '@/components/ui/toast-banner';
-import { exportBinaryReportFile, getDefaultReportRange } from '@/lib/report-export';
+import { exportBinaryReportFile, formatSavedFileMessage, getDefaultReportRange } from '@/lib/report-export';
 import { formatCurrency, formatPercent } from '@/lib/formatters';
 import { reportService } from '@/services/report.service';
 import { useAuthStore } from '@/store/auth-store';
@@ -73,8 +73,8 @@ export default function ReportProfitLossScreen() {
     setError(null);
     try {
       const bytes = await reportService.exportProfitLossReport(session.business_id, 'csv', filters);
-      await exportBinaryReportFile({ baseName: 'profit-loss-report', bytes, format: 'csv' });
-      showToast('Profit and loss report exported as CSV.');
+      const result = await exportBinaryReportFile({ baseName: 'profit-loss-report', bytes, format: 'csv' });
+      showToast(formatSavedFileMessage(result));
     } catch (exportError) {
       setError(exportError instanceof Error ? exportError.message : 'Unable to export profit and loss.');
     } finally {

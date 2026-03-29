@@ -3,7 +3,6 @@ import { useRouter, type Href } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 
 import { Text } from '@/components/ui/text';
-import { useNavigationStore } from '@/store/navigation-store';
 import { useAppTheme } from '@/theme/theme-provider';
 
 export function SubpageHeader({
@@ -19,14 +18,18 @@ export function SubpageHeader({
 }) {
   const router = useRouter();
   const { resolvedTheme } = useAppTheme();
-  const lastRoute = useNavigationStore((state) => state.lastRoute);
   const onBackPress = () => {
+    if (typeof backHref === 'string' && backHref === '/(app)/more') {
+      router.replace(backHref);
+      return;
+    }
+
     if (router.canGoBack()) {
       router.back();
       return;
     }
 
-    router.replace((lastRoute || backHref) as Href);
+    router.replace(backHref);
   };
 
   return (

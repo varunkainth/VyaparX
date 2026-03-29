@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Text } from "@/components/ui/text";
 import { ToastBanner, useTimedToast } from "@/components/ui/toast-banner";
 import { formatCurrency, formatShortDate } from "@/lib/formatters";
-import { buildCsvFromRows, exportCsvText } from "@/lib/report-export";
+import { buildCsvFromRows, exportCsvText, formatSavedFileMessage } from "@/lib/report-export";
 import { ledgerService } from "@/services/ledger.service";
 import { partyService } from "@/services/party.service";
 import { useAuthStore } from "@/store/auth-store";
@@ -153,11 +153,11 @@ export default function LedgerScreen() {
         })),
       );
 
-      await exportCsvText({
+      const result = await exportCsvText({
         baseName: selectedParty ? `ledger-${selectedParty.name.replace(/\s+/g, "-").toLowerCase()}` : "ledger-statement",
         content: csv,
       });
-      showToast("Ledger exported as CSV.");
+      showToast(formatSavedFileMessage(result));
     } catch (exportError) {
       setError(exportError instanceof Error ? exportError.message : "Unable to export ledger statement.");
     } finally {
