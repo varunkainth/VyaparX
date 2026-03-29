@@ -35,6 +35,8 @@ const config = {
     "expo-router",
     "expo-secure-store",
     "expo-sqlite",
+    "expo-sharing",
+    "expo-file-system",
     [
       "expo-notifications",
       {

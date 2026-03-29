@@ -205,6 +205,17 @@ export const invoiceService = {
 };
 
 function extractShareToken(shareUrl: string) {
+  const searchIndex = shareUrl.indexOf("?");
+  if (searchIndex !== -1) {
+    const hashIndex = shareUrl.indexOf("#", searchIndex);
+    const search = shareUrl.slice(searchIndex + 1, hashIndex === -1 ? undefined : hashIndex);
+    const searchParams = new URLSearchParams(search);
+    const searchToken = searchParams.get("token");
+    if (searchToken) {
+      return searchToken;
+    }
+  }
+
   const hashIndex = shareUrl.indexOf("#");
   if (hashIndex === -1) {
     return null;

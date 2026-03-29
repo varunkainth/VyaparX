@@ -28,16 +28,23 @@ export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [token, setToken] = useState<string | null>(null)
+  const [isTokenResolved, setIsTokenResolved] = useState(false)
 
   useEffect(() => {
     if (typeof window === "undefined") return
 
+    const searchParams = new URLSearchParams(window.location.search)
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""))
-    const shareToken = hashParams.get("token")
+    const shareToken = searchParams.get("token") || hashParams.get("token")
     setToken(shareToken)
+    setIsTokenResolved(true)
   }, [])
 
   useEffect(() => {
+    if (!isTokenResolved) {
+      return
+    }
+
     if (!token) {
       setError("This share link is missing its access token.")
       setIsLoading(false)
@@ -87,7 +94,7 @@ export function PublicInvoicePage({ invoiceId }: PublicInvoicePageProps) {
     return () => {
       isMounted = false
     }
-  }, [invoiceId, token])
+  }, [invoiceId, isTokenResolved, token])
 
   const totals = useMemo(() => {
     if (!data) return null
