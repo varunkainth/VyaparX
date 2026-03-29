@@ -6,6 +6,6 @@
       "@/*": ["src/*"]
     },
     "strict": true,
-    "types": ["nativewind/types", "node"]
+    "types": ["node"]
   }
 }
