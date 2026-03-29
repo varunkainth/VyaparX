@@ -27,6 +27,8 @@ import invoiceSettingsRouter from "./src/routes/invoice-settings.routes";
 import emailRouter from "./src/routes/email.routes";
 import notificationRouter from "./src/routes/notification.routes";
 import { getCacheHealth } from "./src/services/cache.service";
+import { closeQueueConnections, getQueueHealth } from "./src/services/queue.service";
+import { getStorageHealth } from "./src/services/storage.service";
 import { errorHandler } from "./src/utils/errorHandler";
 import { sendSuccess } from "./src/utils/responseHandler";
 
@@ -59,6 +61,22 @@ app.get("/health", (_req, res) => {
 
 app.get("/health/cache", async (_req, res) => {
     const data = await getCacheHealth();
+
+    return sendSuccess(res, {
+        data,
+    });
+});
+
+app.get("/health/queue", async (_req, res) => {
+    const data = await getQueueHealth();
+
+    return sendSuccess(res, {
+        data,
+    });
+});
+
+app.get("/health/storage", async (_req, res) => {
+    const data = await getStorageHealth();
 
     return sendSuccess(res, {
         data,
@@ -180,6 +198,39 @@ const server = app.listen(PORT, HOST, async () => {
     }
     console.log("--------------------");
 
+    const queueHealth = await getQueueHealth();
+    console.log("\n--- Queue Status ---");
+    if (queueHealth.status === "ok" || queueHealth.status === "degraded") {
+        console.log("Queue is enabled");
+        console.log(`  Status: ${queueHealth.status}`);
+        console.log(`  Ping: ${queueHealth.response ?? "n/a"}`);
+    } else if (queueHealth.status === "disabled") {
+        console.log("Queue is disabled");
+    } else if (queueHealth.status === "unconfigured") {
+        console.warn("Queue is enabled but not configured");
+    } else {
+        console.warn("Queue health check failed");
+        console.warn(`  Error: ${queueHealth.error ?? "Unknown queue error"}`);
+    }
+    console.log("--------------------");
+
+    const storageHealth = await getStorageHealth();
+    console.log("\n--- Storage Status ---");
+    if (storageHealth.status === "ok") {
+        console.log("R2 storage is enabled");
+        console.log(`  Bucket: ${storageHealth.bucket}`);
+        console.log(`  Endpoint: ${storageHealth.endpoint}`);
+        console.log(`  Public URL: ${storageHealth.public_base_url}`);
+    } else if (storageHealth.status === "disabled") {
+        console.log("R2 storage is disabled");
+    } else if (storageHealth.status === "unconfigured") {
+        console.warn("R2 storage is enabled but not configured");
+    } else {
+        console.warn("R2 storage health check failed");
+        console.warn(`  Error: ${storageHealth.error ?? "Unknown storage error"}`);
+    }
+    console.log("----------------------");
+
     // Email service health check
     console.log("\n--- Email Service Status ---");
     if (emailService.isReady()) {
@@ -223,6 +274,7 @@ const shutdown = async (signal: string) => {
     server.close(async () => {
         console.log("HTTP server closed");
         try {
+            await closeQueueConnections();
             await pool.end();
             console.log("Database pool closed");
             process.exit(0);

@@ -10,6 +10,7 @@
     "start": "bun run index.ts",
     "dev": "bun run --watch index.ts",
     "build": "bun build index.ts --outdir ./dist --target bun",
+    "worker": "bun run src/workers/index.ts",
     "type-check": "bunx tsc --noEmit",
     "migrate": "bun run src/migration/migration-runner.ts",
     "seed:dev": "bun run src/seeds/seed-dev.ts",
@@ -31,8 +32,10 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1019.0",
     "@simplewebauthn/server": "^13.3.0",
     "@upstash/redis": "^1.37.0",
+    "bullmq": "^5.71.1",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "exceljs": "^4.4.0",

@@ -8,15 +8,17 @@ crons = ["*/5 * * * *"]
 [observability]
 
 [observability.logs]
-enabled = true
+enabled = false
 invocation_logs = true
 
 [vars]
 ORIGIN_1 = "https://vyaparx-production.up.railway.app"
 ORIGIN_2 = "https://vyaparx.onrender.com"
 ORIGIN_3 = "https://vyaparx-jsrc.onrender.com"
-ORIGIN_4 = "https://vyaparx-production-7e1a.up.railway.app"
-READ_ORIGINS = "https://vyaparx-production.up.railway.app,https://vyaparx.onrender.com,https://vyaparx-jsrc.onrender.com,https://vyaparx-production-7e1a.up.railway.app"
+ORIGIN_4 = "https://vyaparx-production-d743.up.railway.app"
+READ_ORIGINS = "https://vyaparx-production.up.railway.app,https://vyaparx.onrender.com,https://vyaparx-jsrc.onrender.com,https://vyaparx-production-d743.up.railway.app"
 WRITE_ORIGIN = "https://vyaparx-production.up.railway.app"
 EMAIL_ORIGIN = "https://vyaparx.onrender.com"
 WARM_PATHS = "/health,/health/cache"
+WORKER_ORIGINS = "https://zonal-radiance-production-8b03.up.railway.app"
+WORKER_WARM_PATHS = "/health,/health/queue"

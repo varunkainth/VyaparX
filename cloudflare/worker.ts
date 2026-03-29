@@ -2,6 +2,8 @@ interface Env {
   EMAIL_ORIGIN?: string;
   HEALTH_PATH?: string;
   WARM_PATHS?: string;
+  WORKER_ORIGINS?: string;
+  WORKER_WARM_PATHS?: string;
   ORIGIN_1: string;
   ORIGIN_2?: string;
   ORIGIN_3?: string;
@@ -70,17 +72,37 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 }
 
 async function keepOriginsWarm(env: Env) {
-  const warmPaths = getWarmPaths(env);
-  const targets = Array.from(
+  const apiWarmPaths = getWarmPaths(env);
+  const apiTargets = Array.from(
     new Set([
       ...getConfiguredOrigins(env),
       normalizeOrigin(env.EMAIL_ORIGIN || getConfiguredOrigins(env)[0]),
     ]),
   );
 
+  const workerTargets = parseOriginList(env.WORKER_ORIGINS, []);
+  const workerWarmPaths = getWorkerWarmPaths(env);
+
   await Promise.all(
-    targets.flatMap((origin) =>
-      warmPaths.map(async (path) => {
+    [
+      ...apiTargets.flatMap((origin) =>
+        apiWarmPaths.map(async (path) => {
+          const healthUrl = `${origin}${path}`;
+          try {
+            const response = await fetch(healthUrl, {
+              method: "GET",
+              headers: {
+                "user-agent": "vyaparx-edge-keepalive",
+              },
+            });
+            console.log(`[keepalive] ${healthUrl} -> ${response.status}`);
+          } catch (error) {
+            console.error(`[keepalive] ${healthUrl} failed:`, formatError(error));
+          }
+        }),
+      ),
+      ...workerTargets.flatMap((origin) =>
+        workerWarmPaths.map(async (path) => {
         const healthUrl = `${origin}${path}`;
         try {
           const response = await fetch(healthUrl, {
@@ -93,8 +115,9 @@ async function keepOriginsWarm(env: Env) {
         } catch (error) {
           console.error(`[keepalive] ${healthUrl} failed:`, formatError(error));
         }
-      }),
-    ),
+        }),
+      ),
+    ],
   );
 }
 
@@ -182,6 +205,22 @@ function getWarmPaths(env: Env) {
   }
 
   return ["/health", "/health/cache"];
+}
+
+function getWorkerWarmPaths(env: Env) {
+  if (env.WORKER_WARM_PATHS?.trim()) {
+    const parsed = env.WORKER_WARM_PATHS
+      .split(",")
+      .map((path) => path.trim())
+      .filter(Boolean)
+      .map((path) => normalizePath(path));
+
+    if (parsed.length > 0) {
+      return parsed;
+    }
+  }
+
+  return ["/health", "/health/queue"];
 }
 
 function orderOriginsForRequest(origins: string[], request: Request) {

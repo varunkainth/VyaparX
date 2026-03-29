@@ -101,6 +101,11 @@ export interface InvoiceRecord {
     place_of_supply?: string;
     reference_invoice_id?: string | null;
     note_reason?: string | null;
+    pdf_object_key?: string | null;
+    pdf_generated_at?: string | null;
+    pdf_status?: "pending" | "processing" | "ready" | "failed" | null;
+    pdf_error?: string | null;
+    pdf_template_id?: string | null;
     share_issued_at?: string | null;
     share_expires_at?: string | null;
     [key: string]: unknown;

@@ -178,6 +178,16 @@ const optionalEnvVars = [
     "CACHE_TTL_INVOICE_LIST_SECONDS",
     "CACHE_TTL_INVOICE_DETAIL_SECONDS",
     "CACHE_TTL_PUBLIC_INVOICE_SECONDS",
+    "QUEUE_ENABLED",
+    "QUEUE_PREFIX",
+    "INVOICE_EMAIL_QUEUE_CONCURRENCY",
+    "PDF_QUEUE_CONCURRENCY",
+    "R2_ENABLED",
+    "R2_ENDPOINT",
+    "R2_BUCKET",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+    "R2_PUBLIC_BASE_URL",
     "COOKIE_SECURE",
     "COOKIE_SAME_SITE",
     "COOKIE_DOMAIN",
@@ -240,6 +250,15 @@ const webauthnRpId = parseHost(
 )
 const webauthnRpName = process.env.WEBAUTHN_RP_NAME?.trim() || "VyaparX"
 const redisUrl = parseRedisUrl("REDIS_URL", process.env.REDIS_URL)
+const r2Endpoint = parseUrl("R2_ENDPOINT", process.env.R2_ENDPOINT, {
+    requireHttpsInProduction: true,
+})
+const r2PublicBaseUrl = parseUrl("R2_PUBLIC_BASE_URL", process.env.R2_PUBLIC_BASE_URL, {
+    requireHttpsInProduction: true,
+})
+const r2Bucket = process.env.R2_BUCKET?.trim() ?? ""
+const r2AccessKeyId = process.env.R2_ACCESS_KEY_ID?.trim() ?? ""
+const r2SecretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.trim() ?? ""
 const upstashRedisRestUrl = parseUrl(
     "UPSTASH_REDIS_REST_URL",
     process.env.UPSTASH_REDIS_REST_URL,
@@ -256,6 +275,25 @@ if ((upstashRedisRestUrl && !upstashRedisRestToken) || (!upstashRedisRestUrl && 
 const defaultCacheEnabled = Boolean(
     redisUrl || (upstashRedisRestUrl && upstashRedisRestToken)
 )
+const defaultQueueEnabled = Boolean(redisUrl)
+const defaultR2Enabled = Boolean(
+    r2Endpoint && r2Bucket && r2AccessKeyId && r2SecretAccessKey && r2PublicBaseUrl
+)
+
+if (parseBoolean("QUEUE_ENABLED", process.env.QUEUE_ENABLED, defaultQueueEnabled) && !redisUrl) {
+    throw new Error("QUEUE_ENABLED requires REDIS_URL because BullMQ needs a standard Redis connection")
+}
+
+const r2Enabled = parseBoolean("R2_ENABLED", process.env.R2_ENABLED, defaultR2Enabled)
+
+if (
+    r2Enabled &&
+    (!r2Endpoint || !r2Bucket || !r2AccessKeyId || !r2SecretAccessKey || !r2PublicBaseUrl)
+) {
+    throw new Error(
+        "R2_ENABLED requires R2_ENDPOINT, R2_BUCKET, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and R2_PUBLIC_BASE_URL"
+    )
+}
 
 // Export all env vars in one place
 const env = {
@@ -312,6 +350,18 @@ const env = {
         process.env.CACHE_TTL_PUBLIC_INVOICE_SECONDS,
         180
     ),
+    QUEUE_ENABLED: parseBoolean("QUEUE_ENABLED", process.env.QUEUE_ENABLED, defaultQueueEnabled),
+    QUEUE_PREFIX: process.env.QUEUE_PREFIX?.trim() || "vyaparx",
+    INVOICE_EMAIL_QUEUE_CONCURRENCY: parseInteger(
+        "INVOICE_EMAIL_QUEUE_CONCURRENCY",
+        process.env.INVOICE_EMAIL_QUEUE_CONCURRENCY,
+        2
+    ),
+    PDF_QUEUE_CONCURRENCY: parseInteger(
+        "PDF_QUEUE_CONCURRENCY",
+        process.env.PDF_QUEUE_CONCURRENCY,
+        2
+    ),
     AUTH_RATE_LIMIT_WINDOW_MS: parseInteger(
         "AUTH_RATE_LIMIT_WINDOW_MS",
         process.env.AUTH_RATE_LIMIT_WINDOW_MS,
@@ -339,6 +389,12 @@ const env = {
     REDIS_URL: redisUrl,
     UPSTASH_REDIS_REST_URL: upstashRedisRestUrl,
     UPSTASH_REDIS_REST_TOKEN: upstashRedisRestToken,
+    R2_ENABLED: r2Enabled,
+    R2_ENDPOINT: r2Endpoint,
+    R2_BUCKET: r2Bucket,
+    R2_ACCESS_KEY_ID: r2AccessKeyId,
+    R2_SECRET_ACCESS_KEY: r2SecretAccessKey,
+    R2_PUBLIC_BASE_URL: r2PublicBaseUrl,
 } as const
 
 const resolveDatabaseUrl = (): string => {

@@ -6,3 +6,5 @@ READ_ORIGINS = "https://vyaparx-production.up.railway.app,https://vyaparx.onrend
 WRITE_ORIGIN = "https://vyaparx-production.up.railway.app"
 EMAIL_ORIGIN = "https://vyaparx.onrender.com"
 WARM_PATHS = "/health,/health/cache"
+WORKER_ORIGINS = ""
+WORKER_WARM_PATHS = "/health,/health/queue"

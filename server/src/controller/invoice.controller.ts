@@ -16,6 +16,8 @@ import {
 import { invoiceSettingsRepository } from "../repository/invoice-settings.repository";
 import { cancelInvoice, getInvoiceById, listInvoices } from "../services/invoice.service";
 import { logAuditEvent } from "../services/audit.service";
+import { buildInvoicePdfAsset, ensureInvoicePdfStored, getStoredInvoicePdfBuffer } from "../services/invoice-pdf-storage.service";
+import { isR2StorageEnabled } from "../services/storage.service";
 import type { CancelInvoiceBody, InvoiceParams, InvoicePdfQueryRaw, InvoicePdfTemplate } from "../types/invoice";
 import { AppError } from "../utils/appError";
 import { createInvoicePdfDocument } from "../utils/invoicePdf";
@@ -68,6 +70,17 @@ const createInvoiceShareToken = (
 const buildInvoiceShareUrl = (invoiceId: string, token: string) => {
     const frontendUrl = env.FRONTEND_URL || "http://localhost:3000";
     return `${frontendUrl}/shared/invoice/${invoiceId}?token=${encodeURIComponent(token)}`;
+};
+
+const resolveDefaultInvoiceTemplate = (defaultTemplate?: string | null): InvoicePdfTemplate => {
+    const templateMap: Record<string, InvoicePdfTemplate> = {
+        default: "bill_pro",
+        modern: "modern",
+        classic: "classic",
+        minimal: "compact",
+    };
+
+    return templateMap[String(defaultTemplate ?? "default")] || "bill_pro";
 };
 
 const verifyInvoiceShareToken = (token: string, invoiceId: string): InvoiceShareTokenPayload => {
@@ -225,6 +238,20 @@ export const downloadInvoicePdfHandler = async (
     // Use template from query string if provided, otherwise use from settings
     const template = parsed.data.template || templateMap[invoiceSettings.default_template] || "bill_pro";
 
+    if (!parsed.data.template && isR2StorageEnabled()) {
+        await ensureInvoicePdfStored(businessId, invoiceId);
+        const storedBuffer = await getStoredInvoicePdfBuffer(businessId, invoiceId);
+
+        if (storedBuffer) {
+            const safeInvoiceNo = String(invoice.invoice_number || invoice.id).replace(/[^a-zA-Z0-9-_]/g, "_");
+            const fileName = `invoice-${safeInvoiceNo}-${template}.pdf`;
+            res.status(200);
+            res.setHeader("Content-Type", "application/pdf");
+            res.setHeader("Content-Disposition", `attachment; filename=\"${fileName}\"`);
+            return res.end(storedBuffer);
+        }
+    }
+
     const pdfDoc = createInvoicePdfDocument({
         businessName: business?.name ?? "Business",
         partyName: party?.name ?? "Party",
@@ -359,6 +386,20 @@ export const downloadPublicInvoicePdfHandler = async (
     };
 
     const template = parsed.data.template || templateMap[invoice_settings.default_template] || "bill_pro";
+
+    if (!parsed.data.template && isR2StorageEnabled()) {
+        await ensureInvoicePdfStored(businessId, invoiceId);
+        const storedBuffer = await getStoredInvoicePdfBuffer(businessId, invoiceId);
+
+        if (storedBuffer) {
+            const safeInvoiceNo = String(invoice.invoice_number || invoice.id).replace(/[^a-zA-Z0-9-_]/g, "_");
+            const fileName = `invoice-${safeInvoiceNo}-${template}.pdf`;
+            res.status(200);
+            res.setHeader("Content-Type", "application/pdf");
+            res.setHeader("Content-Disposition", `attachment; filename=\"${fileName}\"`);
+            return res.end(storedBuffer);
+        }
+    }
 
     const pdfDoc = createInvoicePdfDocument({
         businessName: business?.name ?? "Business",

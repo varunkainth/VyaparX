@@ -20,6 +20,8 @@ import type {
 import { trackAnalyticsEvent } from "./analytics.service";
 import { invalidateBusinessFinancialCache } from "./cache.service";
 import { handleLowStockTransition, maybeSendLowStockEmail } from "./notification.service";
+import { markInvoicePdfPending } from "./invoice-pdf-storage.service";
+import { enqueueInvoicePdfGeneration, isQueueEnabled } from "./queue.service";
 
 const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 const moneyClose = (left: number, right: number, tolerance = 0.05) =>
@@ -399,6 +401,10 @@ export async function createSaleInvoice(data: CreateInvoiceInput) {
         });
 
         await invalidateBusinessFinancialCache(data.business_id, [invoiceId]);
+        await markInvoicePdfPending(data.business_id, invoiceId);
+        if (isQueueEnabled()) {
+            await enqueueInvoicePdfGeneration({ business_id: data.business_id, invoice_id: invoiceId });
+        }
 
         return response;
     } catch (err: any) {
@@ -639,6 +645,10 @@ export async function createPurchaseInvoice(data: CreateInvoiceInput) {
         });
 
         await invalidateBusinessFinancialCache(data.business_id, [invoiceId]);
+        await markInvoicePdfPending(data.business_id, invoiceId);
+        if (isQueueEnabled()) {
+            await enqueueInvoicePdfGeneration({ business_id: data.business_id, invoice_id: invoiceId });
+        }
 
         return response;
     } catch (err: any) {
@@ -922,6 +932,19 @@ export async function createInvoiceNote(data: CreateInvoiceNoteInput) {
             invoiceId,
             data.reference_invoice_id,
         ]);
+        await markInvoicePdfPending(data.business_id, invoiceId);
+        if (data.reference_invoice_id) {
+            await markInvoicePdfPending(data.business_id, data.reference_invoice_id);
+        }
+        if (isQueueEnabled()) {
+            await enqueueInvoicePdfGeneration({ business_id: data.business_id, invoice_id: invoiceId });
+            if (data.reference_invoice_id) {
+                await enqueueInvoicePdfGeneration({
+                    business_id: data.business_id,
+                    invoice_id: data.reference_invoice_id,
+                });
+            }
+        }
 
         return response;
     } catch (err: any) {
@@ -1236,6 +1259,10 @@ export async function cancelInvoice(args: CancelInvoiceInput) {
         });
 
         await invalidateBusinessFinancialCache(args.business_id, [args.invoice_id]);
+        await markInvoicePdfPending(args.business_id, args.invoice_id);
+        if (isQueueEnabled()) {
+            await enqueueInvoicePdfGeneration({ business_id: args.business_id, invoice_id: args.invoice_id });
+        }
 
         return { success: true, invoice_id: args.invoice_id, is_cancelled: true };
     } catch (err) {

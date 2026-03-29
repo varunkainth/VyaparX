@@ -1,11 +1,7 @@
 import type { Request, Response } from "express";
 import { emailService } from "../config/email";
-import { invoiceRepository } from "../repository/invoice.repository";
-import { businessRepository } from "../repository/business.repository";
-import { partyRepository } from "../repository/party.repository";
-import { invoiceSettingsRepository } from "../repository/invoice-settings.repository";
-import { generateInvoicePdf } from "../utils/invoicePdf";
-import type { InvoicePdfTemplate } from "../types/invoice";
+import { sendInvoiceEmailNow } from "../services/invoice-email.service";
+import { enqueueInvoiceEmail, isQueueEnabled } from "../services/queue.service";
 import { sendSuccess } from "../utils/responseHandler";
 import { AppError } from "../utils/appError";
 import { ERROR_CODES } from "../constants/errorCodes";
@@ -40,83 +36,35 @@ export async function sendInvoiceEmailHandler(
         );
     }
 
-    // Get invoice and items
-    const [invoice, items] = await Promise.all([
-        invoiceRepository.getInvoiceById(business_id, invoice_id),
-        invoiceRepository.getInvoiceItems(invoice_id),
-    ]);
-    
-    if (!invoice) {
-        throw new AppError(
-            "Invoice not found",
-            404,
-            ERROR_CODES.INVOICE_NOT_FOUND
-        );
-    }
-
-    // Attach items to invoice
-    const invoiceWithItems = {
-        ...invoice,
-        items,
+    const jobData = {
+        business_id,
+        invoice_id,
+        recipient_email,
+        requested_by_user_id: req.user!.id,
     };
 
-    // Get business, party, and invoice settings
-    const [business, party, invoiceSettings] = await Promise.all([
-        businessRepository.getBusinessForUser(business_id, req.user!.id),
-        partyRepository.getPartyById(business_id, String(invoice.party_id)),
-        invoiceSettingsRepository.getOrCreate(business_id),
-    ]);
+    if (!isQueueEnabled()) {
+        const result = await sendInvoiceEmailNow(jobData);
 
-    if (!business) {
-        throw new AppError(
-            "Business not found",
-            404,
-            ERROR_CODES.NOT_FOUND
-        );
+        return sendSuccess(res, {
+            message: "Invoice sent successfully via email",
+            data: result,
+        });
     }
 
-    // Map database template names to PDF template names
-    const templateMap: Record<string, InvoicePdfTemplate> = {
-        default: "bill_pro",
-        modern: "modern",
-        classic: "classic",
-        minimal: "compact",
-    };
-
-    const template = templateMap[invoiceSettings.default_template] || "bill_pro";
-
-    // Generate PDF
-    const pdfBuffer = await generateInvoicePdf({
-        businessName: business.name,
-        partyName: party?.name ?? "Customer",
-        invoice: invoiceWithItems,
-        template,
-        business: business as Record<string, unknown>,
-        party: (party as Record<string, unknown> | null) ?? undefined,
-    });
-
-    // Format amount
-    const amount = new Intl.NumberFormat("en-IN", {
-        style: "currency",
-        currency: "INR",
-    }).format(invoice.grand_total);
-
-    // Send email
-    await emailService.sendInvoiceEmail({
-        to: recipient_email,
-        invoiceNumber: invoice.invoice_number,
-        businessName: business.name,
-        amount,
-        pdfBuffer,
-    });
+    const job = await enqueueInvoiceEmail(jobData);
+    const queuedAt = new Date().toISOString();
 
     return sendSuccess(res, {
-        message: "Invoice sent successfully via email",
+        statusCode: 202,
+        message: "Invoice email queued successfully",
         data: {
             invoice_id,
-            invoice_number: invoice.invoice_number,
             recipient_email,
-            sent_at: new Date().toISOString(),
+            sent_at: queuedAt,
+            queued_at: queuedAt,
+            status: "queued",
+            job_id: job?.id ?? null,
         },
     });
 }

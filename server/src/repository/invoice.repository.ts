@@ -8,6 +8,17 @@ type InvoiceShareWindowRecord = {
     share_expires_at: string | null;
 };
 
+type InvoicePdfStateRecord = {
+    id: string;
+    updated_at: string;
+    pdf_url: string | null;
+    pdf_object_key: string | null;
+    pdf_generated_at: string | null;
+    pdf_status: "pending" | "processing" | "ready" | "failed" | null;
+    pdf_error: string | null;
+    pdf_template_id: string | null;
+};
+
 export const invoiceRepository = {
     async nextInvoiceSequence(
         client: PoolClient,
@@ -223,6 +234,104 @@ export const invoiceRepository = {
               AND id = $2
             `,
             [businessId, invoiceId, shareIssuedAt, shareExpiresAt]
+        );
+    },
+
+    async getInvoicePdfState(businessId: string, invoiceId: string) {
+        const result = await pool.query<InvoicePdfStateRecord>(
+            `
+            SELECT id, updated_at, pdf_url, pdf_object_key, pdf_generated_at, pdf_status, pdf_error, pdf_template_id
+            FROM invoices
+            WHERE business_id = $1
+              AND id = $2
+            `,
+            [businessId, invoiceId]
+        );
+        return result.rows[0] ?? null;
+    },
+
+    async markInvoicePdfPending(
+        businessId: string,
+        invoiceId: string,
+        client?: PoolClient
+    ) {
+        await getDb(client).query(
+            `
+            UPDATE invoices
+            SET pdf_status = 'pending',
+                pdf_error = NULL,
+                pdf_generated_at = NULL,
+                pdf_url = NULL,
+                pdf_object_key = NULL,
+                pdf_template_id = NULL,
+                updated_at = now()
+            WHERE business_id = $1
+              AND id = $2
+            `,
+            [businessId, invoiceId]
+        );
+    },
+
+    async markInvoicePdfProcessing(businessId: string, invoiceId: string, templateId: string) {
+        await pool.query(
+            `
+            UPDATE invoices
+            SET pdf_status = 'processing',
+                pdf_error = NULL,
+                pdf_template_id = $3,
+                updated_at = now()
+            WHERE business_id = $1
+              AND id = $2
+            `,
+            [businessId, invoiceId, templateId]
+        );
+    },
+
+    async markInvoicePdfReady(
+        businessId: string,
+        invoiceId: string,
+        values: {
+            pdf_url: string | null;
+            pdf_object_key: string;
+            pdf_generated_at: string;
+            pdf_template_id: string;
+        }
+    ) {
+        await pool.query(
+            `
+            UPDATE invoices
+            SET pdf_status = 'ready',
+                pdf_error = NULL,
+                pdf_url = $3,
+                pdf_object_key = $4,
+                pdf_generated_at = $5,
+                pdf_template_id = $6,
+                updated_at = now()
+            WHERE business_id = $1
+              AND id = $2
+            `,
+            [
+                businessId,
+                invoiceId,
+                values.pdf_url,
+                values.pdf_object_key,
+                values.pdf_generated_at,
+                values.pdf_template_id,
+            ]
+        );
+    },
+
+    async markInvoicePdfFailed(businessId: string, invoiceId: string, errorMessage: string) {
+        await pool.query(
+            `
+            UPDATE invoices
+            SET pdf_status = 'failed',
+                pdf_error = $3,
+                updated_at = now()
+            WHERE business_id = $1
+              AND id = $2
+            `,
+            [businessId, invoiceId, errorMessage]
         );
     },
 
