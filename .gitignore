@@ -21,6 +21,7 @@ server/out/
 .env.*
 !.env.*.example
 !.env.docker.example
+cloudflare/.dev.vars
 
 # ── Logs ──────────────────────────────────────────────────
 logs/
