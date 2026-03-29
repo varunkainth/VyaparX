@@ -196,7 +196,12 @@ export default function PartyCreateScreen() {
                 <Input autoCapitalize="characters" value={form.gstin} onChangeText={(value) => updateField('gstin', value.toUpperCase())} />
               </Field>
               <Field label="PAN">
-                <Input autoCapitalize="characters" value={form.pan} onChangeText={(value) => updateField('pan', value.toUpperCase())} />
+                <Input
+                  autoCapitalize="characters"
+                  maxLength={10}
+                  value={form.pan}
+                  onChangeText={(value) => updateField('pan', value.toUpperCase().slice(0, 10))}
+                />
               </Field>
             </CardContent>
           </Card>

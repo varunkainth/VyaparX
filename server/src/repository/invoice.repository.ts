@@ -3,6 +3,11 @@ import type { PoolClient } from "pg";
 
 const getDb = (client?: PoolClient) => client ?? pool;
 
+type InvoiceShareWindowRecord = {
+    share_issued_at: string | null;
+    share_expires_at: string | null;
+};
+
 export const invoiceRepository = {
     async nextInvoiceSequence(
         client: PoolClient,
@@ -187,6 +192,38 @@ export const invoiceRepository = {
             [businessId, invoiceId]
         );
         return result.rows[0] ?? null;
+    },
+
+    async getInvoiceShareWindow(businessId: string, invoiceId: string) {
+        const result = await pool.query<InvoiceShareWindowRecord>(
+            `
+            SELECT share_issued_at, share_expires_at
+            FROM invoices
+            WHERE business_id = $1
+              AND id = $2
+            `,
+            [businessId, invoiceId]
+        );
+        return result.rows[0] ?? null;
+    },
+
+    async updateInvoiceShareWindow(
+        businessId: string,
+        invoiceId: string,
+        shareIssuedAt: string,
+        shareExpiresAt: string
+    ) {
+        await pool.query(
+            `
+            UPDATE invoices
+            SET share_issued_at = $3,
+                share_expires_at = $4,
+                updated_at = now()
+            WHERE business_id = $1
+              AND id = $2
+            `,
+            [businessId, invoiceId, shareIssuedAt, shareExpiresAt]
+        );
     },
 
     async getInvoiceItems(invoiceId: string) {

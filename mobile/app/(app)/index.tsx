@@ -10,14 +10,13 @@ import {
   ChartColumnBig,
   CirclePlus,
   ChevronRight,
-  Settings2,
   Repeat,
+  Settings2,
   PackageCheck,
   ReceiptText,
   Users,
 } from 'lucide-react-native';
 
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DevCacheIndicator } from '@/components/dev-cache-indicator';
@@ -26,7 +25,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Text } from '@/components/ui/text';
 import { CACHE_TTL_MS, formatCacheAge, isCacheStale } from '@/lib/cache-policy';
 import { formatCompactNumber, formatCurrency, formatPercent, formatShortDate } from '@/lib/formatters';
-import { mapNotificationLink } from '@/lib/notification-routing';
 import { useNotifications } from '@/hooks/use-notifications';
 import { dashboardService } from '@/services/dashboard.service';
 import { useAuthStore } from '@/store/auth-store';
@@ -50,11 +48,10 @@ export default function HomeScreen() {
   const dashboardError = useDashboardStore((state) => (session?.business_id ? state.errorByBusinessId[session.business_id] ?? null : null));
   const dashboardStatus = useDashboardStore((state) => (session?.business_id ? state.statusByBusinessId[session.business_id] ?? 'idle' : 'idle'));
   const dashboardUpdatedAt = useDashboardStore((state) => (session?.business_id ? state.updatedAtByBusinessId[session.business_id] ?? null : null));
-  const { notifications, stats: notificationStats, markAsRead, markAllAsRead, clearNotification, refresh } = useNotifications();
+  const { stats: notificationStats, refresh } = useNotifications();
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
-  const [isNotificationSheetOpen, setIsNotificationSheetOpen] = React.useState(false);
   const [isBusinessSwitcherOpen, setIsBusinessSwitcherOpen] = React.useState(false);
 
   const loadHome = React.useCallback(async (mode: 'initial' | 'refresh' = 'initial') => {
@@ -135,8 +132,6 @@ export default function HomeScreen() {
 
   const recentPayments = dashboard?.recent_payments.slice(0, 3) ?? [];
   const lowStockItems = dashboard?.low_stock_items.slice(0, 3) ?? [];
-  const previewNotifications = notifications.slice(0, 4);
-  const urgentPreviewCount = previewNotifications.filter((item) => item.priority === 'urgent').length;
   const dashboardCacheState =
     dashboardStatus === 'loading'
       ? 'refreshing'
@@ -145,21 +140,6 @@ export default function HomeScreen() {
           ? 'stale'
           : 'cached'
         : 'empty';
-
-  async function onNotificationPress(notificationId: string) {
-    const notification = notifications.find((item) => item.id === notificationId);
-    if (!notification) return;
-    if (!notification.read) {
-      await markAsRead(notification.id);
-    }
-    const href = mapNotificationLink(notification);
-    setIsNotificationSheetOpen(false);
-    if (href) {
-      router.push(href);
-      return;
-    }
-    router.push('/(app)/notifications');
-  }
 
   async function handleSwitchBusiness(business: (typeof businesses)[number]) {
     try {
@@ -203,7 +183,7 @@ export default function HomeScreen() {
                 className="rounded-2xl border border-border/70 bg-card px-3 py-3"
                 onPress={() => {
                   void refresh();
-                  setIsNotificationSheetOpen(true);
+                  router.push('/(app)/notifications');
                 }}>
                 <View>
                   <Icon as={Bell} className="text-foreground" size={20} />
@@ -453,176 +433,84 @@ export default function HomeScreen() {
           ) : null}
         </View>
       </ScrollView>
-      <Dialog open={isNotificationSheetOpen} onOpenChange={setIsNotificationSheetOpen}>
-        <DialogContent className="max-w-[420px] rounded-[28px]">
-          <DialogHeader>
-            <DialogTitle>Notifications</DialogTitle>
-            <DialogDescription>Recent alerts from your active business, with quick access to the full center.</DialogDescription>
-          </DialogHeader>
-          <View className="gap-4">
-            <View className="overflow-hidden rounded-[24px] border border-border/70 bg-background px-4 py-4">
-              <View className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary/10" />
-              <View className="gap-2">
-                <Text className="font-semibold text-foreground">
-                  {notificationStats.unread > 0
-                    ? `${notificationStats.unread} unread alert${notificationStats.unread === 1 ? '' : 's'}`
-                    : 'No unread alerts'}
-                </Text>
-                <Text className="text-sm leading-5 text-muted-foreground">
-                  {urgentPreviewCount > 0
-                    ? `${urgentPreviewCount} urgent item${urgentPreviewCount === 1 ? '' : 's'} in the latest feed.`
-                    : 'Everything urgent is cleared from the latest feed.'}
-                </Text>
-              </View>
-              <View className="mt-4 flex-row gap-3">
-                <View className="flex-1 rounded-2xl border border-border/70 bg-card px-4 py-3">
-                  <Text className="text-xs uppercase tracking-[1px] text-muted-foreground">Unread</Text>
-                  <Text className="mt-1 text-xl font-bold text-foreground">{notificationStats.unread}</Text>
-                </View>
-                <View className="flex-1 rounded-2xl border border-border/70 bg-card px-4 py-3">
-                  <Text className="text-xs uppercase tracking-[1px] text-muted-foreground">Urgent</Text>
-                  <Text className="mt-1 text-xl font-bold text-foreground">{notificationStats.by_priority.urgent}</Text>
-                </View>
-              </View>
+      {isBusinessSwitcherOpen ? (
+        <View className="absolute inset-0 z-50 items-center justify-center bg-black/60 px-4">
+          <Pressable
+            className="absolute inset-0"
+            accessibilityRole="button"
+            onPress={() => setIsBusinessSwitcherOpen(false)}
+          />
+          <View className="w-full max-w-[420px] rounded-[28px] border border-border bg-background px-6 py-6">
+            <View className="mb-5 gap-2">
+              <Text className="pr-10 text-xl font-bold text-foreground">Switch business</Text>
+              <Text className="text-sm leading-6 text-muted-foreground">
+                Select the workspace you want to open right now.
+              </Text>
             </View>
+            <View className="gap-3">
+              {businesses.length ? (
+                businesses.map((business) => {
+                  const isCurrent = business.id === session?.business_id;
+                  const isSwitching = isSwitchingBusinessId === business.id;
 
-            {previewNotifications.length ? (
-              <View className="gap-3">
-                {previewNotifications.map((notification) => (
-                  <Pressable
-                    key={notification.id}
-                    className={`rounded-[22px] border px-4 py-4 ${
-                      notification.read ? 'border-border/70 bg-background' : 'border-primary/20 bg-primary/5'
-                    }`}
-                    onPress={() => void onNotificationPress(notification.id)}>
-                    <View className="flex-row items-start justify-between gap-4">
-                      <View className="flex-1 gap-1">
-                        <View className="flex-row items-center gap-2">
-                          <Text className="font-semibold text-foreground">{notification.title}</Text>
-                          {!notification.read ? (
-                            <View className="rounded-full bg-primary/10 px-2 py-1">
-                              <Text className="text-[10px] font-semibold uppercase tracking-[1px] text-primary">New</Text>
-                            </View>
-                          ) : null}
-                        </View>
-                        <Text className="text-sm leading-5 text-muted-foreground">{notification.message}</Text>
-                        <View className="flex-row items-center justify-between gap-3">
-                          <Text className="text-xs uppercase tracking-[1px] text-muted-foreground">
-                            {formatShortDate(notification.created_at)}
-                          </Text>
-                          {mapNotificationLink(notification) ? (
-                            <View className="flex-row items-center gap-1">
-                              <Text className="text-xs font-semibold uppercase tracking-[1px] text-primary">Open</Text>
-                              <Icon as={ChevronRight} className="text-primary" size={14} />
-                            </View>
-                          ) : null}
-                        </View>
+                  return (
+                    <Pressable
+                      key={business.id}
+                      className={`flex-row items-center gap-4 rounded-2xl border px-4 py-4 ${
+                        isCurrent ? 'border-primary/20 bg-primary/5' : 'border-border/70 bg-background'
+                      }`}
+                      disabled={isSwitching}
+                      onPress={() => void handleSwitchBusiness(business)}>
+                      <View className="rounded-2xl bg-primary/10 px-3 py-3">
+                        <Icon as={Building2} className="text-primary" size={18} />
                       </View>
-                      <Pressable
-                        accessibilityRole="button"
-                        className="rounded-full border border-destructive/20 bg-destructive/10 p-2.5"
-                        onPress={() => void clearNotification(notification.id)}>
-                        <Text className="text-xs font-semibold text-destructive">Clear</Text>
-                      </Pressable>
-                    </View>
-                  </Pressable>
-                ))}
-              </View>
-            ) : (
-              <View className="rounded-[22px] border border-dashed border-border/70 bg-muted/20 px-4 py-6">
-                <Text className="text-center text-sm leading-6 text-muted-foreground">No notifications right now.</Text>
-              </View>
-            )}
-
-            <View className="flex-row gap-3">
-              <Button variant="outline" className="h-12 flex-1 rounded-2xl" onPress={() => void markAllAsRead()}>
-                <Text>Mark all read</Text>
-              </Button>
+                      <View className="flex-1 gap-1">
+                        <Text className="font-semibold text-foreground">{business.name}</Text>
+                        <Text className="text-xs uppercase tracking-[1px] text-muted-foreground">{business.role}</Text>
+                      </View>
+                      {isCurrent ? (
+                        <View className="rounded-full bg-primary/10 px-3 py-1">
+                          <Text className="text-xs font-semibold uppercase tracking-[1px] text-primary">Current</Text>
+                        </View>
+                      ) : isSwitching ? (
+                        <View className="px-2 py-1">
+                          <Skeleton className="h-5 w-5 rounded-full" />
+                        </View>
+                      ) : (
+                        <Icon as={ChevronRight} className="text-muted-foreground" size={18} />
+                      )}
+                    </Pressable>
+                  );
+                })
+              ) : (
+                <View className="gap-3">
+                  <Skeleton className="h-20 w-full rounded-2xl" />
+                  <Skeleton className="h-20 w-full rounded-2xl" />
+                  <Skeleton className="h-20 w-full rounded-2xl" />
+                </View>
+              )}
               <Button
                 variant="outline"
-                className="h-12 rounded-2xl px-4"
-                onPress={() => {
-                  setIsNotificationSheetOpen(false);
-                  router.push('/(app)/settings');
-                }}>
-                <Icon as={Settings2} className="text-foreground" size={16} />
+                className="h-12 rounded-2xl"
+                onPress={() => setIsBusinessSwitcherOpen(false)}>
+                <Text>Close</Text>
               </Button>
               <Button
-                className="h-12 flex-1 rounded-2xl"
+                className="h-12 rounded-2xl"
                 onPress={() => {
-                  setIsNotificationSheetOpen(false);
-                  router.push('/(app)/notifications');
+                  setIsBusinessSwitcherOpen(false);
+                  router.push({
+                    pathname: '/business-setup',
+                    params: { mode: 'create', return_to: '/(app)' },
+                  });
                 }}>
-                <Text>View all</Text>
-                <Icon as={ChevronRight} className="text-primary-foreground" size={16} />
+                <Icon as={CirclePlus} className="text-primary-foreground" size={16} />
+                <Text>Create and switch</Text>
               </Button>
             </View>
           </View>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={isBusinessSwitcherOpen} onOpenChange={setIsBusinessSwitcherOpen}>
-        <DialogContent className="max-w-[420px] rounded-[28px]">
-          <DialogHeader>
-            <DialogTitle>Switch business</DialogTitle>
-            <DialogDescription>Select the workspace you want to open right now.</DialogDescription>
-          </DialogHeader>
-          <View className="gap-3">
-            {businesses.length ? (
-              businesses.map((business) => {
-                const isCurrent = business.id === session?.business_id;
-                const isSwitching = isSwitchingBusinessId === business.id;
-
-                return (
-                  <Pressable
-                    key={business.id}
-                    className={`flex-row items-center gap-4 rounded-2xl border px-4 py-4 ${
-                      isCurrent ? 'border-primary/20 bg-primary/5' : 'border-border/70 bg-background'
-                    }`}
-                    disabled={isSwitching}
-                    onPress={() => void handleSwitchBusiness(business)}>
-                    <View className="rounded-2xl bg-primary/10 px-3 py-3">
-                      <Icon as={Building2} className="text-primary" size={18} />
-                    </View>
-                    <View className="flex-1 gap-1">
-                      <Text className="font-semibold text-foreground">{business.name}</Text>
-                      <Text className="text-xs uppercase tracking-[1px] text-muted-foreground">{business.role}</Text>
-                    </View>
-                    {isCurrent ? (
-                      <View className="rounded-full bg-primary/10 px-3 py-1">
-                        <Text className="text-xs font-semibold uppercase tracking-[1px] text-primary">Current</Text>
-                      </View>
-                    ) : isSwitching ? (
-                      <View className="px-2 py-1">
-                        <Skeleton className="h-5 w-5 rounded-full" />
-                      </View>
-                    ) : (
-                      <Icon as={ChevronRight} className="text-muted-foreground" size={18} />
-                    )}
-                  </Pressable>
-                );
-              })
-            ) : (
-              <View className="gap-3">
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-              </View>
-            )}
-            <Button
-              className="h-12 rounded-2xl"
-              onPress={() => {
-                setIsBusinessSwitcherOpen(false);
-                router.push({
-                  pathname: '/business-setup',
-                  params: { mode: 'create', return_to: '/(app)' },
-                });
-              }}>
-              <Icon as={CirclePlus} className="text-primary-foreground" size={16} />
-              <Text>Create and switch</Text>
-            </Button>
-          </View>
-        </DialogContent>
-      </Dialog>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }

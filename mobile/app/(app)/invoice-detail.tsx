@@ -70,6 +70,19 @@ export default function InvoiceDetailScreen() {
 
   const invoiceId = typeof params.id === "string" ? params.id : "";
   const invoice = useInvoiceStore((state) => (invoiceId ? state.detailById[invoiceId] ?? null : null));
+  const listInvoice = useInvoiceStore((state) => {
+    if (!invoiceId || !session?.business_id) {
+      return null;
+    }
+
+    const visibleInvoice =
+      state.cache[`${session.business_id}:cancelled:false`]?.items.find((item) => item.id === invoiceId) ?? null;
+    if (visibleInvoice) {
+      return visibleInvoice;
+    }
+
+    return state.cache[`${session.business_id}:cancelled:true`]?.items.find((item) => item.id === invoiceId) ?? null;
+  });
   const detailError = useInvoiceStore((state) => (invoiceId ? state.detailErrorById[invoiceId] ?? null : null));
   const detailStatus = useInvoiceStore((state) => (invoiceId ? state.detailStatusById[invoiceId] ?? 'idle' : 'idle'));
   const detailUpdatedAt = useInvoiceStore((state) => (invoiceId ? state.detailUpdatedAtById[invoiceId] ?? null : null));
@@ -81,7 +94,11 @@ export default function InvoiceDetailScreen() {
           ? "stale"
           : "cached"
         : "empty";
-  const invoicePartyName = invoice?.party_name?.trim().toUpperCase() || "PARTY DETAILS UNAVAILABLE";
+  const invoicePartyName = (
+    invoice?.party_name?.trim() ||
+    listInvoice?.party_name?.trim() ||
+    ""
+  ).toUpperCase() || "PARTY DETAILS UNAVAILABLE";
 
   const loadInvoice = React.useCallback(async (mode: "initial" | "refresh" = "initial") => {
     if (!session?.business_id || !invoiceId) {

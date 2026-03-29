@@ -26,6 +26,11 @@ export function OptimizedInvoicesList({
   includeCancelled = false,
 }: OptimizedInvoicesListProps) {
   const { currentBusiness } = useBusinessStore();
+
+  const formatInvoicePartyName = (partyName?: string | null) => {
+    const normalized = String(partyName ?? "").trim();
+    return normalized ? normalized.toUpperCase() : "PARTY DETAILS UNAVAILABLE";
+  };
   
   const { data, isLoading, error } = useInvoices(currentBusiness?.id, {
     include_cancelled: includeCancelled,
@@ -81,7 +86,7 @@ export function OptimizedInvoicesList({
                 {invoice.payment_status}
               </Badge>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">{invoice.party_name.trim().toUpperCase()}</p>
+            <p className="text-sm text-muted-foreground mt-1">{formatInvoicePartyName(invoice.party_name)}</p>
           </div>
           <div className="text-right">
             <p className="font-semibold">{formatCurrency(invoice.grand_total)}</p>

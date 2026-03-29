@@ -71,6 +71,11 @@ export function DashboardPage() {
     })
   }
 
+  const formatInvoicePartyName = (partyName?: string | null) => {
+    const normalized = String(partyName ?? "").trim()
+    return normalized ? normalized.toUpperCase() : "PARTY DETAILS UNAVAILABLE"
+  }
+
   const getPaymentStatusColor = (status: string) => {
     switch (status) {
       case "paid":
@@ -418,7 +423,7 @@ export function DashboardPage() {
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground truncate">
-                        {invoice.party_name.trim().toUpperCase()} • {formatDate(invoice.invoice_date)}
+                        {formatInvoicePartyName(invoice.party_name)} • {formatDate(invoice.invoice_date)}
                       </p>
                     </div>
                     <div className="shrink-0 text-right">

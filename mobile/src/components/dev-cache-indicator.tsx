@@ -14,9 +14,7 @@ export function DevCacheIndicator({
   label: string;
   state: CacheDebugState;
 }) {
-  if (!__DEV__) {
-    return null;
-  }
+  return null;
 
   const palette =
     state === 'live'

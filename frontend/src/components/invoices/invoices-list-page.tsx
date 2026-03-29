@@ -134,9 +134,9 @@ export function InvoicesListPage() {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(
         (invoice) =>
-          invoice.invoice_number.toLowerCase().includes(query) ||
-          invoice.party_name.toLowerCase().includes(query) ||
-          invoice.notes?.toLowerCase().includes(query)
+          normalizeInvoiceSearchValue(invoice.invoice_number).includes(query) ||
+          normalizeInvoiceSearchValue(invoice.party_name).includes(query) ||
+          normalizeInvoiceSearchValue(invoice.notes).includes(query)
       )
     }
 
@@ -194,6 +194,15 @@ export function InvoicesListPage() {
     return new Intl.DateTimeFormat("en-IN", {
       dateStyle: "medium",
     }).format(new Date(dateString))
+  }
+
+  const formatInvoicePartyName = (partyName?: string | null) => {
+    const normalized = String(partyName ?? "").trim()
+    return normalized ? normalized.toUpperCase() : "PARTY DETAILS UNAVAILABLE"
+  }
+
+  const normalizeInvoiceSearchValue = (value?: string | null) => {
+    return String(value ?? "").toLowerCase()
   }
 
   const getTotalSales = () => {
@@ -824,7 +833,7 @@ export function InvoicesListPage() {
                                 {getLifecycleBadge(invoice)}
                               </div>
                               <div className={`flex items-center gap-4 mt-1 text-sm ${invoice.is_cancelled ? "text-red-600/80 dark:text-red-300/80" : "text-muted-foreground"}`}>
-                                <span className="truncate">{invoice.party_name.trim().toUpperCase()}</span>
+                                <span className="truncate">{formatInvoicePartyName(invoice.party_name)}</span>
                                 <span>{formatDate(invoice.invoice_date)}</span>
                                 {invoice.due_date && (
                                   <span>Due: {formatDate(invoice.due_date)}</span>
@@ -935,7 +944,7 @@ export function InvoicesListPage() {
                                 >
                                   {invoice.invoice_number}
                                 </p>
-                                <p className="text-xs text-muted-foreground truncate mt-0.5">{invoice.party_name.trim().toUpperCase()}</p>
+                                <p className="text-xs text-muted-foreground truncate mt-0.5">{formatInvoicePartyName(invoice.party_name)}</p>
                               </div>
                             </div>
                             <div className="flex gap-1.5 flex-shrink-0">

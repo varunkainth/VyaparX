@@ -194,12 +194,59 @@ export const invoiceService = {
     return response.data.data;
   },
 
+  async getPublicInvoice(
+    invoice_id: string,
+    token: string,
+  ): Promise<{
+    invoice: InvoiceWithItems;
+    business: Record<string, unknown> | null;
+    party: Record<string, unknown> | null;
+    invoice_settings: Record<string, unknown> | null;
+  }> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/public/invoices/${invoice_id}?token=${encodeURIComponent(token)}`,
+      {
+        headers: {
+          Accept: "application/json",
+        },
+      },
+    );
+
+    const payload = (await response.json().catch(() => null)) as
+      | (ApiResponse<{
+          invoice: InvoiceWithItems;
+          business: Record<string, unknown> | null;
+          party: Record<string, unknown> | null;
+          invoice_settings: Record<string, unknown> | null;
+        }> & {
+          error?: { message?: string };
+        })
+      | null;
+
+    if (!response.ok || !payload?.data) {
+      throw new Error(
+        payload?.error?.message ??
+          payload?.message ??
+          "Unable to load this digital bill right now.",
+      );
+    }
+
+    return {
+      ...payload.data,
+      invoice: transformInvoiceWithItems(payload.data.invoice),
+    };
+  },
+
   buildPublicInvoicePdfUrl(shareUrl: string, invoiceId: string) {
     const token = extractShareToken(shareUrl);
     if (!token) {
       throw new Error("Unable to derive invoice share token.");
     }
 
+    return `${API_BASE_URL}/api/v1/public/invoices/${invoiceId}/pdf?token=${encodeURIComponent(token)}`;
+  },
+
+  buildPublicInvoicePdfUrlFromToken(invoiceId: string, token: string) {
     return `${API_BASE_URL}/api/v1/public/invoices/${invoiceId}/pdf?token=${encodeURIComponent(token)}`;
   },
 };

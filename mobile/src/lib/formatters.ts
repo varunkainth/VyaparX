@@ -4,8 +4,19 @@ const inrFormatter = new Intl.NumberFormat('en-IN', {
   maximumFractionDigits: 0,
 });
 
+const inrDecimalFormatter = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 export function formatCurrency(amount: number) {
   return inrFormatter.format(Number(amount) || 0);
+}
+
+export function formatCurrencyWithDecimals(amount: number) {
+  return inrDecimalFormatter.format(Number(amount) || 0);
 }
 
 export function formatCompactNumber(value: number) {

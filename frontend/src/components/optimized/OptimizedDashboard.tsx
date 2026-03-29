@@ -27,6 +27,11 @@ import {
 export function OptimizedDashboard() {
   const router = useRouter();
   const { currentBusiness } = useBusinessStore();
+
+  const formatInvoicePartyName = (partyName?: string | null) => {
+    const normalized = String(partyName ?? "").trim();
+    return normalized ? normalized.toUpperCase() : "PARTY DETAILS UNAVAILABLE";
+  };
   
   const { data: dashboardData, isLoading } = useDashboard(currentBusiness?.id);
 
@@ -347,7 +352,7 @@ export function OptimizedDashboard() {
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground truncate">
-                        {invoice.party_name.trim().toUpperCase()} • {formatDate(invoice.invoice_date)}
+                        {formatInvoicePartyName(invoice.party_name)} • {formatDate(invoice.invoice_date)}
                       </p>
                     </div>
                     <div className="text-right">

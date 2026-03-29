@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import env from "../config/env";
 import { ERROR_CODES } from "../constants/errorCodes";
 import { businessRepository } from "../repository/business.repository";
+import { invoiceRepository } from "../repository/invoice.repository";
 import { partyRepository } from "../repository/party.repository";
 import {
     buildInvoiceDetailCacheKey,
@@ -10,6 +11,7 @@ import {
     buildPublicInvoiceCacheKey,
     cacheTtlSeconds,
     getOrSetCache,
+    invalidateBusinessFinancialCache,
 } from "../services/cache.service";
 import { invoiceSettingsRepository } from "../repository/invoice-settings.repository";
 import { cancelInvoice, getInvoiceById, listInvoices } from "../services/invoice.service";
@@ -45,10 +47,27 @@ type InvoiceShareTokenPayload = {
 
 const invoiceShareSecret = `${env.JWT_ACCESS_SECRET}:invoice-share`;
 
-const createInvoiceShareToken = (payload: InvoiceShareTokenPayload) => {
-    return jwt.sign(payload, invoiceShareSecret, {
-        expiresIn: "7d",
-    });
+const createInvoiceShareToken = (
+    payload: InvoiceShareTokenPayload,
+    issuedAt: Date,
+    expiresAt: Date
+) => {
+    return jwt.sign(
+        {
+            ...payload,
+            iat: Math.floor(issuedAt.getTime() / 1000),
+            exp: Math.floor(expiresAt.getTime() / 1000),
+        },
+        invoiceShareSecret,
+        {
+            noTimestamp: true,
+        }
+    );
+};
+
+const buildInvoiceShareUrl = (invoiceId: string, token: string) => {
+    const frontendUrl = env.FRONTEND_URL || "http://localhost:3000";
+    return `${frontendUrl}/shared/invoice/${invoiceId}?token=${encodeURIComponent(token)}`;
 };
 
 const verifyInvoiceShareToken = (token: string, invoiceId: string): InvoiceShareTokenPayload => {
@@ -240,21 +259,52 @@ export const createInvoiceShareLinkHandler = async (req: Request<InvoiceParams>,
     const invoiceId = getInvoiceId(req);
 
     await getInvoiceById(businessId, invoiceId);
+    const existingShareWindow = await invoiceRepository.getInvoiceShareWindow(businessId, invoiceId);
+    const now = Date.now();
 
-    const token = createInvoiceShareToken({
-        business_id: businessId,
-        invoice_id: invoiceId,
-    });
+    let shareIssuedAt =
+        existingShareWindow?.share_issued_at ? new Date(existingShareWindow.share_issued_at) : null;
+    let shareExpiresAt =
+        existingShareWindow?.share_expires_at ? new Date(existingShareWindow.share_expires_at) : null;
 
-    const frontendUrl = env.FRONTEND_URL || "http://localhost:3000";
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    const shareUrl = `${frontendUrl}/shared/invoice/${invoiceId}?token=${encodeURIComponent(token)}`;
+    const hasReusableShareWindow =
+        shareIssuedAt &&
+        shareExpiresAt &&
+        !Number.isNaN(shareIssuedAt.getTime()) &&
+        !Number.isNaN(shareExpiresAt.getTime()) &&
+        shareExpiresAt.getTime() > now;
+
+    if (!hasReusableShareWindow) {
+        shareIssuedAt = new Date(now);
+        shareExpiresAt = new Date(now + 7 * 24 * 60 * 60 * 1000);
+
+        await invoiceRepository.updateInvoiceShareWindow(
+            businessId,
+            invoiceId,
+            shareIssuedAt.toISOString(),
+            shareExpiresAt.toISOString()
+        );
+        await invalidateBusinessFinancialCache(businessId, [invoiceId]);
+    }
+
+    const resolvedShareIssuedAt = shareIssuedAt ?? new Date(now);
+    const resolvedShareExpiresAt = shareExpiresAt ?? new Date(now + 7 * 24 * 60 * 60 * 1000);
+
+    const token = createInvoiceShareToken(
+        {
+            business_id: businessId,
+            invoice_id: invoiceId,
+        },
+        resolvedShareIssuedAt,
+        resolvedShareExpiresAt
+    );
+    const shareUrl = buildInvoiceShareUrl(invoiceId, token);
 
     return sendSuccess(res, {
         message: "Invoice share link generated",
         data: {
             share_url: shareUrl,
-            expires_at: expiresAt,
+            expires_at: resolvedShareExpiresAt.toISOString(),
         },
     });
 };

@@ -17,6 +17,7 @@ const androidIntentFilters = passkeyDomain
             scheme: "https",
           },
           { host: passkeyDomain, pathPrefix: "/verify-email", scheme: "https" },
+          { host: passkeyDomain, pathPrefix: "/shared/invoice", scheme: "https" },
         ],
       },
     ]

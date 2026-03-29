@@ -41,7 +41,7 @@ import type { BusinessWithRole } from "@/types/business";
 import { GST_RATES, type InventoryItem } from "@/types/inventory";
 import type { CreateInvoiceInput, CreateInvoiceNoteInput, InvoiceItemInput, NoteType } from "@/types/invoice";
 import type { Party } from "@/types/party";
-import { formatCurrency } from "@/lib/formatters";
+import { formatCurrency, formatCurrencyWithDecimals } from "@/lib/formatters";
 
 type InvoiceType = "sales" | "purchase";
 type PriceMode = "exclusive" | "inclusive";
@@ -621,11 +621,11 @@ export function CreateInvoiceForm({ invoiceType }: { invoiceType: InvoiceType })
               <CardDescription>Computed totals using the same tax and rounding rules as the web flow.</CardDescription>
             </CardHeader>
             <CardContent className="gap-3">
-              <SummaryRow label="Subtotal" value={formatCurrency(totals.subtotal)} />
-              <SummaryRow label="Taxable amount" value={formatCurrency(totals.taxableAmount)} />
-              <SummaryRow label="Total tax" value={formatCurrency(totals.totalTax)} />
-              <SummaryRow label="Round off" value={formatCurrency(totals.roundOff)} />
-              <SummaryRow label="Grand total" value={formatCurrency(totals.grandTotal)} strong />
+              <SummaryRow label="Subtotal" value={formatCurrencyWithDecimals(totals.subtotal)} />
+              <SummaryRow label="Taxable amount" value={formatCurrencyWithDecimals(totals.taxableAmount)} />
+              <SummaryRow label="Total tax" value={formatCurrencyWithDecimals(totals.totalTax)} />
+              <SummaryRow label="Round off" value={formatCurrencyWithDecimals(totals.roundOff)} />
+              <GrandTotalCard value={formatCurrencyWithDecimals(totals.grandTotal)} />
             </CardContent>
           </Card>
 
@@ -863,6 +863,15 @@ function SummaryRow({
     <View className="flex-row items-center justify-between gap-4 rounded-2xl border border-border/70 bg-background px-4 py-4">
       <Text className={strong ? "font-semibold text-foreground" : "text-muted-foreground"}>{label}</Text>
       <Text className={strong ? "font-semibold text-foreground" : "font-medium text-foreground"}>{value}</Text>
+    </View>
+  );
+}
+
+function GrandTotalCard({ value }: { value: string }) {
+  return (
+    <View className="rounded-[24px] border border-primary/20 bg-primary/5 px-4 py-5">
+      <Text className="text-xs uppercase tracking-[1px] text-muted-foreground">Grand total</Text>
+      <Text className="mt-2 text-3xl font-extrabold text-foreground">{value}</Text>
     </View>
   );
 }

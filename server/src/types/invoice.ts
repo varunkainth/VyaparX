@@ -101,6 +101,8 @@ export interface InvoiceRecord {
     place_of_supply?: string;
     reference_invoice_id?: string | null;
     note_reason?: string | null;
+    share_issued_at?: string | null;
+    share_expires_at?: string | null;
     [key: string]: unknown;
 }
 

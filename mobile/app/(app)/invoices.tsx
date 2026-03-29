@@ -139,6 +139,10 @@ export default function InvoicesScreen() {
     const query = searchQuery.trim().toLowerCase();
 
     return invoices.filter((invoice) => {
+      const invoiceNumber = String(invoice.invoice_number ?? "").toLowerCase();
+      const partyName = String(invoice.party_name ?? "").toLowerCase();
+      const notes = typeof invoice.notes === "string" ? invoice.notes.toLowerCase() : "";
+
       if (invoiceTypeFilter !== "all" && invoice.invoice_type !== invoiceTypeFilter) {
         return false;
       }
@@ -152,9 +156,9 @@ export default function InvoicesScreen() {
       }
 
       return (
-        invoice.invoice_number.toLowerCase().includes(query) ||
-        invoice.party_name.toLowerCase().includes(query) ||
-        invoice.notes?.toLowerCase().includes(query)
+        invoiceNumber.includes(query) ||
+        partyName.includes(query) ||
+        notes.includes(query)
       );
     });
   }, [invoiceTypeFilter, invoices, paymentStatusFilter, searchQuery]);
@@ -291,7 +295,9 @@ export default function InvoicesScreen() {
                         <View className="flex-row items-start justify-between gap-4">
                           <View className="flex-1 gap-1">
                             <Text className="font-semibold text-foreground">{invoice.invoice_number}</Text>
-                            <Text className="text-sm leading-5 text-muted-foreground">{invoice.party_name.trim().toUpperCase()}</Text>
+                            <Text className="text-sm leading-5 text-muted-foreground">
+                              {formatInvoicePartyName(invoice.party_name)}
+                            </Text>
                           </View>
                           <Text className="text-sm font-semibold text-foreground">{formatCurrency(invoice.grand_total)}</Text>
                         </View>
@@ -547,4 +553,9 @@ function paymentTone(status: PaymentStatus) {
   if (status === "overdue") return "red";
   if (status === "partial") return "amber";
   return "slate";
+}
+
+function formatInvoicePartyName(value: unknown) {
+  const normalized = String(value ?? "").trim();
+  return normalized ? normalized.toUpperCase() : "PARTY DETAILS UNAVAILABLE";
 }
