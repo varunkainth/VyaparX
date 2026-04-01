@@ -3,114 +3,120 @@ import type { Transporter } from "nodemailer";
 import type SMTPPool from "nodemailer/lib/smtp-pool";
 
 interface EmailConfig {
-    host: string;
-    port: number;
-    secure: boolean;
-    auth: {
-        user: string;
-        pass: string;
-    };
+  host: string;
+  port: number;
+  secure: boolean;
+  auth: {
+    user: string;
+    pass: string;
+  };
 }
 
 class EmailService {
-    private transporter: Transporter | null = null;
-    private isConfigured: boolean = false;
+  private transporter: Transporter | null = null;
+  private isConfigured: boolean = false;
 
-    constructor() {
-        this.initialize();
+  constructor() {
+    this.initialize();
+  }
+
+  private initialize() {
+    const emailUser = process.env.EMAIL_USER;
+    const emailPassword = process.env.EMAIL_PASSWORD;
+    const emailHost = process.env.EMAIL_HOST || "smtp.gmail.com";
+    const emailPort = parseInt(process.env.EMAIL_PORT || "587");
+
+    if (!emailUser || !emailPassword) {
+      console.warn("⚠ Email service not configured");
+      console.warn(
+        "  Required: EMAIL_USER and EMAIL_PASSWORD environment variables",
+      );
+      return;
     }
 
-    private initialize() {
-        const emailUser = process.env.EMAIL_USER;
-        const emailPassword = process.env.EMAIL_PASSWORD;
-        const emailHost = process.env.EMAIL_HOST || "smtp.gmail.com";
-        const emailPort = parseInt(process.env.EMAIL_PORT || "587");
+    const config: EmailConfig = {
+      host: emailHost,
+      port: emailPort,
+      secure: emailPort === 465, // true for 465, false for other ports
+      auth: {
+        user: emailUser,
+        pass: emailPassword,
+      },
+    };
 
-        if (!emailUser || !emailPassword) {
-            console.warn("⚠ Email service not configured");
-            console.warn("  Required: EMAIL_USER and EMAIL_PASSWORD environment variables");
-            return;
-        }
+    const transportConfig: SMTPPool.Options = {
+      ...config,
+      // Add connection pooling and timeout settings
+      pool: true,
+      maxConnections: 5,
+      maxMessages: 100,
+      connectionTimeout: 5000, // 5 seconds
+      greetingTimeout: 5000,
+      socketTimeout: 10000, // 10 seconds
+    };
 
-        const config: EmailConfig = {
-            host: emailHost,
-            port: emailPort,
-            secure: emailPort === 465, // true for 465, false for other ports
-            auth: {
-                user: emailUser,
-                pass: emailPassword,
-            },
-        };
+    this.transporter = nodemailer.createTransport(transportConfig);
+    this.isConfigured = true;
 
-        const transportConfig: SMTPPool.Options = {
-            ...config,
-            // Add connection pooling and timeout settings
-            pool: true,
-            maxConnections: 5,
-            maxMessages: 100,
-            connectionTimeout: 5000, // 5 seconds
-            greetingTimeout: 5000,
-            socketTimeout: 10000, // 10 seconds
-        };
+    // Verify connection (don't block initialization)
+    this.transporter.verify((error) => {
+      if (error) {
+        console.error("✗ Email service verification failed:", error.message);
+        console.error(
+          "  Check your EMAIL_USER, EMAIL_PASSWORD, and SMTP settings",
+        );
+        this.isConfigured = false;
+      } else {
+        console.log("✓ Email service verified successfully");
+      }
+    });
+  }
 
-        this.transporter = nodemailer.createTransport(transportConfig);
-        this.isConfigured = true;
+  isReady(): boolean {
+    return this.isConfigured && this.transporter !== null;
+  }
 
-        // Verify connection (don't block initialization)
-        this.transporter.verify((error) => {
-            if (error) {
-                console.error("✗ Email service verification failed:", error.message);
-                console.error("  Check your EMAIL_USER, EMAIL_PASSWORD, and SMTP settings");
-                this.isConfigured = false;
-            } else {
-                console.log("✓ Email service verified successfully");
-            }
-        });
+  async sendEmail(options: {
+    to: string;
+    subject: string;
+    text?: string;
+    html?: string;
+    attachments?: Array<{
+      filename: string;
+      content: Buffer;
+      contentType: string;
+    }>;
+  }): Promise<void> {
+    if (!this.isReady()) {
+      throw new Error(
+        "Email service is not configured. Please set EMAIL_USER and EMAIL_PASSWORD environment variables.",
+      );
     }
 
-    isReady(): boolean {
-        return this.isConfigured && this.transporter !== null;
-    }
+    const mailOptions = {
+      from: `"${process.env.EMAIL_FROM_NAME || "VyaparX"}" <${process.env.EMAIL_USER}>`,
+      to: options.to,
+      subject: options.subject,
+      text: options.text,
+      html: options.html,
+      attachments: options.attachments,
+    };
 
-    async sendEmail(options: {
-        to: string;
-        subject: string;
-        text?: string;
-        html?: string;
-        attachments?: Array<{
-            filename: string;
-            content: Buffer;
-            contentType: string;
-        }>;
-    }): Promise<void> {
-        if (!this.isReady()) {
-            throw new Error("Email service is not configured. Please set EMAIL_USER and EMAIL_PASSWORD environment variables.");
-        }
+    await this.transporter!.sendMail(mailOptions);
+  }
 
-        const mailOptions = {
-            from: `"${process.env.EMAIL_FROM_NAME || "VyaparX"}" <${process.env.EMAIL_USER}>`,
-            to: options.to,
-            subject: options.subject,
-            text: options.text,
-            html: options.html,
-            attachments: options.attachments,
-        };
+  async sendInvoiceEmail(options: {
+    to: string;
+    invoiceNumber: string;
+    businessName: string;
+    amount: string;
+    pdfBuffer: Buffer;
+  }): Promise<void> {
+    const { to, invoiceNumber, businessName, amount, pdfBuffer } = options;
 
-        await this.transporter!.sendMail(mailOptions);
-    }
+    const subject = `Invoice ${invoiceNumber} from ${businessName}`;
 
-    async sendInvoiceEmail(options: {
-        to: string;
-        invoiceNumber: string;
-        businessName: string;
-        amount: string;
-        pdfBuffer: Buffer;
-    }): Promise<void> {
-        const { to, invoiceNumber, businessName, amount, pdfBuffer } = options;
-
-        const subject = `Invoice ${invoiceNumber} from ${businessName}`;
-        
-        const html = `
+    const html = `
             <!DOCTYPE html>
             <html>
             <head>
@@ -207,7 +213,7 @@ class EmailService {
             </html>
         `;
 
-        const text = `
+    const text = `
 Invoice from ${businessName}
 
 Dear Customer,
@@ -228,32 +234,32 @@ ${businessName}
 This is an automated email. Please do not reply to this message.
         `;
 
-        await this.sendEmail({
-            to,
-            subject,
-            text,
-            html,
-            attachments: [
-                {
-                    filename: `${invoiceNumber}.pdf`,
-                    content: pdfBuffer,
-                    contentType: "application/pdf",
-                },
-            ],
-        });
-    }
+    await this.sendEmail({
+      to,
+      subject,
+      text,
+      html,
+      attachments: [
+        {
+          filename: `${invoiceNumber}.pdf`,
+          content: pdfBuffer,
+          contentType: "application/pdf",
+        },
+      ],
+    });
+  }
 
-    async sendPasswordResetEmail(options: {
-        to: string;
-        name: string;
-        resetToken: string;
-        resetUrl: string;
-    }): Promise<void> {
-        const { to, name, resetToken, resetUrl } = options;
+  async sendPasswordResetEmail(options: {
+    to: string;
+    name: string;
+    resetToken: string;
+    resetUrl: string;
+  }): Promise<void> {
+    const { to, name, resetToken, resetUrl } = options;
 
-        const subject = "Reset Your Password - VyaparX";
-        
-        const html = `
+    const subject = "Reset Your Password - VyaparX";
+
+    const html = `
             <!DOCTYPE html>
             <html>
             <head>
@@ -354,7 +360,7 @@ This is an automated email. Please do not reply to this message.
             </html>
         `;
 
-        const text = `
+    const text = `
 Password Reset Request - VyaparX
 
 Hi ${name},
@@ -378,25 +384,25 @@ The VyaparX Team
 This is an automated email. Please do not reply to this message.
         `;
 
-        await this.sendEmail({
-            to,
-            subject,
-            text,
-            html,
-        });
-    }
+    await this.sendEmail({
+      to,
+      subject,
+      text,
+      html,
+    });
+  }
 
-    async sendVerificationEmail(options: {
-        to: string;
-        name: string;
-        verificationToken: string;
-        verificationUrl: string;
-    }): Promise<void> {
-        const { to, name, verificationUrl } = options;
+  async sendVerificationEmail(options: {
+    to: string;
+    name: string;
+    verificationToken: string;
+    verificationUrl: string;
+  }): Promise<void> {
+    const { to, name, verificationUrl } = options;
 
-        const subject = "Verify Your Email - VyaparX";
-        
-        const html = `
+    const subject = "Verify Your Email - VyaparX";
+
+    const html = `
             <!DOCTYPE html>
             <html>
             <head>
@@ -505,7 +511,7 @@ This is an automated email. Please do not reply to this message.
             </html>
         `;
 
-        const text = `
+    const text = `
 Verify Your Email - VyaparX
 
 Hi ${name},
@@ -536,76 +542,82 @@ The VyaparX Team
 This is an automated email. Please do not reply to this message.
         `;
 
-        await this.sendEmail({
-            to,
-            subject,
-            text,
-            html,
-        });
-    }
+    await this.sendEmail({
+      to,
+      subject,
+      text,
+      html,
+    });
+  }
 
-    async sendBusinessInviteEmail(options: {
-        to: string;
-        invitedEmail: string;
-        businessName: string;
-        inviterName: string;
-        role: string;
-        inviteUrl: string;
-    }): Promise<void> {
-        const { to, invitedEmail, businessName, inviterName, role, inviteUrl } = options;
-        const subject = `Join ${businessName} on VyaparX`;
+  async sendBusinessInviteEmail(options: {
+    to: string;
+    invitedEmail: string;
+    businessName: string;
+    inviterName: string;
+    role: string;
+    inviteUrl: string;
+  }): Promise<void> {
+    const { to, invitedEmail, businessName, inviterName, role, inviteUrl } =
+      options;
+    const subject = `Join ${businessName} on VyaparX`;
 
-        // Role descriptions and permissions
-        const roleDescriptions: Record<string, { label: string; description: string; permissions: string[] }> = {
-            admin: {
-                label: "Admin",
-                description: "Can create, edit, delete records and manage team members",
-                permissions: [
-                    "✓ View all business data",
-                    "✓ Create and edit records",
-                    "✓ Delete records",
-                    "✓ Manage team members",
-                    "✓ Access business settings",
-                ],
-            },
-            staff: {
-                label: "Staff",
-                description: "Can view and create/edit records, but cannot delete or manage settings",
-                permissions: [
-                    "✓ View all business data",
-                    "✓ Create and edit records",
-                    "✗ Cannot delete records",
-                    "✗ Cannot manage team members",
-                    "✗ Cannot access business settings",
-                ],
-            },
-            accountant: {
-                label: "Accountant",
-                description: "Can view and create/edit financial records, but cannot delete or manage settings",
-                permissions: [
-                    "✓ View all business data",
-                    "✓ Create and edit records",
-                    "✗ Cannot delete records",
-                    "✗ Cannot manage team members",
-                    "✗ Cannot access business settings",
-                ],
-            },
-            viewer: {
-                label: "Viewer",
-                description: "Read-only access to all business data",
-                permissions: [
-                    "✓ View all business data",
-                    "✗ Cannot create or edit records",
-                    "✗ Cannot delete records",
-                    "✗ Cannot manage team members",
-                    "✗ Cannot access business settings",
-                ],
-            },
-        };
+    // Role descriptions and permissions
+    const roleDescriptions: Record<
+      string,
+      { label: string; description: string; permissions: string[] }
+    > = {
+      admin: {
+        label: "Admin",
+        description: "Can create, edit, delete records and manage team members",
+        permissions: [
+          "✓ View all business data",
+          "✓ Create and edit records",
+          "✓ Delete records",
+          "✓ Manage team members",
+          "✓ Access business settings",
+        ],
+      },
+      staff: {
+        label: "Staff",
+        description:
+          "Can view and create/edit records, but cannot delete or manage settings",
+        permissions: [
+          "✓ View all business data",
+          "✓ Create and edit records",
+          "✗ Cannot delete records",
+          "✗ Cannot manage team members",
+          "✗ Cannot access business settings",
+        ],
+      },
+      accountant: {
+        label: "Accountant",
+        description:
+          "Can view and create/edit financial records, but cannot delete or manage settings",
+        permissions: [
+          "✓ View all business data",
+          "✓ Create and edit records",
+          "✗ Cannot delete records",
+          "✗ Cannot manage team members",
+          "✗ Cannot access business settings",
+        ],
+      },
+      viewer: {
+        label: "Viewer",
+        description: "Read-only access to all business data",
+        permissions: [
+          "✓ View all business data",
+          "✗ Cannot create or edit records",
+          "✗ Cannot delete records",
+          "✗ Cannot manage team members",
+          "✗ Cannot access business settings",
+        ],
+      },
+    };
 
-        const roleInfo = roleDescriptions[role] || roleDescriptions.viewer;
+    const roleInfo = roleDescriptions[role] || roleDescriptions.viewer;
 
-        const html = `
+    const html = `
             <!DOCTYPE html>
             <html>
             <head>
@@ -703,7 +715,7 @@ This is an automated email. Please do not reply to this message.
                             <div class="permissions-list">
                                 <strong>What you can do:</strong>
                                 <ul style="margin: 10px 0; padding-left: 20px;">
-                                    ${roleInfo.permissions.map(p => `<li>${p}</li>`).join("")}
+                                    ${roleInfo.permissions.map((p) => `<li>${p}</li>`).join("")}
                                 </ul>
                             </div>
                         </div>
@@ -724,7 +736,7 @@ This is an automated email. Please do not reply to this message.
             </html>
         `;
 
-        const text = `
+    const text = `
 Join ${businessName} on VyaparX
 
 ${inviterName} invited you to join ${businessName} on VyaparX.
@@ -733,7 +745,7 @@ Your Role: ${roleInfo.label}
 ${roleInfo.description}
 
 What you can do:
-${roleInfo.permissions.map(p => p.replace(/[✓✗]/g, "")).join("\n")}
+${roleInfo.permissions.map((p) => p.replace(/[✓✗]/g, "")).join("\n")}
 
 Open this link to review and accept the invite:
 ${inviteUrl}
@@ -744,13 +756,13 @@ If you do not have an account yet, sign up with ${invitedEmail} first, then retu
 This is an automated email. Please do not reply to this message.
         `;
 
-        await this.sendEmail({
-            to,
-            subject,
-            text,
-            html,
-        });
-    }
+    await this.sendEmail({
+      to,
+      subject,
+      text,
+      html,
+    });
+  }
 }
 
 export const emailService = new EmailService();

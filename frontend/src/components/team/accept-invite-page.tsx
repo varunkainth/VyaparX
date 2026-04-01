@@ -208,8 +208,13 @@ export function AcceptInvitePage() {
 
               {invite.role && (
                 <div>
-                  <p className="text-xs font-medium text-stone-400 mb-3">Your role and permissions:</p>
-                  <RolePermissionsInfo role={invite.role as BusinessRole} compact />
+                  <p className="text-xs font-medium text-stone-400 mb-3">
+                    Your role and permissions:
+                  </p>
+                  <RolePermissionsInfo
+                    role={invite.role as BusinessRole}
+                    compact
+                  />
                 </div>
               )}
 
