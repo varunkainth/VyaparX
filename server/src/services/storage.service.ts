@@ -1,6 +1,7 @@
 import { GetObjectCommand, HeadBucketCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import env from "../config/env";
 
+
 const r2Client = env.R2_ENABLED
     ? new S3Client({
           region: "auto",
@@ -71,8 +72,10 @@ export const getStorageHealth = async () => {
     }
 };
 
-export const buildR2PublicUrl = (key: string) => {
-    if (!env.R2_PUBLIC_BASE_URL) return null;
+export const buildR2PublicUrl = (key: string): string => {
+    if (!env.R2_PUBLIC_BASE_URL) {
+        throw new Error("R2_PUBLIC_BASE_URL is not configured");
+    }
     return `${env.R2_PUBLIC_BASE_URL}/${encodeObjectKey(key)}`;
 };
 
