@@ -20,6 +20,8 @@ import { Input } from "@/components/ui/input"
 import { Field, FieldGroup, FieldLabel, FieldDescription } from "@/components/ui/field"
 import { NativeSelect } from "@/components/ui/native-select"
 import { Loader2 } from "lucide-react"
+import { RolePermissionsInfo } from "./role-permissions-info"
+import type { BusinessRole } from "@/types/business"
 
 const inviteSchema = z.object({
     email: z.string().email({ message: "Please enter a valid email address." }),
@@ -36,10 +38,12 @@ interface InviteMemberModalProps {
 }
 
 export function InviteMemberModal({ isOpen, onClose, onSuccess, businessId }: InviteMemberModalProps) {
+    const [selectedRole, setSelectedRole] = useState<BusinessRole>("viewer")
     const {
         register,
         handleSubmit,
         reset,
+        watch,
         formState: { errors, isSubmitting },
     } = useForm<InviteFormValues>({
         resolver: zodResolver(inviteSchema),
@@ -49,11 +53,14 @@ export function InviteMemberModal({ isOpen, onClose, onSuccess, businessId }: In
         },
     })
 
+    const currentRole = watch("role")
+
     // Prevent dialog close while submitting
     const handleOpenChange = (open: boolean) => {
         if (isSubmitting) return
         if (!open) {
             reset()
+            setSelectedRole("viewer")
             onClose()
         }
     }
@@ -67,6 +74,7 @@ export function InviteMemberModal({ isOpen, onClose, onSuccess, businessId }: In
             })
             toast.success(result.email_sent ? "Invite email sent successfully!" : "Invite created. Share the link manually if email is unavailable.")
             reset()
+            setSelectedRole("viewer")
             onSuccess()
             onClose()
         } catch (error) {
@@ -76,7 +84,7 @@ export function InviteMemberModal({ isOpen, onClose, onSuccess, businessId }: In
 
     return (
         <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Invite Team Member</DialogTitle>
                     <DialogDescription>
@@ -105,6 +113,7 @@ export function InviteMemberModal({ isOpen, onClose, onSuccess, businessId }: In
                                 id="role"
                                 {...register("role")}
                                 disabled={isSubmitting}
+                                onChange={(e) => setSelectedRole(e.target.value as BusinessRole)}
                             >
                                 <option value="admin">Admin</option>
                                 <option value="staff">Staff</option>
@@ -119,6 +128,12 @@ export function InviteMemberModal({ isOpen, onClose, onSuccess, businessId }: In
                             </FieldDescription>
                         </Field>
                     </FieldGroup>
+
+                    <div className="my-4">
+                        <p className="text-xs font-medium text-muted-foreground mb-3">What this role can do:</p>
+                        <RolePermissionsInfo role={currentRole as BusinessRole} compact />
+                    </div>
+
                     <DialogFooter className="mt-6">
                         <Button
                             type="button"

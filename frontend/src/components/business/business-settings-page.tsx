@@ -85,6 +85,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { hasPermission } from "@/lib/permissions";
 
 export function BusinessSettingsPage() {
   const router = useRouter();
@@ -293,6 +294,36 @@ export function BusinessSettingsPage() {
   // Don't render if no business (will redirect)
   if (!currentBusiness) {
     return null;
+  }
+
+  const canManageBusinessSettings = hasPermission(
+    currentBusiness.role,
+    "businessSettings",
+  );
+
+  if (!canManageBusinessSettings) {
+    return (
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <Card className="w-full max-w-lg">
+              <CardHeader>
+                <CardTitle>Access restricted</CardTitle>
+                <CardDescription>
+                  Only owner and admin accounts can manage business settings.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={() => router.push("/dashboard")}>
+                  Go to Dashboard
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    );
   }
 
   const onSubmit = async (data: UpdateBusinessFormData) => {

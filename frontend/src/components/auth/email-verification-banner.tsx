@@ -12,35 +12,37 @@ interface EmailVerificationBannerProps {
   onDismiss?: () => void;
 }
 
-export function EmailVerificationBanner({ userEmail, onDismiss }: EmailVerificationBannerProps) {
+export function EmailVerificationBanner({
+  userEmail,
+  onDismiss,
+}: EmailVerificationBannerProps) {
   const [isResending, setIsResending] = useState(false);
   const [justSent, setJustSent] = useState(false);
   const { setUser } = useAuthStore();
+  const isDevelopment = process.env.NODE_ENV === "development";
 
   const handleResend = async () => {
     setIsResending(true);
     try {
       await authService.resendVerificationEmail();
-      setJustSent(true);
       toast.success("Verification email sent! Check your inbox.");
-      
-      // Reset after 2 minutes in production, 10 seconds in development
-      const isDevelopment = process.env.NODE_ENV === "development";
-      const cooldownTime = isDevelopment ? 10000 : 120000;
-      
-      setTimeout(() => {
-        setJustSent(false);
-      }, cooldownTime);
+
+      if (!isDevelopment) {
+        setJustSent(true);
+        setTimeout(() => {
+          setJustSent(false);
+        }, 120000);
+      }
     } catch (error) {
       const errorMessage = getErrorMessage(error);
-      
+
       // If error says email is already verified, refresh user data
       if (errorMessage.includes("already verified")) {
         try {
           const { user } = await authService.getMe();
           setUser(user);
           toast.success("Your email is already verified!");
-        } catch (refreshError) {
+        } catch {
           toast.error(errorMessage);
         }
       } else {
@@ -56,21 +58,21 @@ export function EmailVerificationBanner({ userEmail, onDismiss }: EmailVerificat
       <div className="px-4 sm:px-6 lg:px-8 py-2.5">
         <div className="flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Mail className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+            <Mail className="h-4 w-4 text-yellow-500 shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-xs sm:text-sm text-yellow-200 truncate">
                 <span className="font-medium">Email not verified.</span>{" "}
                 <span className="hidden sm:inline">
-                  Check your inbox at <span className="font-medium">{userEmail}</span> and verify your email.
+                  Check your inbox at{" "}
+                  <span className="font-medium">{userEmail}</span> and verify
+                  your email.
                 </span>
-                <span className="sm:hidden">
-                  Check your inbox to verify.
-                </span>
+                <span className="sm:hidden">Check your inbox to verify.</span>
               </p>
             </div>
           </div>
-          
-          <div className="flex items-center gap-2 flex-shrink-0">
+
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleResend}
               disabled={isResending || justSent}
@@ -93,7 +95,7 @@ export function EmailVerificationBanner({ userEmail, onDismiss }: EmailVerificat
                 </>
               )}
             </button>
-            
+
             {onDismiss && (
               <button
                 onClick={onDismiss}

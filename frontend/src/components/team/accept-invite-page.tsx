@@ -1,90 +1,146 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
-import { toast } from "sonner"
-import { businessService } from "@/services/business.service"
-import { useAuthStore } from "@/store/useAuthStore"
-import type { BusinessInvite } from "@/types/business"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Wordmark } from "@/components/branding/wordmark"
-import { getErrorMessage } from "@/lib/error-handler"
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
+import { businessService } from "@/services/business.service";
+import { useAuthStore } from "@/store/useAuthStore";
+import { useBusinessStore } from "@/store/useBusinessStore";
+import type { BusinessInvite } from "@/types/business";
+import type { BusinessRole } from "@/types/business";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Wordmark } from "@/components/branding/wordmark";
+import { getErrorMessage } from "@/lib/error-handler";
+import { resetBusinessesFetchState } from "@/hooks/use-businesses";
+import { RolePermissionsInfo } from "./role-permissions-info";
 
 const roleLabel = (role?: string | null) => {
-  if (!role) return "Member"
-  return role.charAt(0).toUpperCase() + role.slice(1)
-}
+  if (!role) return "Member";
+  return role.charAt(0).toUpperCase() + role.slice(1);
+};
 
 export function AcceptInvitePage() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const token = searchParams.get("token")
-  const { user, isAuthenticated, setAuth, clearAuth } = useAuthStore()
-  const [invite, setInvite] = useState<BusinessInvite | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [isAccepting, setIsAccepting] = useState(false)
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
+  const { user, isAuthenticated, _hasHydrated, setAuth, clearAuth } =
+    useAuthStore();
+  const { setBusinesses, setCurrentBusiness } = useBusinessStore();
+  const [invite, setInvite] = useState<BusinessInvite | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAccepting, setIsAccepting] = useState(false);
+
+  useEffect(() => {
+    if (!_hasHydrated) {
+      return;
+    }
+
+    if (!token || isAuthenticated) {
+      return;
+    }
+
+    const next = encodeURIComponent(`/accept-invite?token=${token}`);
+    router.replace(`/login?next=${next}`);
+  }, [_hasHydrated, isAuthenticated, token, router]);
 
   useEffect(() => {
     if (!token) {
-      setIsLoading(false)
-      return
+      setIsLoading(false);
+      return;
     }
 
-    let isMounted = true
-    setIsLoading(true)
+    let isMounted = true;
+    setIsLoading(true);
 
     void businessService
       .getInvite(token)
       .then((data) => {
         if (isMounted) {
-          setInvite(data)
+          setInvite(data);
         }
       })
       .catch((error) => {
         if (isMounted) {
-          toast.error(getErrorMessage(error))
+          toast.error(getErrorMessage(error));
         }
       })
       .finally(() => {
         if (isMounted) {
-          setIsLoading(false)
+          setIsLoading(false);
         }
-      })
+      });
 
     return () => {
-      isMounted = false
-    }
-  }, [token])
+      isMounted = false;
+    };
+  }, [token]);
 
-  const nextQuery = token ? new URLSearchParams({ next: `/accept-invite?token=${token}`, email: invite?.email || "" }).toString() : ""
-  const loginHref = nextQuery ? `/login?${nextQuery}` : "/login"
-  const signupHref = nextQuery ? `/signup?${nextQuery}` : "/signup"
+  const nextQuery = token
+    ? new URLSearchParams({
+        next: `/accept-invite?token=${token}`,
+        email: invite?.email || "",
+      }).toString()
+    : "";
+  const loginHref = nextQuery ? `/login?${nextQuery}` : "/login";
+  const signupHref = nextQuery ? `/signup?${nextQuery}` : "/signup";
+
+  if (!_hasHydrated) {
+    return (
+      <div className="flex min-h-svh items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   const handleAccept = async () => {
-    if (!token || !user) return
+    if (!token || !user) return;
 
-    setIsAccepting(true)
+    setIsAccepting(true);
     try {
-      const response = await businessService.acceptInvite(token)
-      setAuth(user, response.tokens, response.session)
-      toast.success(`Joined ${invite?.business_name || "the business"} successfully`)
-      router.push("/dashboard")
+      const response = await businessService.acceptInvite(token);
+      setAuth(user, response.tokens, response.session);
+
+      resetBusinessesFetchState();
+
+      const businesses = await businessService.listBusinesses();
+      setBusinesses(businesses);
+
+      const acceptedBusinessId = response.session?.business_id ?? null;
+      const acceptedBusiness =
+        (acceptedBusinessId
+          ? businesses.find((business) => business.id === acceptedBusinessId)
+          : null) ??
+        businesses[0] ??
+        null;
+
+      setCurrentBusiness(acceptedBusiness);
+
+      toast.success(
+        `Joined ${invite?.business_name || "the business"} successfully`,
+      );
+      router.push("/dashboard");
     } catch (error) {
-      toast.error(getErrorMessage(error))
+      toast.error(getErrorMessage(error));
     } finally {
-      setIsAccepting(false)
+      setIsAccepting(false);
     }
-  }
+  };
 
   const emailMismatch =
     isAuthenticated &&
     user?.email &&
     invite?.email &&
-    user.email.toLowerCase() !== invite.email.toLowerCase()
+    user.email.toLowerCase() !== invite.email.toLowerCase();
 
   return (
     <div className="relative flex min-h-svh items-center justify-center overflow-hidden bg-[linear-gradient(180deg,#09090b_0%,#111214_46%,#17120f_100%)] p-6 md:p-10">
@@ -98,7 +154,9 @@ export function AcceptInvitePage() {
         <CardHeader className="space-y-3">
           <Wordmark compact />
           <div className="space-y-1">
-            <CardTitle className="font-serif text-3xl italic text-white">Business invite</CardTitle>
+            <CardTitle className="font-serif text-3xl italic text-white">
+              Business invite
+            </CardTitle>
             <CardDescription>
               Review the invite details and join the business from here.
             </CardDescription>
@@ -107,7 +165,9 @@ export function AcceptInvitePage() {
         <CardContent className="space-y-4">
           {!token && (
             <Alert>
-              <AlertDescription>Invite token is missing from the link.</AlertDescription>
+              <AlertDescription>
+                Invite token is missing from the link.
+              </AlertDescription>
             </Alert>
           )}
 
@@ -126,24 +186,38 @@ export function AcceptInvitePage() {
                 </div>
                 <div className="mt-4 space-y-2 text-sm text-stone-300">
                   <p>
-                    <span className="text-stone-500">Business:</span> {invite.business_name}
+                    <span className="text-stone-500">Business:</span>{" "}
+                    {invite.business_name}
                   </p>
                   <p>
-                    <span className="text-stone-500">Invited email:</span> {invite.email}
+                    <span className="text-stone-500">Invited email:</span>{" "}
+                    {invite.email}
                   </p>
                   <p>
-                    <span className="text-stone-500">Invited by:</span> {invite.inviter_name || invite.inviter_email || "A VyaparX admin"}
+                    <span className="text-stone-500">Invited by:</span>{" "}
+                    {invite.inviter_name ||
+                      invite.inviter_email ||
+                      "A VyaparX admin"}
                   </p>
                   <p>
-                    <span className="text-stone-500">Expires:</span> {new Date(invite.expires_at).toLocaleString()}
+                    <span className="text-stone-500">Expires:</span>{" "}
+                    {new Date(invite.expires_at).toLocaleString()}
                   </p>
                 </div>
               </div>
 
+              {invite.role && (
+                <div>
+                  <p className="text-xs font-medium text-stone-400 mb-3">Your role and permissions:</p>
+                  <RolePermissionsInfo role={invite.role as BusinessRole} compact />
+                </div>
+              )}
+
               {invite.status !== "pending" && (
                 <Alert>
                   <AlertDescription>
-                    This invite is {invite.status}. Ask the business owner to send a new one if you still need access.
+                    This invite is {invite.status}. Ask the business owner to
+                    send a new one if you still need access.
                   </AlertDescription>
                 </Alert>
               )}
@@ -151,7 +225,9 @@ export function AcceptInvitePage() {
               {!isAuthenticated && invite.status === "pending" && (
                 <Alert>
                   <AlertDescription>
-                    Sign in with <strong>{invite.email}</strong>, or create an account with that email, then return here to accept the invite.
+                    Sign in with <strong>{invite.email}</strong>, or create an
+                    account with that email, then return here to accept the
+                    invite.
                   </AlertDescription>
                 </Alert>
               )}
@@ -159,7 +235,9 @@ export function AcceptInvitePage() {
               {emailMismatch && (
                 <Alert>
                   <AlertDescription>
-                    You are signed in as <strong>{user?.email}</strong>. This invite was sent to <strong>{invite.email}</strong>. Switch accounts to accept it.
+                    You are signed in as <strong>{user?.email}</strong>. This
+                    invite was sent to <strong>{invite.email}</strong>. Switch
+                    accounts to accept it.
                   </AlertDescription>
                 </Alert>
               )}
@@ -180,22 +258,26 @@ export function AcceptInvitePage() {
                   <Button
                     variant="outline"
                     onClick={() => {
-                      clearAuth()
-                      router.push(loginHref)
+                      clearAuth();
+                      router.push(loginHref);
                     }}
                   >
                     Use another account
                   </Button>
                 )}
 
-                {isAuthenticated && !emailMismatch && invite.status === "pending" && (
-                  <Button onClick={handleAccept} disabled={isAccepting}>
-                    {isAccepting ? "Accepting..." : "Accept and join"}
-                  </Button>
-                )}
+                {isAuthenticated &&
+                  !emailMismatch &&
+                  invite.status === "pending" && (
+                    <Button onClick={handleAccept} disabled={isAccepting}>
+                      {isAccepting ? "Accepting..." : "Accept and join"}
+                    </Button>
+                  )}
 
                 <Button asChild variant="ghost">
-                  <Link href={isAuthenticated ? "/dashboard" : "/"}>{isAuthenticated ? "Back to dashboard" : "Back to home"}</Link>
+                  <Link href={isAuthenticated ? "/dashboard" : "/"}>
+                    {isAuthenticated ? "Back to dashboard" : "Back to home"}
+                  </Link>
                 </Button>
               </div>
             </>
@@ -203,5 +285,5 @@ export function AcceptInvitePage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

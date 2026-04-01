@@ -1,6 +1,7 @@
-"use client"
+"use client";
 
-import * as React from "react"
+import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   FileText,
@@ -12,19 +13,29 @@ import {
   Receipt,
   BookOpen,
   CreditCard,
-} from "lucide-react"
+} from "lucide-react";
 
-import { NavMain } from "@/components/layout/nav-main"
-import { NavUser } from "@/components/layout/nav-user"
-import { BusinessSwitcher } from "@/components/business/business-switcher"
-import { InvoiceTypeSelector } from "@/components/invoices/invoice-type-selector"
+import { NavMain } from "@/components/layout/nav-main";
+import { NavUser } from "@/components/layout/nav-user";
+import { BusinessSwitcher } from "@/components/business/business-switcher";
+import { InvoiceTypeSelector } from "@/components/invoices/invoice-type-selector";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
+import { useBusinessStore } from "@/store/useBusinessStore";
+import { getRoleCapabilities } from "@/lib/permissions";
 
 // Navigation data for VyaparX
 const data = {
@@ -66,6 +77,7 @@ const data = {
           title: "Create",
           url: "#",
           isSpecialAction: true,
+          actionKey: "invoice-create",
         },
       ],
     },
@@ -80,7 +92,9 @@ const data = {
         },
         {
           title: "Add Party",
-          url: "/parties/create",
+          url: "#",
+          isSpecialAction: true,
+          actionKey: "party-add",
         },
         {
           title: "Customers",
@@ -204,26 +218,90 @@ const data = {
       ],
     },
   ],
-}
+};
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const [showInvoiceTypeSelector, setShowInvoiceTypeSelector] = React.useState(false);
+  const router = useRouter();
+  const currentBusiness = useBusinessStore((state) => state.currentBusiness);
+  const capabilities = getRoleCapabilities(currentBusiness?.role);
+  const [showInvoiceTypeSelector, setShowInvoiceTypeSelector] =
+    React.useState(false);
+  const [showPartyTypeSelector, setShowPartyTypeSelector] =
+    React.useState(false);
+
+  const navItems = React.useMemo(() => {
+    return data.navMain
+      .map((section) => {
+        if (section.title === "Settings" && !capabilities.businessSettings) {
+          return null;
+        }
+
+        const filteredSubItems = section.items?.filter((subItem) => {
+          if (
+            subItem.actionKey === "invoice-create" ||
+            subItem.actionKey === "party-add"
+          ) {
+            return capabilities.createEdit;
+          }
+
+          if (
+            subItem.url === "/inventory/create" ||
+            subItem.url === "/payments/record"
+          ) {
+            return capabilities.createEdit;
+          }
+
+          if (subItem.url.startsWith("/settings/")) {
+            return capabilities.businessSettings;
+          }
+
+          return true;
+        });
+
+        if (
+          section.items &&
+          (!filteredSubItems || filteredSubItems.length === 0)
+        ) {
+          return null;
+        }
+
+        return {
+          ...section,
+          items: filteredSubItems,
+        };
+      })
+      .filter((section): section is NonNullable<typeof section> =>
+        Boolean(section),
+      );
+  }, [capabilities.businessSettings, capabilities.createEdit]);
+
+  const handlePartyTypeSelect = (type: "customer" | "supplier" | "both") => {
+    setShowPartyTypeSelector(false);
+    router.push(`/parties/create?type=${type}`);
+  };
 
   // Handle click events on the sidebar
   React.useEffect(() => {
     const handleClick = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
+      const actionElement = target.closest<HTMLElement>(
+        "[data-sidebar-action]",
+      );
 
-      // Check if the clicked element is the "Create" button in the Invoices menu
-      if (target.closest('a[href="#"]') &&
-        target.textContent?.trim() === "Create") {
+      if (actionElement?.dataset.sidebarAction === "invoice-create") {
         event.preventDefault();
         setShowInvoiceTypeSelector(true);
+        return;
+      }
+
+      if (actionElement?.dataset.sidebarAction === "party-add") {
+        event.preventDefault();
+        setShowPartyTypeSelector(true);
       }
     };
 
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
   }, []);
 
   return (
@@ -233,7 +311,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <BusinessSwitcher />
         </SidebarHeader>
         <SidebarContent>
-          <NavMain items={data.navMain} />
+          <NavMain items={navItems} />
         </SidebarContent>
         <SidebarFooter>
           <NavUser />
@@ -244,6 +322,44 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         open={showInvoiceTypeSelector}
         onOpenChange={setShowInvoiceTypeSelector}
       />
+      <Dialog
+        open={showPartyTypeSelector}
+        onOpenChange={setShowPartyTypeSelector}
+      >
+        <DialogContent className="max-w-[95vw] sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Party Type</DialogTitle>
+            <DialogDescription>
+              Choose which type of party you want to create.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Button
+              type="button"
+              className="cursor-pointer"
+              onClick={() => handlePartyTypeSelect("customer")}
+            >
+              Customer
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() => handlePartyTypeSelect("supplier")}
+            >
+              Supplier
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="cursor-pointer"
+              onClick={() => handlePartyTypeSelect("both")}
+            >
+              Both
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
-  )
+  );
 }

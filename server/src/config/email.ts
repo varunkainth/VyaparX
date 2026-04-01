@@ -555,6 +555,56 @@ This is an automated email. Please do not reply to this message.
         const { to, invitedEmail, businessName, inviterName, role, inviteUrl } = options;
         const subject = `Join ${businessName} on VyaparX`;
 
+        // Role descriptions and permissions
+        const roleDescriptions: Record<string, { label: string; description: string; permissions: string[] }> = {
+            admin: {
+                label: "Admin",
+                description: "Can create, edit, delete records and manage team members",
+                permissions: [
+                    "✓ View all business data",
+                    "✓ Create and edit records",
+                    "✓ Delete records",
+                    "✓ Manage team members",
+                    "✓ Access business settings",
+                ],
+            },
+            staff: {
+                label: "Staff",
+                description: "Can view and create/edit records, but cannot delete or manage settings",
+                permissions: [
+                    "✓ View all business data",
+                    "✓ Create and edit records",
+                    "✗ Cannot delete records",
+                    "✗ Cannot manage team members",
+                    "✗ Cannot access business settings",
+                ],
+            },
+            accountant: {
+                label: "Accountant",
+                description: "Can view and create/edit financial records, but cannot delete or manage settings",
+                permissions: [
+                    "✓ View all business data",
+                    "✓ Create and edit records",
+                    "✗ Cannot delete records",
+                    "✗ Cannot manage team members",
+                    "✗ Cannot access business settings",
+                ],
+            },
+            viewer: {
+                label: "Viewer",
+                description: "Read-only access to all business data",
+                permissions: [
+                    "✓ View all business data",
+                    "✗ Cannot create or edit records",
+                    "✗ Cannot delete records",
+                    "✗ Cannot manage team members",
+                    "✗ Cannot access business settings",
+                ],
+            },
+        };
+
+        const roleInfo = roleDescriptions[role] || roleDescriptions.viewer;
+
         const html = `
             <!DOCTYPE html>
             <html>
@@ -582,6 +632,34 @@ This is an automated email. Please do not reply to this message.
                         padding: 30px;
                         border: 1px solid #e5e7eb;
                         border-top: none;
+                    }
+                    .role-box {
+                        background-color: white;
+                        border-left: 4px solid #4F46E5;
+                        padding: 15px;
+                        margin: 20px 0;
+                        border-radius: 4px;
+                    }
+                    .role-label {
+                        font-weight: bold;
+                        color: #4F46E5;
+                        font-size: 1.1em;
+                    }
+                    .role-description {
+                        color: #666;
+                        margin: 10px 0;
+                        font-size: 0.95em;
+                    }
+                    .permissions-list {
+                        background-color: #f3f4f6;
+                        padding: 15px;
+                        border-radius: 4px;
+                        margin: 10px 0;
+                        font-size: 0.9em;
+                    }
+                    .permissions-list li {
+                        padding: 5px 0;
+                        color: #495057;
                     }
                     .button {
                         display: inline-block;
@@ -618,7 +696,18 @@ This is an automated email. Please do not reply to this message.
                     <div class="content">
                         <p>Hi ${invitedEmail},</p>
                         <p><strong>${inviterName}</strong> invited you to join <strong>${businessName}</strong> on VyaparX.</p>
-                        <p>Your access role will be <strong>${role}</strong>.</p>
+                        
+                        <div class="role-box">
+                            <div class="role-label">Your Role: ${roleInfo.label}</div>
+                            <div class="role-description">${roleInfo.description}</div>
+                            <div class="permissions-list">
+                                <strong>What you can do:</strong>
+                                <ul style="margin: 10px 0; padding-left: 20px;">
+                                    ${roleInfo.permissions.map(p => `<li>${p}</li>`).join("")}
+                                </ul>
+                            </div>
+                        </div>
+                        
                         <div style="text-align: center;">
                             <a href="${inviteUrl}" class="button">Review And Accept Invite</a>
                         </div>
@@ -639,7 +728,12 @@ This is an automated email. Please do not reply to this message.
 Join ${businessName} on VyaparX
 
 ${inviterName} invited you to join ${businessName} on VyaparX.
-Your access role will be ${role}.
+
+Your Role: ${roleInfo.label}
+${roleInfo.description}
+
+What you can do:
+${roleInfo.permissions.map(p => p.replace(/[✓✗]/g, "")).join("\n")}
 
 Open this link to review and accept the invite:
 ${inviteUrl}

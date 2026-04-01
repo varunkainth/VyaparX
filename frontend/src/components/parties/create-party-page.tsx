@@ -12,6 +12,7 @@ import { partyService } from "@/services/party.service";
 import { useBusinessStore } from "@/store/useBusinessStore";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error-handler";
+import { hasPermission } from "@/lib/permissions";
 import {
   PIN_MAPPED_STATES,
   formatPinMappedStateDisplay,
@@ -70,7 +71,11 @@ import {
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
 
-export function CreatePartyPage() {
+type CreatePartyPageProps = {
+  initialPartyType?: "customer" | "supplier" | "both";
+};
+
+export function CreatePartyPage({ initialPartyType }: CreatePartyPageProps) {
   const router = useRouter();
   const { currentBusiness } = useBusinessStore();
 
@@ -107,6 +112,15 @@ export function CreatePartyPage() {
   const stateCode = watch("state_code");
   const stateName = watch("state");
   const pincode = watch("pincode");
+
+  useEffect(() => {
+    if (initialPartyType) {
+      setValue("party_type", initialPartyType, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    }
+  }, [initialPartyType, setValue]);
 
   // Auto-fill state name when state code is selected
   const handleStateCodeChange = (code: string) => {
@@ -233,6 +247,33 @@ export function CreatePartyPage() {
             <p className="text-muted-foreground">
               Please select a business first
             </p>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    );
+  }
+
+  const canCreateEdit = hasPermission(currentBusiness.role, "createEdit");
+
+  if (!canCreateEdit) {
+    return (
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <Card className="w-full max-w-lg">
+              <CardHeader>
+                <CardTitle>Read-only access</CardTitle>
+                <CardDescription>
+                  Your role can view parties but cannot create new ones.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={() => router.push("/parties")}>
+                  Go to Parties
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </SidebarInset>
       </SidebarProvider>

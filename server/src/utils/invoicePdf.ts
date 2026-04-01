@@ -5,6 +5,18 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
+const fontsDir = fileURLToPath(
+  new URL("../assets/fonts", import.meta.url),
+);
+
+// Store the paths to register them later
+const FONT_REGULAR_PATH = `${fontsDir}/Roboto-Regular.ttf`;
+const FONT_BOLD_PATH = `${fontsDir}/Roboto-Bold.ttf`;
+
+// Use these as the registered font names throughout the document
+const FONT_REGULAR = "Roboto-Regular";
+const FONT_BOLD = "Roboto-Bold";
+
 // --- Utility Functions ---
 
 const asNumber = (value: unknown): number => {
@@ -52,9 +64,9 @@ const formatIndianNumber = (num: number): string => {
   return `${groups.join(",")},${last3}.${d}`;
 };
 
-// Use "Rs." since PDFKit's default Helvetica font supports it natively
+// Use the ₹ symbol directly (Custom fonts support this natively)
 const rs = (value: unknown): string =>
-  `Rs. ${formatIndianNumber(asNumber(value))}`;
+  `₹ ${formatIndianNumber(asNumber(value))}`;
 
 const getInvoiceRoundedTotals = (invoice: InvoicePdfData["invoice"]) => {
   const finalTotal = asNumber(invoice.grand_total);
@@ -243,7 +255,7 @@ const renderItems = (
 };
 
 // ════════════════════════════════════════════════════════════════════════════
-// NEW DESIGN: CLASSIC (Elegant, Minimalist, Horizontal Lines Only)
+// NEW DESIGN: CLASSIC
 // ════════════════════════════════════════════════════════════════════════════
 const renderClassic = (
   doc: PDFKit.PDFDocument,
@@ -257,7 +269,7 @@ const renderClassic = (
 
   // Header: Business Name (Left) & INVOICE (Right)
   doc
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .fontSize(24)
     .text(getText(data.businessName).toUpperCase(), x, y);
   doc
@@ -272,7 +284,7 @@ const renderClassic = (
 
   doc
     .fillColor(config.headerBackgroundColor || "#000000")
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .fontSize(28)
     .text(config.title.toUpperCase(), x, y, { width, align: "right" });
 
@@ -289,9 +301,9 @@ const renderClassic = (
   y += 15;
 
   // Meta: Bill To & Invoice Info
-  doc.font("Helvetica-Bold").fontSize(10).text("BILL TO:", x, y);
+  doc.font(FONT_BOLD).fontSize(10).text("BILL TO:", x, y);
   doc
-    .font("Helvetica")
+    .font(FONT_REGULAR)
     .fontSize(10)
     .text(getText(data.partyName).toUpperCase(), x, y + 15);
   doc
@@ -302,19 +314,19 @@ const renderClassic = (
 
   doc.fillColor("#000000");
   const infoX = x + 300;
-  doc.font("Helvetica-Bold").fontSize(9).text("Invoice Number:", infoX, y);
+  doc.font(FONT_BOLD).fontSize(9).text("Invoice Number:", infoX, y);
   doc
-    .font("Helvetica")
+    .font(FONT_REGULAR)
     .text(getText(data.invoice.invoice_number), infoX + 90, y);
 
-  doc.font("Helvetica-Bold").text("Invoice Date:", infoX, y + 15);
+  doc.font(FONT_BOLD).text("Invoice Date:", infoX, y + 15);
   doc
-    .font("Helvetica")
+    .font(FONT_REGULAR)
     .text(formatDate(data.invoice.invoice_date), infoX + 90, y + 15);
 
-  doc.font("Helvetica-Bold").text("Status:", infoX, y + 30);
+  doc.font(FONT_BOLD).text("Status:", infoX, y + 30);
   doc
-    .font("Helvetica")
+    .font(FONT_REGULAR)
     .text(
       getText(data.invoice.payment_status).toUpperCase(),
       infoX + 90,
@@ -333,7 +345,7 @@ const renderClassic = (
   y += 8;
 
   const colX = [x, x + 220, x + 290, x + 370, rightX]; // Desc, Qty, Rate, Total
-  doc.font("Helvetica-Bold").fontSize(9);
+  doc.font(FONT_BOLD).fontSize(9);
   doc.text("Description", colX[0]!, y);
   doc.text("Qty", colX[1]!, y, { width: colX[2]! - colX[1]!, align: "center" });
   doc.text("Rate", colX[2]!, y, { width: colX[3]! - colX[2]!, align: "right" });
@@ -352,7 +364,7 @@ const renderClassic = (
   y += 10;
 
   // Table Items
-  doc.font("Helvetica").fontSize(9);
+  doc.font(FONT_REGULAR).fontSize(9);
   data.invoice.items.forEach((item) => {
     const name = getText(item.item_name);
     const itemH = doc.heightOfString(name, { width: 200 });
@@ -387,7 +399,7 @@ const renderClassic = (
   const totalsW = rightX - totalsX;
   const roundedTotals = getInvoiceRoundedTotals(data.invoice);
 
-  doc.font("Helvetica").text("Taxable Amount:", totalsX, y);
+  doc.font(FONT_REGULAR).text("Taxable Amount:", totalsX, y);
   doc.text(rs(data.invoice.taxable_amount), totalsX, y, {
     width: totalsW,
     align: "right",
@@ -423,7 +435,7 @@ const renderClassic = (
     .stroke();
   y += 8;
 
-  doc.font("Helvetica-Bold").fontSize(11).text("Final Total:", totalsX, y);
+  doc.font(FONT_BOLD).fontSize(11).text("Final Total:", totalsX, y);
   doc.text(rs(roundedTotals.finalTotal), totalsX, y, {
     width: totalsW,
     align: "right",
@@ -431,7 +443,7 @@ const renderClassic = (
 };
 
 // ════════════════════════════════════════════════════════════════════════════
-// NEW DESIGN: MODERN (Sleek Corporate, Colored Banners, Highlighted Totals)
+// NEW DESIGN: MODERN
 // ════════════════════════════════════════════════════════════════════════════
 const renderModern = (
   doc: PDFKit.PDFDocument,
@@ -446,25 +458,25 @@ const renderModern = (
 
   doc
     .fillColor(txtColor)
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .fontSize(28)
     .text(config.title.toUpperCase(), 40, 40);
   doc
     .fontSize(10)
-    .font("Helvetica")
+    .font(FONT_REGULAR)
     .text(`Invoice No: ${getText(data.invoice.invoice_number)}`, 40, 75)
     .text(`Date: ${formatDate(data.invoice.invoice_date)}`, 160, 75);
 
   // Business Details (Right aligned in header)
   doc
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .fontSize(14)
     .text(getText(data.businessName).toUpperCase(), 40, 40, {
       width: doc.page.width - 80,
       align: "right",
     });
   doc
-    .font("Helvetica")
+    .font(FONT_REGULAR)
     .fontSize(9)
     .text(getText(data.business?.address_line1), 40, 60, {
       width: doc.page.width - 80,
@@ -483,16 +495,16 @@ const renderModern = (
   // Bill To
   doc
     .fillColor("#666666")
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .fontSize(9)
     .text("INVOICE TO", x, y);
   doc
     .fillColor("#000000")
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .fontSize(12)
     .text(getText(data.partyName).toUpperCase(), x, y + 15);
   doc
-    .font("Helvetica")
+    .font(FONT_REGULAR)
     .fontSize(9)
     .fillColor("#555555")
     .text(getText(data.party?.address), x, y + 30)
@@ -507,7 +519,7 @@ const renderModern = (
 
   // Table Header (Colored Background)
   doc.rect(x, y, rightX - x, 25).fill(bgColor);
-  doc.fillColor(txtColor).font("Helvetica-Bold").fontSize(9);
+  doc.fillColor(txtColor).font(FONT_BOLD).fontSize(9);
 
   const colX = [x + 10, x + 240, x + 310, x + 390, rightX - 10];
   const headerY = y + 7;
@@ -536,7 +548,7 @@ const renderModern = (
     // Zebra striping
     if (index % 2 === 1)
       doc.rect(x, y - 5, rightX - x, itemH + 10).fill("#F9FAFB");
-    doc.fillColor("#000000").font("Helvetica").fontSize(9);
+    doc.fillColor("#000000").font(FONT_REGULAR).fontSize(9);
 
     doc.text(name, colX[0]!, y, { width: 220 });
     doc.text(`${item.quantity} ${item.unit}`, colX[1]!, y, {
@@ -564,7 +576,7 @@ const renderModern = (
   doc.rect(boxX, y, boxW, 115).lineWidth(1).strokeColor("#E5E7EB").stroke();
 
   doc
-    .font("Helvetica")
+    .font(FONT_REGULAR)
     .fontSize(9)
     .text("Subtotal", boxX + 15, y + 15);
   doc.text(rs(data.invoice.taxable_amount), boxX + 15, y + 15, {
@@ -594,7 +606,7 @@ const renderModern = (
   doc.rect(boxX, y + 95, boxW, 20).fill(bgColor);
   doc
     .fillColor(txtColor)
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .fontSize(11)
     .text("Final Total", boxX + 15, y + 101);
   doc.text(rs(roundedTotals.finalTotal), boxX + 15, y + 101, {
@@ -604,7 +616,7 @@ const renderModern = (
 };
 
 // ════════════════════════════════════════════════════════════════════════════
-// NEW DESIGN: COMPACT (Receipt Style, Centered, Narrow, Dashed Lines)
+// NEW DESIGN: COMPACT
 // ════════════════════════════════════════════════════════════════════════════
 const renderCompact = (
   doc: PDFKit.PDFDocument,
@@ -629,7 +641,7 @@ const renderCompact = (
 
   // Header
   doc
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .fontSize(16)
     .text(getText(data.businessName).toUpperCase(), x, y, {
       width,
@@ -637,7 +649,7 @@ const renderCompact = (
     });
   y += 20;
   doc
-    .font("Helvetica")
+    .font(FONT_REGULAR)
     .fontSize(8)
     .fillColor("#555555")
     .text(getText(data.business?.address_line1), x, y, {
@@ -657,11 +669,11 @@ const renderCompact = (
   // Invoice Meta
   doc
     .fillColor("#000000")
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .fontSize(12)
     .text(config.title.toUpperCase(), x, y, { width, align: "center" });
   y += 20;
-  doc.font("Helvetica").fontSize(9);
+  doc.font(FONT_REGULAR).fontSize(9);
   doc.text(`No: ${data.invoice.invoice_number}`, x, y);
   doc.text(formatDate(data.invoice.invoice_date), x, y, {
     width,
@@ -676,12 +688,12 @@ const renderCompact = (
   y += 10;
 
   // Items
-  doc.font("Helvetica-Bold").fontSize(8);
+  doc.font(FONT_BOLD).fontSize(8);
   doc.text("ITEM", x, y);
   doc.text("AMT", x, y, { width, align: "right" });
   y += 15;
 
-  doc.font("Helvetica").fontSize(9);
+  doc.font(FONT_REGULAR).fontSize(9);
   data.invoice.items.forEach((item) => {
     const name = getText(item.item_name);
     doc.text(name, x, y, { width: width - 60 });
@@ -702,7 +714,7 @@ const renderCompact = (
   y += 10;
 
   // Totals
-  doc.font("Helvetica").fontSize(9);
+  doc.font(FONT_REGULAR).fontSize(9);
   const roundedTotals = getInvoiceRoundedTotals(data.invoice);
   doc.text("Subtotal", x, y);
   doc.text(rs(data.invoice.taxable_amount), x, y, { width, align: "right" });
@@ -726,20 +738,20 @@ const renderCompact = (
   drawDashedLine(y);
   y += 10;
 
-  doc.font("Helvetica-Bold").fontSize(12);
+  doc.font(FONT_BOLD).fontSize(12);
   doc.text("FINAL TOTAL", x, y);
   doc.text(rs(roundedTotals.finalTotal), x, y, { width, align: "right" });
 
   y += 30;
   doc
-    .font("Helvetica-Oblique")
+    .font(FONT_REGULAR) // Changed from Helvetica-Oblique to keep it consistent
     .fontSize(8)
     .fillColor("#777777")
     .text("Thank you for your business!", x, y, { width, align: "center" });
 };
 
 // ════════════════════════════════════════════════════════════════════════════
-// BILL PRO DESIGN (Standard Tally-Like Professional Structure)
+// BILL PRO DESIGN
 // ════════════════════════════════════════════════════════════════════════════
 const renderBillPro = (
   doc: PDFKit.PDFDocument,
@@ -757,7 +769,7 @@ const renderBillPro = (
   // ════════════════════════════════════
   // 1. HEADER: TAX INVOICE
   // ════════════════════════════════════
-  doc.font("Helvetica-Bold").fontSize(10);
+  doc.font(FONT_BOLD).fontSize(10);
   doc.text("TAX INVOICE", x, currentY + 4, { width, align: "center" });
   currentY += 18;
   doc.moveTo(x, currentY).lineTo(totalX, currentY).stroke("#000000");
@@ -765,14 +777,14 @@ const renderBillPro = (
   // ════════════════════════════════════
   // 2. BUSINESS DETAILS
   // ════════════════════════════════════
-  doc.font("Helvetica-Bold").fontSize(14);
+  doc.font(FONT_BOLD).fontSize(14);
   doc.text(getText(data.businessName).toUpperCase(), x, currentY + 6, {
     width,
     align: "center",
   });
   currentY += 22;
 
-  doc.font("Helvetica").fontSize(8);
+  doc.font(FONT_REGULAR).fontSize(8);
   const addr1 = getText(data.business?.address_line1, "");
   if (addr1 && addr1 !== "-") {
     doc.text(addr1, x, currentY, { width, align: "center" });
@@ -793,7 +805,7 @@ const renderBillPro = (
 
   // Bold Business GSTIN
   doc
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .text(`GSTIN No ${getText(data.business?.gstin)}`, x, currentY, {
       width,
       align: "center",
@@ -839,7 +851,7 @@ const renderBillPro = (
 
   // --- Bill To ---
   doc
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .fontSize(7)
     .text("Bill to", x + 4, metaY + 4);
   doc
@@ -847,7 +859,7 @@ const renderBillPro = (
     .text(getText(data.partyName).toUpperCase(), x + 4, metaY + 16, {
       width: mCol1W - 8,
     });
-  doc.font("Helvetica").fontSize(8);
+  doc.font(FONT_REGULAR).fontSize(8);
 
   let bY = metaY + 30;
   const pAddr = getText(data.party?.address, "");
@@ -868,14 +880,14 @@ const renderBillPro = (
 
   // Bold Party GSTIN
   doc
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .text(`GSTIN NO. ${getText(data.party?.gstin)}`, x + 4, bY, {
       width: mCol1W - 8,
     });
 
-  // --- Place of Supply (Updated to show Name and Address) ---
+  // --- Place of Supply ---
   doc
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .fontSize(7)
     .text("Place of Supply", mCol1X + 4, metaY + 4);
   doc
@@ -884,7 +896,7 @@ const renderBillPro = (
       width: mCol2W - 8,
     });
 
-  doc.font("Helvetica").fontSize(8);
+  doc.font(FONT_REGULAR).fontSize(8);
   let posAddrY = metaY + 30;
   if (pAddr && pAddr !== "-") {
     doc.text(pAddr, mCol1X + 4, posAddrY, { width: mCol2W - 8 });
@@ -897,22 +909,16 @@ const renderBillPro = (
     posAddrY += 10;
   }
 
-  // // Original state code added at the bottom
-  // const posText = getText(data.invoice.place_of_supply, "");
-  // if (posText && posText !== "-") {
-  //     doc.font("Helvetica-Bold").text(`State/POS: ${posText}`, mCol1X + 4, posAddrY + 4, { width: mCol2W - 8 });
-  // }
-
   // --- Invoice No ---
   doc
-    .font("Helvetica")
+    .font(FONT_REGULAR)
     .fontSize(7)
     .text("INVOICE No", mCol2X + 4, metaY + 4, {
       align: "center",
       width: mCol3W - 8,
     });
   doc
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .fontSize(9)
     .text(getText(data.invoice.invoice_number), mCol2X + 4, metaY + 45, {
       align: "center",
@@ -921,14 +927,14 @@ const renderBillPro = (
 
   // --- Dated ---
   doc
-    .font("Helvetica")
+    .font(FONT_REGULAR)
     .fontSize(7)
     .text("Dated", mCol3X + 4, metaY + 4, {
       align: "center",
       width: mCol4W - 8,
     });
   doc
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .fontSize(9)
     .text(formatDate(data.invoice.invoice_date), mCol3X + 4, metaY + 45, {
       align: "center",
@@ -949,7 +955,7 @@ const renderBillPro = (
 
   // Table Header
   const hdrH = 20;
-  doc.font("Helvetica-Bold").fontSize(8);
+  doc.font(FONT_BOLD).fontSize(8);
   const headers = [
     "Description of Goods",
     "HSN CODE",
@@ -975,10 +981,10 @@ const renderBillPro = (
     const name = getText(item.item_name).toUpperCase();
     const textH = doc.heightOfString(name, { width: tColW[0]! - 8 });
 
-    doc.font("Helvetica-Bold").fontSize(9);
+    doc.font(FONT_BOLD).fontSize(9);
     doc.text(name, tColX[0]! + 4, iy, { width: tColW[0]! - 8 });
 
-    doc.font("Helvetica").fontSize(9);
+    doc.font(FONT_REGULAR).fontSize(9);
     doc.text(getText(item.hsn_code), tColX[1]! + 4, iy, {
       width: tColW[1]! - 8,
       align: "center",
@@ -1011,7 +1017,7 @@ const renderBillPro = (
   });
 
   // ════════════════════════════════════
-  // 5. TAXES SECTION (Shifted to Bottom)
+  // 5. TAXES SECTION
   // ════════════════════════════════════
   const cgstTotal = data.invoice.items.reduce(
     (s, r) => s + asNumber(r.cgst_amount),
@@ -1044,19 +1050,17 @@ const renderBillPro = (
 
   const taxSectionHeight = taxes.length * 16;
 
-  // Compute bottom Y for the table to enforce a consistent height (making room for items + gap + taxes)
   const minTableHeight = 280;
   const finalTableBottomY = Math.max(
     currentY + minTableHeight,
     iy + taxSectionHeight + 30,
   );
 
-  // Position taxes exactly at the bottom of the table bounds
   let taxY = finalTableBottomY - taxSectionHeight - 8;
 
   taxes.forEach(([label, amount]) => {
     doc
-      .font(label.startsWith("ADD") ? "Helvetica-Bold" : "Helvetica")
+      .font(label.startsWith("ADD") ? FONT_BOLD : FONT_REGULAR)
       .fontSize(9);
     doc.text(label, tColX[0]! + 4, taxY, { width: tColW[0]! - 8 });
     doc.text(rs(amount), tColX[5]! + 4, taxY, {
@@ -1066,7 +1070,6 @@ const renderBillPro = (
     taxY += 16;
   });
 
-  // Draw inner vertical columns strictly inside the Items table bounds
   for (let i = 1; i < tColX.length - 1; i++) {
     doc
       .moveTo(tColX[i]!, tableY)
@@ -1080,7 +1083,7 @@ const renderBillPro = (
   // ════════════════════════════════════
   // 6. TOTAL ROW
   // ════════════════════════════════════
-  doc.font("Helvetica-Bold").fontSize(10);
+  doc.font(FONT_BOLD).fontSize(10);
   doc.text("Final Total", x + 4, currentY + 4);
   doc.text(rs(roundedTotals.finalTotal), tColX[5]! + 4, currentY + 4, {
     width: tColW[5]! - 14,
@@ -1096,19 +1099,17 @@ const renderBillPro = (
   const footerH = 45;
   const signX = x + 300;
 
-  // Vertical split between Words and Signature block
   doc
     .moveTo(signX, currentY)
     .lineTo(signX, currentY + footerH)
     .stroke("#000000");
 
-  // Left side: Words
   doc
-    .font("Helvetica")
+    .font(FONT_REGULAR)
     .fontSize(7)
     .text("Amount Chargeable (in words)", x + 4, currentY + 4);
   doc
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .fontSize(8)
     .text(
       numberToWords(roundedTotals.finalTotal).toUpperCase(),
@@ -1117,9 +1118,8 @@ const renderBillPro = (
       { width: signX - x - 8 },
     );
 
-  // Right side: Signatory
   doc
-    .font("Helvetica-Bold")
+    .font(FONT_BOLD)
     .fontSize(8)
     .text(
       `For ${getText(data.businessName).toUpperCase()}`,
@@ -1127,12 +1127,10 @@ const renderBillPro = (
       currentY + 4,
       { width: totalX - signX - 8, align: "center" },
     );
-  doc
-    .font("Helvetica")
-    .text("Authorised Signatory", signX + 4, currentY + 32, {
-      width: totalX - signX - 8,
-      align: "center",
-    });
+  doc.font(FONT_REGULAR).text("Authorised Signatory", signX + 4, currentY + 32, {
+    width: totalX - signX - 8,
+    align: "center",
+  });
 
   currentY += footerH;
   doc.moveTo(x, currentY).lineTo(totalX, currentY).stroke("#000000");
@@ -1141,7 +1139,7 @@ const renderBillPro = (
   // 8. FINAL NOTICE & OUTER BORDER
   // ════════════════════════════════════
   doc
-    .font("Helvetica-Oblique")
+    .font(FONT_REGULAR)
     .fontSize(7)
     .text(
       "This is a Computer Generated Invoice No Signature Required",
@@ -1151,12 +1149,9 @@ const renderBillPro = (
     );
   currentY += 14;
 
-  // Finally, draw exactly ONE perfect, continuous bounding box over everything
   doc.rect(x, startY, width, currentY - startY).stroke("#000000");
 };
 
-// Map bill_pro_legacy to the same improved render function to avoid duplication,
-// or use it identically if the config relies on it.
 const renderBillProLegacy = renderBillPro;
 
 const renderers: Record<
@@ -1193,6 +1188,11 @@ export const createInvoicePdfDocument = (
   data: InvoicePdfData,
 ): PDFKit.PDFDocument => {
   const doc = new PDFDocument({ size: "A4", margin: 40 });
+
+  // Register custom fonts with specific internal names
+  doc.registerFont(FONT_REGULAR, FONT_REGULAR_PATH);
+  doc.registerFont(FONT_BOLD, FONT_BOLD_PATH);
+
   const renderer = renderers[data.template] ?? renderClassic;
   const config = getTemplateConfig(data.template);
   renderer(doc, data, config);

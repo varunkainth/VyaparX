@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { useBusinessStore } from "@/store/useBusinessStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { businessService } from "@/services/business.service";
@@ -30,75 +30,88 @@ export function useBusinesses(options?: { forceRefetch?: boolean }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const businesses = useBusinessStore((state) => state.businesses);
   const isLoading = useBusinessStore((state) => state.isLoading);
-  const hasFetchedRef = useRef(false);
 
-  const fetchBusinesses = useCallback(async (force = false) => {
-    // Multiple guards to prevent unnecessary fetches
-    if (!isAuthenticated) return;
-    if (!force && hasFetchedRef.current) return;
-    if (!force && hasInitiallyFetched) return;
-    if (isFetchingBusinesses) return;
-    if (!force && businesses.length > 0) return; // Already have data
-    
-    try {
-      isFetchingBusinesses = true;
-      hasFetchedRef.current = true;
-      hasInitiallyFetched = true;
-      
-      const { setLoading, setBusinesses } = useBusinessStore.getState();
-      setLoading(true);
-      
-      devLog("[useBusinesses] Fetching businesses from API...");
-      const data = await businessService.listBusinesses();
-      devLog("[useBusinesses] Businesses fetched:", data.length, "businesses");
-      devLog("[useBusinesses] First business role:", data[0]?.role);
-      
-      setBusinesses(data);
-      
-      // Check if user has no businesses and hasn't been shown the modal yet
-      if (data.length === 0 && !hasShownEmptyBusinessModal) {
-        devLog("[useBusinesses] User has no businesses, should show creation modal");
-        hasShownEmptyBusinessModal = true;
-        // This will be handled by the AuthGuard component
-      }
-      
-      // Auto-select first business if none selected and switch business context
-      const currentBusiness = useBusinessStore.getState().currentBusiness;
-      if (data.length > 0 && !currentBusiness) {
-        devLog("[useBusinesses] Auto-selecting first business:", data[0].name);
-        try {
-          // Call switch business to update the server-backed session context
-          const response = await authService.switchBusiness({ business_id: data[0].id });
-          updateBusinessContext(response.tokens, response.session, data[0]);
-          devLog("[useBusinesses] Business context updated");
-        } catch (switchError) {
-          console.error("[useBusinesses] Failed to switch business:", switchError);
-          // Fallback: just set the business without switching
-          useBusinessStore.getState().setCurrentBusiness(data[0]);
+  const fetchBusinesses = useCallback(
+    async (force = false) => {
+      // Multiple guards to prevent unnecessary fetches
+      if (!isAuthenticated) return;
+      if (!force && hasInitiallyFetched) return;
+      if (isFetchingBusinesses) return;
+      if (!force && businesses.length > 0) return; // Already have data
+
+      try {
+        isFetchingBusinesses = true;
+        hasInitiallyFetched = true;
+
+        const { setLoading, setBusinesses } = useBusinessStore.getState();
+        setLoading(true);
+
+        devLog("[useBusinesses] Fetching businesses from API...");
+        const data = await businessService.listBusinesses();
+        devLog(
+          "[useBusinesses] Businesses fetched:",
+          data.length,
+          "businesses",
+        );
+        devLog("[useBusinesses] First business role:", data[0]?.role);
+
+        setBusinesses(data);
+
+        // Check if user has no businesses and hasn't been shown the modal yet
+        if (data.length === 0 && !hasShownEmptyBusinessModal) {
+          devLog(
+            "[useBusinesses] User has no businesses, should show creation modal",
+          );
+          hasShownEmptyBusinessModal = true;
+          // This will be handled by the AuthGuard component
         }
-      } else if (data.length > 0 && currentBusiness) {
-        // Update current business with fresh data (including role)
-        const updatedCurrent = data.find(b => b.id === currentBusiness.id);
-        if (updatedCurrent) {
-          devLog("[useBusinesses] Updating current business with fresh data");
-          useBusinessStore.getState().setCurrentBusiness(updatedCurrent);
+
+        // Auto-select first business if none selected and switch business context
+        const currentBusiness = useBusinessStore.getState().currentBusiness;
+        if (data.length > 0 && !currentBusiness) {
+          devLog(
+            "[useBusinesses] Auto-selecting first business:",
+            data[0].name,
+          );
+          try {
+            // Call switch business to update the server-backed session context
+            const response = await authService.switchBusiness({
+              business_id: data[0].id,
+            });
+            updateBusinessContext(response.tokens, response.session, data[0]);
+            devLog("[useBusinesses] Business context updated");
+          } catch (switchError) {
+            console.error(
+              "[useBusinesses] Failed to switch business:",
+              switchError,
+            );
+            // Fallback: just set the business without switching
+            useBusinessStore.getState().setCurrentBusiness(data[0]);
+          }
+        } else if (data.length > 0 && currentBusiness) {
+          // Update current business with fresh data (including role)
+          const updatedCurrent = data.find((b) => b.id === currentBusiness.id);
+          if (updatedCurrent) {
+            devLog("[useBusinesses] Updating current business with fresh data");
+            useBusinessStore.getState().setCurrentBusiness(updatedCurrent);
+          }
         }
+      } catch (error) {
+        console.error("[useBusinesses] Failed to fetch businesses:", error);
+        const errorMessage = getErrorMessage(error);
+        console.error("[useBusinesses] Error details:", errorMessage);
+
+        // Reset flags on error to allow retry
+        hasInitiallyFetched = false;
+        hasShownEmptyBusinessModal = false; // Allow retry on error
+      } finally {
+        const { setLoading } = useBusinessStore.getState();
+        setLoading(false);
+        isFetchingBusinesses = false;
       }
-    } catch (error) {
-      console.error("[useBusinesses] Failed to fetch businesses:", error);
-      const errorMessage = getErrorMessage(error);
-      console.error("[useBusinesses] Error details:", errorMessage);
-      
-      // Reset flags on error to allow retry
-      hasFetchedRef.current = false;
-      hasInitiallyFetched = false;
-      hasShownEmptyBusinessModal = false; // Allow retry on error
-    } finally {
-      const { setLoading } = useBusinessStore.getState();
-      setLoading(false);
-      isFetchingBusinesses = false;
-    }
-  }, [isAuthenticated, businesses.length]);
+    },
+    [isAuthenticated, businesses.length],
+  );
 
   useEffect(() => {
     fetchBusinesses(options?.forceRefetch);

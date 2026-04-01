@@ -2,7 +2,7 @@ import { createServer, type Server } from "node:http";
 import { closeQueueConnections, getQueueHealth, startWorkers } from "../services/queue.service";
 
 const workers = startWorkers();
-const workerPort = Number.parseInt(process.env.PORT || "3000", 10);
+const workerPort = Number.parseInt("3001", 10);
 
 let healthServer: Server | null = null;
 

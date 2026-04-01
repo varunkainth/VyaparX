@@ -13,6 +13,7 @@ import { useBusinessStore } from "@/store/useBusinessStore";
 import type { Party } from "@/types/party";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error-handler";
+import { hasPermission } from "@/lib/permissions";
 import {
   PIN_MAPPED_STATES,
   formatPinMappedStateDisplay,
@@ -256,6 +257,11 @@ export function PartyDetailsPage({ partyId }: PartyDetailsPageProps) {
   const handleDelete = async () => {
     if (!currentBusiness || !party) return;
 
+    if (!hasPermission(currentBusiness.role, "delete")) {
+      toast.error("You do not have permission to delete parties.");
+      return;
+    }
+
     setIsDeleting(true);
     try {
       await partyService.deleteParty(currentBusiness.id, party.id);
@@ -332,6 +338,9 @@ export function PartyDetailsPage({ partyId }: PartyDetailsPageProps) {
     return null;
   }
 
+  const canCreateEdit = hasPermission(currentBusiness.role, "createEdit");
+  const canDelete = hasPermission(currentBusiness.role, "delete");
+
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -407,7 +416,7 @@ export function PartyDetailsPage({ partyId }: PartyDetailsPageProps) {
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back
                 </Button>
-                {!isEditing && (
+                {!isEditing && canCreateEdit && (
                   <Button
                     onClick={() => setIsEditing(true)}
                     className="flex-1 cursor-pointer"
@@ -429,7 +438,7 @@ export function PartyDetailsPage({ partyId }: PartyDetailsPageProps) {
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
-              {!isEditing && (
+              {!isEditing && canCreateEdit && (
                 <Button
                   onClick={() => setIsEditing(true)}
                   className="cursor-pointer"
@@ -508,7 +517,16 @@ export function PartyDetailsPage({ partyId }: PartyDetailsPageProps) {
               </Card>
             </div>
 
-            {isEditing ? (
+            {!canCreateEdit && (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="text-xs md:text-sm">
+                  Your role has read-only access for this party.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {isEditing && canCreateEdit ? (
               /* Edit Form - Mobile Optimized */
               <form
                 onSubmit={handleSubmit(onSubmit)}
@@ -1037,52 +1055,53 @@ export function PartyDetailsPage({ partyId }: PartyDetailsPageProps) {
                   </Card>
                 )}
 
-                {/* Delete Party - Mobile Optimized */}
-                <Card className="lg:col-span-2 border-destructive/50">
-                  <CardHeader>
-                    <CardTitle className="text-destructive text-base md:text-lg">
-                      Danger Zone
-                    </CardTitle>
-                    <CardDescription className="text-xs md:text-sm">
-                      Permanently delete this party and all associated data
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="destructive"
-                          disabled={isDeleting}
-                          className="cursor-pointer w-full sm:w-auto"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete Party
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            Are you absolutely sure?
-                          </AlertDialogTitle>
-                          <AlertDialogDescription className="text-xs md:text-sm">
-                            This action cannot be undone. This will permanently
-                            delete the party "{party.name}" and remove all
-                            associated data from our servers.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={handleDelete}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                {canDelete && (
+                  <Card className="lg:col-span-2 border-destructive/50">
+                    <CardHeader>
+                      <CardTitle className="text-destructive text-base md:text-lg">
+                        Danger Zone
+                      </CardTitle>
+                      <CardDescription className="text-xs md:text-sm">
+                        Permanently delete this party and all associated data
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="destructive"
+                            disabled={isDeleting}
+                            className="cursor-pointer w-full sm:w-auto"
                           >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </CardContent>
-                </Card>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Party
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>
+                              Are you absolutely sure?
+                            </AlertDialogTitle>
+                            <AlertDialogDescription className="text-xs md:text-sm">
+                              This action cannot be undone. This will
+                              permanently delete the party "{party.name}" and
+                              remove all associated data from our servers.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleDelete}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             )}
           </div>

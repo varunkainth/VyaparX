@@ -1,42 +1,57 @@
-"use client"
+"use client";
 
-import { useRouter } from "next/navigation"
-import { useForm, useWatch } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { createInventorySchema, type CreateInventoryFormData } from "@/validators/inventory.validator"
-import { inventoryService } from "@/services/inventory.service"
-import { useBusinessStore } from "@/store/useBusinessStore"
-import { INVENTORY_UNITS, GST_RATES } from "@/types/inventory"
-import { toast } from "sonner"
-import { getErrorMessage } from "@/lib/error-handler"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Field, FieldGroup, FieldLabel, FieldDescription } from "@/components/ui/field"
-import { 
+import { useRouter } from "next/navigation";
+import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  createInventorySchema,
+  type CreateInventoryFormData,
+} from "@/validators/inventory.validator";
+import { inventoryService } from "@/services/inventory.service";
+import { useBusinessStore } from "@/store/useBusinessStore";
+import { INVENTORY_UNITS, GST_RATES } from "@/types/inventory";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-handler";
+import { hasPermission } from "@/lib/permissions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+  FieldDescription,
+} from "@/components/ui/field";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { 
-  Package, 
-  DollarSign, 
-  Percent, 
+} from "@/components/ui/select";
+import {
+  Package,
+  DollarSign,
+  Percent,
   Save,
   ArrowLeft,
   Barcode,
   FileText,
-  Wand2
-} from "lucide-react"
-import { AppSidebar } from "@/components/layout/app-sidebar"
+  Wand2,
+} from "lucide-react";
+import { AppSidebar } from "@/components/layout/app-sidebar";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -44,13 +59,13 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
-import { useMemo } from "react"
+} from "@/components/ui/breadcrumb";
+import { Separator } from "@/components/ui/separator";
+import { useMemo } from "react";
 
 export function CreateInventoryPage() {
-  const router = useRouter()
-  const { currentBusiness } = useBusinessStore()
+  const router = useRouter();
+  const { currentBusiness } = useBusinessStore();
 
   const {
     register,
@@ -73,59 +88,61 @@ export function CreateInventoryPage() {
       opening_stock: 0,
       opening_stock_note: "",
     },
-  })
+  });
 
   const unit = useWatch({
     control: control,
-    name: "unit"
-  })
+    name: "unit",
+  });
   const gstRate = useWatch({
     control: control,
-    name: "gst_rate"
-  })
+    name: "gst_rate",
+  });
   const purchasePrice = useWatch({
     control: control,
-    name: "purchase_price"
-  })
+    name: "purchase_price",
+  });
   const sellingPrice = useWatch({
     control: control,
-    name: "selling_price"
-  })
+    name: "selling_price",
+  });
 
   const marginPercentage = useMemo(() => {
     if (purchasePrice && sellingPrice && sellingPrice > purchasePrice) {
-      return (((sellingPrice - purchasePrice) / purchasePrice) * 100).toFixed(2)
+      return (((sellingPrice - purchasePrice) / purchasePrice) * 100).toFixed(
+        2,
+      );
     }
-    return "0.00"
-  }, [purchasePrice, sellingPrice])
+    return "0.00";
+  }, [purchasePrice, sellingPrice]);
 
   const generateSKU = () => {
-    const timestamp = Date.now().toString(36).toUpperCase()
-    const random = Math.random().toString(36).substring(2, 6).toUpperCase()
-    const sku = `SKU-${timestamp}-${random}`
-    setValue("sku", sku)
-  }
+    const timestamp = Date.now().toString(36).toUpperCase();
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const sku = `SKU-${timestamp}-${random}`;
+    setValue("sku", sku);
+  };
 
   const onSubmit = async (data: CreateInventoryFormData) => {
     if (!currentBusiness) {
-      toast.error("Please select a business first")
-      return
+      toast.error("Please select a business first");
+      return;
     }
 
     try {
       // Clean up empty strings
       const cleanData = Object.fromEntries(
-        Object.entries(data).filter(([, v]) => v !== "")
-      ) as CreateInventoryFormData
+        Object.entries(data).filter(([, v]) => v !== ""),
+      ) as CreateInventoryFormData;
 
-      await inventoryService.createItem(currentBusiness.id, cleanData)
-      toast.success("Inventory item created successfully!")
-      router.push("/inventory")
+      await inventoryService.createItem(currentBusiness.id, cleanData);
+      toast.success("Inventory item created successfully!");
+      router.push("/inventory");
     } catch (error) {
-      const errorMessage = getErrorMessage(error)
-      toast.error(errorMessage)
+      const errorMessage = getErrorMessage(error);
+      toast.error(errorMessage);
     }
-  }
+  };
 
   if (!currentBusiness) {
     return (
@@ -133,11 +150,40 @@ export function CreateInventoryPage() {
         <AppSidebar />
         <SidebarInset>
           <div className="flex min-h-screen items-center justify-center">
-            <p className="text-muted-foreground">Please select a business first</p>
+            <p className="text-muted-foreground">
+              Please select a business first
+            </p>
           </div>
         </SidebarInset>
       </SidebarProvider>
-    )
+    );
+  }
+
+  const canCreateEdit = hasPermission(currentBusiness.role, "createEdit");
+
+  if (!canCreateEdit) {
+    return (
+      <SidebarProvider>
+        <AppSidebar />
+        <SidebarInset>
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <Card className="w-full max-w-lg">
+              <CardHeader>
+                <CardTitle>Read-only access</CardTitle>
+                <CardDescription>
+                  Your role can view inventory but cannot create new items.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={() => router.push("/inventory")}>
+                  Go to Inventory
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    );
   }
 
   return (
@@ -176,7 +222,9 @@ export function CreateInventoryPage() {
                 <Package className="h-8 w-8 text-primary" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold tracking-tight">Create Inventory Item</h1>
+                <h1 className="text-3xl font-bold tracking-tight">
+                  Create Inventory Item
+                </h1>
                 <p className="text-muted-foreground mt-1">
                   Add a new product to your inventory
                 </p>
@@ -200,7 +248,9 @@ export function CreateInventoryPage() {
                     </div>
                     <div>
                       <CardTitle>Basic Information</CardTitle>
-                      <CardDescription>Item details and identification</CardDescription>
+                      <CardDescription>
+                        Item details and identification
+                      </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
@@ -254,7 +304,9 @@ export function CreateInventoryPage() {
                             {errors.sku.message}
                           </p>
                         )}
-                        <FieldDescription>Unique identifier for this item</FieldDescription>
+                        <FieldDescription>
+                          Unique identifier for this item
+                        </FieldDescription>
                       </Field>
 
                       <Field>
@@ -271,7 +323,9 @@ export function CreateInventoryPage() {
                             {errors.hsn_code.message}
                           </p>
                         )}
-                        <FieldDescription>Harmonized System of Nomenclature</FieldDescription>
+                        <FieldDescription>
+                          Harmonized System of Nomenclature
+                        </FieldDescription>
                       </Field>
                     </div>
 
@@ -303,7 +357,9 @@ export function CreateInventoryPage() {
                     </div>
                     <div>
                       <CardTitle>Unit & Tax</CardTitle>
-                      <CardDescription>Measurement and GST details</CardDescription>
+                      <CardDescription>
+                        Measurement and GST details
+                      </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
@@ -342,7 +398,9 @@ export function CreateInventoryPage() {
                       </FieldLabel>
                       <Select
                         value={gstRate?.toString()}
-                        onValueChange={(value) => setValue("gst_rate", parseFloat(value))}
+                        onValueChange={(value) =>
+                          setValue("gst_rate", parseFloat(value))
+                        }
                         disabled={isSubmitting}
                       >
                         <SelectTrigger className="w-full">
@@ -375,7 +433,9 @@ export function CreateInventoryPage() {
                     </div>
                     <div>
                       <CardTitle>Pricing</CardTitle>
-                      <CardDescription>Purchase and selling prices</CardDescription>
+                      <CardDescription>
+                        Purchase and selling prices
+                      </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
@@ -394,7 +454,7 @@ export function CreateInventoryPage() {
                         {...register("purchase_price", { valueAsNumber: true })}
                         disabled={isSubmitting}
                         onKeyDown={(e) => {
-                          if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                          if (e.key === "-" || e.key === "e" || e.key === "E") {
                             e.preventDefault();
                           }
                         }}
@@ -420,7 +480,7 @@ export function CreateInventoryPage() {
                         {...register("selling_price", { valueAsNumber: true })}
                         disabled={isSubmitting}
                         onKeyDown={(e) => {
-                          if (e.key === '-' || e.key === 'e' || e.key === 'E') {
+                          if (e.key === "-" || e.key === "e" || e.key === "E") {
                             e.preventDefault();
                           }
                         }}
@@ -435,7 +495,9 @@ export function CreateInventoryPage() {
 
                     {(purchasePrice ?? 0) > 0 && (sellingPrice ?? 0) > 0 && (
                       <div className="p-3 rounded-lg bg-muted">
-                        <p className="text-sm text-muted-foreground">Profit Margin</p>
+                        <p className="text-sm text-muted-foreground">
+                          Profit Margin
+                        </p>
                         <p className="text-lg font-semibold text-green-600">
                           {marginPercentage}%
                         </p>
@@ -454,7 +516,9 @@ export function CreateInventoryPage() {
                     </div>
                     <div>
                       <CardTitle>Stock Information</CardTitle>
-                      <CardDescription>Opening stock and threshold settings</CardDescription>
+                      <CardDescription>
+                        Opening stock and threshold settings
+                      </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
@@ -462,17 +526,26 @@ export function CreateInventoryPage() {
                   <FieldGroup>
                     <div className="grid gap-4 md:grid-cols-2">
                       <Field>
-                        <FieldLabel htmlFor="opening_stock">Opening Stock</FieldLabel>
+                        <FieldLabel htmlFor="opening_stock">
+                          Opening Stock
+                        </FieldLabel>
                         <Input
                           id="opening_stock"
                           type="number"
                           step="1"
                           min="0"
                           placeholder="0"
-                          {...register("opening_stock", { valueAsNumber: true })}
+                          {...register("opening_stock", {
+                            valueAsNumber: true,
+                          })}
                           disabled={isSubmitting}
                           onKeyDown={(e) => {
-                            if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '.') {
+                            if (
+                              e.key === "-" ||
+                              e.key === "e" ||
+                              e.key === "E" ||
+                              e.key === "."
+                            ) {
                               e.preventDefault();
                             }
                           }}
@@ -483,21 +556,32 @@ export function CreateInventoryPage() {
                             {errors.opening_stock.message}
                           </p>
                         )}
-                        <FieldDescription>Initial stock quantity</FieldDescription>
+                        <FieldDescription>
+                          Initial stock quantity
+                        </FieldDescription>
                       </Field>
 
                       <Field>
-                        <FieldLabel htmlFor="low_stock_threshold">Low Stock Alert</FieldLabel>
+                        <FieldLabel htmlFor="low_stock_threshold">
+                          Low Stock Alert
+                        </FieldLabel>
                         <Input
                           id="low_stock_threshold"
                           type="number"
                           step="1"
                           min="0"
                           placeholder="10"
-                          {...register("low_stock_threshold", { valueAsNumber: true })}
+                          {...register("low_stock_threshold", {
+                            valueAsNumber: true,
+                          })}
                           disabled={isSubmitting}
                           onKeyDown={(e) => {
-                            if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '.') {
+                            if (
+                              e.key === "-" ||
+                              e.key === "e" ||
+                              e.key === "E" ||
+                              e.key === "."
+                            ) {
                               e.preventDefault();
                             }
                           }}
@@ -508,12 +592,16 @@ export function CreateInventoryPage() {
                             {errors.low_stock_threshold.message}
                           </p>
                         )}
-                        <FieldDescription>Alert when stock falls below this</FieldDescription>
+                        <FieldDescription>
+                          Alert when stock falls below this
+                        </FieldDescription>
                       </Field>
                     </div>
 
                     <Field>
-                      <FieldLabel htmlFor="opening_stock_note">Opening Stock Note</FieldLabel>
+                      <FieldLabel htmlFor="opening_stock_note">
+                        Opening Stock Note
+                      </FieldLabel>
                       <Textarea
                         id="opening_stock_note"
                         placeholder="Note about opening stock..."
@@ -570,5 +658,5 @@ export function CreateInventoryPage() {
         </div>
       </SidebarInset>
     </SidebarProvider>
-  )
+  );
 }
