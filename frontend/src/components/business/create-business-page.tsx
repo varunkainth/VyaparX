@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useForm, useWatch, type FieldErrors } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -9,7 +10,13 @@ import { useBusinessStore } from "@/store/useBusinessStore"
 import { toast } from "sonner"
 import { getErrorMessage } from "@/lib/error-handler"
 import { updateBusinessContext } from "@/lib/business-utils"
-import { INDIAN_STATES, formatStateDisplay } from "@/constants/indian-states"
+import {
+  PIN_MAPPED_STATES,
+  formatPinMappedStateDisplay,
+  getPreferredStateCodeForPincode,
+  getStateCodesForPincode,
+  getStateNameForCode,
+} from "@/constants/pin-state-mapping"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -57,6 +64,8 @@ export function CreateBusinessPage() {
     handleSubmit,
     formState: { errors, isSubmitting },
     setValue,
+    setError,
+    clearErrors,
     control,
   } = useForm<CreateBusinessFormData>({
     resolver: zodResolver(createBusinessSchema),
@@ -64,15 +73,64 @@ export function CreateBusinessPage() {
 
   const stateCode = useWatch({ name: "state_code", control: control })
   const stateName = useWatch({ name: "state", control: control })
+  const pincode = useWatch({ name: "pincode", control: control })
 
   // Auto-fill state name when state code is selected
   const handleStateCodeChange = (code: string) => {
-    setValue("state_code", code)
-    const state = INDIAN_STATES.find((s) => s.code === code)
-    if (state) {
-      setValue("state", state.name)
+    setValue("state_code", code, { shouldDirty: true, shouldValidate: true })
+    const mappedStateName = getStateNameForCode(code)
+    if (mappedStateName) {
+      setValue("state", mappedStateName, { shouldDirty: true, shouldValidate: true })
     }
   }
+
+  useEffect(() => {
+    const numericPincode = (pincode ?? "").replace(/\D/g, "")
+
+    if (numericPincode !== (pincode ?? "")) {
+      setValue("pincode", numericPincode, { shouldDirty: true, shouldValidate: true })
+      return
+    }
+
+    if (numericPincode.length < 2) {
+      clearErrors(["pincode", "state_code"])
+      return
+    }
+
+    const matchingStateCodes = getStateCodesForPincode(numericPincode)
+
+    if (matchingStateCodes.length === 0) {
+      if (numericPincode.length === 6) {
+        setError("pincode", {
+          type: "manual",
+          message: "Pincode prefix does not match any mapped state",
+        })
+      }
+      return
+    }
+
+    clearErrors("pincode")
+
+    const preferredStateCode = getPreferredStateCodeForPincode(numericPincode, stateCode || undefined)
+    if (preferredStateCode && preferredStateCode !== stateCode) {
+      setValue("state_code", preferredStateCode, { shouldDirty: true, shouldValidate: true })
+      const preferredStateName = getStateNameForCode(preferredStateCode)
+      if (preferredStateName) {
+        setValue("state", preferredStateName, { shouldDirty: true, shouldValidate: true })
+      }
+      return
+    }
+
+    if (stateCode && !matchingStateCodes.includes(stateCode)) {
+      setError("state_code", {
+        type: "manual",
+        message: "Selected state does not match pincode",
+      })
+      return
+    }
+
+    clearErrors("state_code")
+  }, [pincode, stateCode, setValue, setError, clearErrors])
 
   const onSubmit = async (data: CreateBusinessFormData) => {
     try {
@@ -384,9 +442,9 @@ export function CreateBusinessPage() {
                             <SelectValue placeholder="Select state" />
                           </SelectTrigger>
                           <SelectContent>
-                            {INDIAN_STATES.map((state) => (
+                            {PIN_MAPPED_STATES.map((state) => (
                               <SelectItem key={state.code} value={state.code}>
-                                {formatStateDisplay(state)}
+                                {formatPinMappedStateDisplay(state)}
                               </SelectItem>
                             ))}
                           </SelectContent>

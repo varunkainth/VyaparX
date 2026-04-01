@@ -1,5 +1,9 @@
 import { z } from "zod";
 import { USER_ROLES } from "../types/user";
+import {
+    getStateCodesForPincode,
+    isStateCodeValidForPincode,
+} from "../constants/pinStateMapping";
 
 const roleEnum = z.enum(USER_ROLES);
 
@@ -12,7 +16,7 @@ const createBusinessBase = z.object({
     address_line2: z.string().optional(),
     city: z.string().min(2).max(100),
     state: z.string().min(2).max(100),
-    pincode: z.string().min(4).max(10),
+    pincode: z.string().regex(/^\d{6}$/, "Pincode must be 6 digits"),
     phone: z.string().min(8).max(15),
     email: z.string().email().max(255),
     website: z.string().max(255).optional(),
@@ -28,12 +32,59 @@ const createBusinessBase = z.object({
     upi_id: z.string().max(100).optional(),
 });
 
-export const createBusinessSchema = createBusinessBase;
+export const createBusinessSchema = createBusinessBase.superRefine((data, ctx) => {
+    const matchingStateCodes = getStateCodesForPincode(data.pincode);
+
+    if (matchingStateCodes.length === 0) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["pincode"],
+            message: "Pincode prefix does not match any mapped state",
+        });
+        return;
+    }
+
+    if (data.state_code && !isStateCodeValidForPincode(data.state_code, data.pincode)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["state_code"],
+            message: "Selected state does not match pincode",
+        });
+    }
+});
 
 export const updateBusinessSchema = createBusinessBase
     .partial()
     .refine((value) => Object.keys(value).length > 0, {
         message: "At least one field is required",
+    })
+    .superRefine((data, ctx) => {
+        if (!data.pincode || data.pincode.length === 0) {
+            return;
+        }
+
+        if (!/^\d{6}$/.test(data.pincode)) {
+            return;
+        }
+
+        const matchingStateCodes = getStateCodesForPincode(data.pincode);
+
+        if (matchingStateCodes.length === 0) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["pincode"],
+                message: "Pincode prefix does not match any mapped state",
+            });
+            return;
+        }
+
+        if (data.state_code && !isStateCodeValidForPincode(data.state_code, data.pincode)) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ["state_code"],
+                message: "Selected state does not match pincode",
+            });
+        }
     });
 
 export const inviteBusinessMemberSchema = z.object({

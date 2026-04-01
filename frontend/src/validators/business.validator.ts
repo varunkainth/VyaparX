@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  getStateCodesForPincode,
+  isStateCodeValidForPincode,
+} from "@/constants/pin-state-mapping";
 
 // Create business validation schema
 export const createBusinessSchema = z.object({
@@ -51,6 +55,29 @@ export const createBusinessSchema = z.object({
   invoice_prefix: z.string().trim().max(10, "Sales prefix is too long").optional().or(z.literal("")),
   purchase_prefix: z.string().trim().max(10, "Purchase prefix is too long").optional().or(z.literal("")),
   reset_numbering: z.enum(["never", "yearly", "monthly"]).optional(),
+}).superRefine((data, ctx) => {
+  if (!data.pincode || data.pincode.length !== 6) {
+    return;
+  }
+
+  const matchingStateCodes = getStateCodesForPincode(data.pincode);
+
+  if (matchingStateCodes.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["pincode"],
+      message: "Pincode prefix does not match any mapped state",
+    });
+    return;
+  }
+
+  if (data.state_code && !isStateCodeValidForPincode(data.state_code, data.pincode)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["state_code"],
+      message: "Selected state does not match pincode",
+    });
+  }
 });
 
 // Update business validation schema (all fields optional)
@@ -107,6 +134,29 @@ export const updateBusinessSchema = z.object({
   purchase_prefix: z.string().trim().max(10, "Purchase prefix is too long").optional().or(z.literal("")),
   reset_numbering: z.enum(["never", "yearly", "monthly"]).optional(),
   is_active: z.boolean().optional(),
+}).superRefine((data, ctx) => {
+  if (!data.pincode || data.pincode.length !== 6) {
+    return;
+  }
+
+  const matchingStateCodes = getStateCodesForPincode(data.pincode);
+
+  if (matchingStateCodes.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["pincode"],
+      message: "Pincode prefix does not match any mapped state",
+    });
+    return;
+  }
+
+  if (data.state_code && !isStateCodeValidForPincode(data.state_code, data.pincode)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["state_code"],
+      message: "Selected state does not match pincode",
+    });
+  }
 });
 
 // Invite member validation schema

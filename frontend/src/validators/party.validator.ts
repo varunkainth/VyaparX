@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  getStateCodesForPincode,
+  isStateCodeValidForPincode,
+} from "@/constants/pin-state-mapping";
 
 export const createPartySchema = z.object({
   name: z
@@ -52,6 +56,29 @@ export const createPartySchema = z.object({
     .optional(),
   opening_balance_type: z.enum(["receivable", "payable", "none"]).optional(),
   notes: z.string().optional().or(z.literal("")),
+}).superRefine((data, ctx) => {
+  if (!data.pincode || data.pincode.length !== 6) {
+    return;
+  }
+
+  const matchingStateCodes = getStateCodesForPincode(data.pincode);
+
+  if (matchingStateCodes.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["pincode"],
+      message: "Pincode prefix does not match any mapped state",
+    });
+    return;
+  }
+
+  if (data.state_code && !isStateCodeValidForPincode(data.state_code, data.pincode)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["state_code"],
+      message: "Selected state does not match pincode",
+    });
+  }
 });
 
 export const updatePartySchema = createPartySchema.partial().extend({
