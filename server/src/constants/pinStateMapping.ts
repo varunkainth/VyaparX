@@ -88,7 +88,10 @@ export function getStateCodesForPincode(pincode: string): string[] {
   return PINCODE_PREFIX_TO_STATE_CODES[prefix] ?? [];
 }
 
-export function isStateCodeValidForPincode(stateCode: string, pincode: string): boolean {
+export function isStateCodeValidForPincode(
+  stateCode: string,
+  pincode: string,
+): boolean {
   if (!stateCode || !pincode) {
     return true;
   }

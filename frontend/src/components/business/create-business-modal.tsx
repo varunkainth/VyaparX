@@ -1,60 +1,78 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useForm, useWatch, type FieldErrors } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { createBusinessSchema, type CreateBusinessFormData } from "@/validators/business.validator"
-import { businessService } from "@/services/business.service"
-import { useBusinessStore } from "@/store/useBusinessStore"
-import { toast } from "sonner"
-import { getErrorMessage } from "@/lib/error-handler"
-import { updateBusinessContext } from "@/lib/business-utils"
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useForm, useWatch, type FieldErrors } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  createBusinessSchema,
+  type CreateBusinessFormData,
+} from "@/validators/business.validator";
+import { businessService } from "@/services/business.service";
+import { useBusinessStore } from "@/store/useBusinessStore";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-handler";
+import { updateBusinessContext } from "@/lib/business-utils";
 import {
   PIN_MAPPED_STATES,
   formatPinMappedStateDisplay,
   getPreferredStateCodeForPincode,
   getStateCodesForPincode,
   getStateNameForCode,
-} from "@/constants/pin-state-mapping"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Field, FieldGroup, FieldLabel, FieldDescription } from "@/components/ui/field"
-import { 
+} from "@/constants/pin-state-mapping";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+  FieldDescription,
+} from "@/components/ui/field";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { 
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { 
-  Building2, 
-  MapPin, 
-  Phone, 
-  Mail, 
+} from "@/components/ui/dialog";
+import {
+  Building2,
+  MapPin,
+  Phone,
+  Mail,
   FileText,
   Sparkles,
   CreditCard,
-  MapPinned
-} from "lucide-react"
+  MapPinned,
+} from "lucide-react";
 
 interface CreateBusinessModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSuccess?: () => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: () => void;
 }
 
-export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBusinessModalProps) {
-  const router = useRouter()
-  const { addBusiness } = useBusinessStore()
+export function CreateBusinessModal({
+  open,
+  onOpenChange,
+  onSuccess,
+}: CreateBusinessModalProps) {
+  const router = useRouter();
+  const { addBusiness } = useBusinessStore();
 
   const {
     register,
@@ -80,125 +98,147 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
       state_code: "",
       state: "",
       pincode: "",
-    }
-  })
+    },
+  });
 
-  const stateCode = useWatch({ name: "state_code", control: control })
-  const stateName = useWatch({ name: "state", control: control })
-  const pincode = useWatch({ name: "pincode", control: control })
+  const stateCode = useWatch({ name: "state_code", control: control });
+  const stateName = useWatch({ name: "state", control: control });
+  const pincode = useWatch({ name: "pincode", control: control });
 
   // Auto-fill state name when state code is selected
   const handleStateCodeChange = (code: string) => {
-    setValue("state_code", code, { shouldDirty: true, shouldValidate: true })
-    const mappedStateName = getStateNameForCode(code)
+    setValue("state_code", code, { shouldDirty: true, shouldValidate: true });
+    const mappedStateName = getStateNameForCode(code);
     if (mappedStateName) {
-      setValue("state", mappedStateName, { shouldDirty: true, shouldValidate: true })
+      setValue("state", mappedStateName, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
     }
-  }
+  };
 
   useEffect(() => {
-    const numericPincode = (pincode ?? "").replace(/\D/g, "")
+    const numericPincode = (pincode ?? "").replace(/\D/g, "");
 
     if (numericPincode !== (pincode ?? "")) {
-      setValue("pincode", numericPincode, { shouldDirty: true, shouldValidate: true })
-      return
+      setValue("pincode", numericPincode, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      return;
     }
 
     if (numericPincode.length < 2) {
-      clearErrors(["pincode", "state_code"])
-      return
+      clearErrors(["pincode", "state_code"]);
+      return;
     }
 
-    const matchingStateCodes = getStateCodesForPincode(numericPincode)
+    const matchingStateCodes = getStateCodesForPincode(numericPincode);
 
     if (matchingStateCodes.length === 0) {
       if (numericPincode.length === 6) {
         setError("pincode", {
           type: "manual",
           message: "Pincode prefix does not match any mapped state",
-        })
+        });
       }
-      return
+      return;
     }
 
-    clearErrors("pincode")
+    clearErrors("pincode");
 
-    const preferredStateCode = getPreferredStateCodeForPincode(numericPincode, stateCode || undefined)
+    const preferredStateCode = getPreferredStateCodeForPincode(
+      numericPincode,
+      stateCode || undefined,
+    );
     if (preferredStateCode && preferredStateCode !== stateCode) {
-      setValue("state_code", preferredStateCode, { shouldDirty: true, shouldValidate: true })
-      const preferredStateName = getStateNameForCode(preferredStateCode)
+      setValue("state_code", preferredStateCode, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      const preferredStateName = getStateNameForCode(preferredStateCode);
       if (preferredStateName) {
-        setValue("state", preferredStateName, { shouldDirty: true, shouldValidate: true })
+        setValue("state", preferredStateName, {
+          shouldDirty: true,
+          shouldValidate: true,
+        });
       }
-      return
+      return;
     }
 
     if (stateCode && !matchingStateCodes.includes(stateCode)) {
       setError("state_code", {
         type: "manual",
         message: "Selected state does not match pincode",
-      })
-      return
+      });
+      return;
     }
 
-    clearErrors("state_code")
-  }, [pincode, stateCode, setValue, setError, clearErrors])
+    clearErrors("state_code");
+  }, [pincode, stateCode, setValue, setError, clearErrors]);
 
   const onSubmit = async (data: CreateBusinessFormData) => {
     try {
-      const response = await businessService.createBusiness(data)
-      
+      const response = await businessService.createBusiness(data);
+
       // Add business to store
       const businessWithRole = {
         ...response.business,
         role: "owner" as const,
         membership_status: "active" as const,
-      }
-      addBusiness(businessWithRole)
-      
+      };
+      addBusiness(businessWithRole);
+
       // Update session with new business context
-      updateBusinessContext(response.tokens, response.session, businessWithRole)
-      
-      toast.success("Business created successfully! Welcome to VyaparX!")
-      
+      updateBusinessContext(
+        response.tokens,
+        response.session,
+        businessWithRole,
+      );
+
+      toast.success("Business created successfully! Welcome to VyaparX!");
+
       // Close modal and trigger success callback
-      onOpenChange(false)
-      onSuccess?.()
-      
+      onOpenChange(false);
+      onSuccess?.();
+
       // Redirect to dashboard
-      router.push("/dashboard")
+      router.push("/dashboard");
     } catch (error) {
-      const errorMessage = getErrorMessage(error)
-      toast.error(errorMessage)
+      const errorMessage = getErrorMessage(error);
+      toast.error(errorMessage);
     }
-  }
+  };
 
   const extractFirstErrorMessage = (value: unknown): string | undefined => {
-    if (!value || typeof value !== "object") return undefined
-    const maybeError = value as { message?: unknown }
-    if (typeof maybeError.message === "string" && maybeError.message.trim().length > 0) {
-      return maybeError.message
+    if (!value || typeof value !== "object") return undefined;
+    const maybeError = value as { message?: unknown };
+    if (
+      typeof maybeError.message === "string" &&
+      maybeError.message.trim().length > 0
+    ) {
+      return maybeError.message;
     }
 
     for (const nested of Object.values(value as Record<string, unknown>)) {
-      const message = extractFirstErrorMessage(nested)
-      if (message) return message
+      const message = extractFirstErrorMessage(nested);
+      if (message) return message;
     }
 
-    return undefined
-  }
+    return undefined;
+  };
 
   const onInvalid = (formErrors: FieldErrors<CreateBusinessFormData>) => {
-    const firstError = extractFirstErrorMessage(formErrors)
-    toast.error(firstError ?? "Please fill all mandatory fields correctly")
-  }
+    const firstError = extractFirstErrorMessage(formErrors);
+    toast.error(firstError ?? "Please fill all mandatory fields correctly");
+  };
 
   // Reset form when modal opens/closes
   useEffect(() => {
     if (open) {
-      reset()
+      reset();
     }
-  }, [open, reset])
+  }, [open, reset]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -210,9 +250,12 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
               <Building2 className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-bold">Create Your First Business</DialogTitle>
+              <DialogTitle className="text-xl font-bold">
+                Create Your First Business
+              </DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground mt-1">
-                Set up your business profile to start managing invoices, inventory, and finances
+                Set up your business profile to start managing invoices,
+                inventory, and finances
               </DialogDescription>
             </div>
           </div>
@@ -220,7 +263,10 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
 
         {/* Modal Content - Scrollable Area */}
         <div className="flex-1 overflow-y-auto p-6">
-          <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-6">
+          <form
+            onSubmit={handleSubmit(onSubmit, onInvalid)}
+            className="space-y-6"
+          >
             <div className="grid gap-6 lg:grid-cols-2">
               {/* Basic Information */}
               <Card className="lg:col-span-2">
@@ -231,14 +277,20 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                     </div>
                     <div>
                       <CardTitle>Business Details</CardTitle>
-                      <CardDescription>Basic information about your business</CardDescription>
+                      <CardDescription>
+                        Basic information about your business
+                      </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="name" required className="flex items-center gap-2">
+                      <FieldLabel
+                        htmlFor="name"
+                        required
+                        className="flex items-center gap-2"
+                      >
                         <Building2 className="h-4 w-4" />
                         Business Name
                       </FieldLabel>
@@ -278,7 +330,10 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="gstin" className="flex items-center gap-2">
+                      <FieldLabel
+                        htmlFor="gstin"
+                        className="flex items-center gap-2"
+                      >
                         <FileText className="h-4 w-4" />
                         GSTIN
                       </FieldLabel>
@@ -295,11 +350,16 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                           {errors.gstin.message}
                         </p>
                       )}
-                      <FieldDescription>15-digit GST number (optional)</FieldDescription>
+                      <FieldDescription>
+                        15-digit GST number (optional)
+                      </FieldDescription>
                     </Field>
 
                     <Field>
-                      <FieldLabel htmlFor="pan" className="flex items-center gap-2">
+                      <FieldLabel
+                        htmlFor="pan"
+                        className="flex items-center gap-2"
+                      >
                         <FileText className="h-4 w-4" />
                         PAN
                       </FieldLabel>
@@ -316,11 +376,13 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                           {errors.pan.message}
                         </p>
                       )}
-                      <FieldDescription>10-character PAN (optional)</FieldDescription>
+                      <FieldDescription>
+                        10-character PAN (optional)
+                      </FieldDescription>
                     </Field>
                   </FieldGroup>
-                  </CardContent>
-                </Card>
+                </CardContent>
+              </Card>
 
               {/* Contact Information */}
               <Card>
@@ -331,14 +393,20 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                     </div>
                     <div>
                       <CardTitle>Contact Details</CardTitle>
-                      <CardDescription>How to reach your business</CardDescription>
+                      <CardDescription>
+                        How to reach your business
+                      </CardDescription>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="phone" required className="flex items-center gap-2">
+                      <FieldLabel
+                        htmlFor="phone"
+                        required
+                        className="flex items-center gap-2"
+                      >
                         <Phone className="h-4 w-4" />
                         Phone Number
                       </FieldLabel>
@@ -354,11 +422,17 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                           {errors.phone.message}
                         </p>
                       )}
-                      <FieldDescription>10-digit mobile number</FieldDescription>
+                      <FieldDescription>
+                        10-digit mobile number
+                      </FieldDescription>
                     </Field>
 
                     <Field>
-                      <FieldLabel htmlFor="email" required className="flex items-center gap-2">
+                      <FieldLabel
+                        htmlFor="email"
+                        required
+                        className="flex items-center gap-2"
+                      >
                         <Mail className="h-4 w-4" />
                         Email Address
                       </FieldLabel>
@@ -374,7 +448,9 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                           {errors.email.message}
                         </p>
                       )}
-                      <FieldDescription>Business email address</FieldDescription>
+                      <FieldDescription>
+                        Business email address
+                      </FieldDescription>
                     </Field>
                   </FieldGroup>
                 </CardContent>
@@ -396,7 +472,11 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                 <CardContent>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="address_line1" required className="flex items-center gap-2">
+                      <FieldLabel
+                        htmlFor="address_line1"
+                        required
+                        className="flex items-center gap-2"
+                      >
                         <MapPin className="h-4 w-4" />
                         Street Address
                       </FieldLabel>
@@ -416,7 +496,9 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
 
                     <div className="grid gap-4 sm:grid-cols-3">
                       <Field>
-                        <FieldLabel htmlFor="city" required>City</FieldLabel>
+                        <FieldLabel htmlFor="city" required>
+                          City
+                        </FieldLabel>
                         <Input
                           id="city"
                           type="text"
@@ -432,7 +514,9 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                       </Field>
 
                       <Field>
-                        <FieldLabel htmlFor="state_code" required>State</FieldLabel>
+                        <FieldLabel htmlFor="state_code" required>
+                          State
+                        </FieldLabel>
                         <Select
                           value={stateCode}
                           onValueChange={handleStateCodeChange}
@@ -454,11 +538,17 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
                             {errors.state_code.message}
                           </p>
                         )}
-                        <input type="hidden" {...register("state")} value={stateName} />
+                        <input
+                          type="hidden"
+                          {...register("state")}
+                          value={stateName}
+                        />
                       </Field>
 
                       <Field>
-                        <FieldLabel htmlFor="pincode" required>Pincode</FieldLabel>
+                        <FieldLabel htmlFor="pincode" required>
+                          Pincode
+                        </FieldLabel>
                         <Input
                           id="pincode"
                           type="text"
@@ -516,5 +606,5 @@ export function CreateBusinessModal({ open, onOpenChange, onSuccess }: CreateBus
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
