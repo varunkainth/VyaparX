@@ -4,9 +4,9 @@ import pool from "../config/db";
 type MigrationDb = Pick<PoolClient | Pool, "query">;
 
 export async function up(db: MigrationDb = pool) {
-    console.log("Backfilling invoice sequences from existing invoices...");
+  console.log("Backfilling invoice sequences from existing invoices...");
 
-    const result = await db.query(`
+  const result = await db.query(`
         WITH invoice_scope_max AS (
             SELECT
                 business_id,
@@ -44,20 +44,20 @@ export async function up(db: MigrationDb = pool) {
             last_sequence_no = GREATEST(invoice_sequences.last_sequence_no, EXCLUDED.last_sequence_no)
     `);
 
-    console.log(`Backfilled ${result.rowCount} invoice sequence row(s)`);
-    console.log("Invoice sequences backfill completed successfully");
+  console.log(`Backfilled ${result.rowCount} invoice sequence row(s)`);
+  console.log("Invoice sequences backfill completed successfully");
 }
 
 if (import.meta.main) {
-    up()
-        .then(() => {
-            console.log("Migration applied successfully");
-        })
-        .catch((error) => {
-            console.error("Migration failed:", error);
-            process.exitCode = 1;
-        })
-        .finally(async () => {
-            await pool.end();
-        });
+  up()
+    .then(() => {
+      console.log("Migration applied successfully");
+    })
+    .catch((error) => {
+      console.error("Migration failed:", error);
+      process.exitCode = 1;
+    })
+    .finally(async () => {
+      await pool.end();
+    });
 }

@@ -2,16 +2,16 @@ import { z } from "zod";
 
 export const invoiceItemSchema = z.object({
   item_id: z.string().uuid().optional(),
-    item_name: z
-      .string({ required_error: "Item name is required" })
-      .trim()
-      .min(1, "Item name is required"),
+  item_name: z
+    .string({ required_error: "Item name is required" })
+    .trim()
+    .min(1, "Item name is required"),
   description: z.string().optional(),
   hsn_code: z.string().max(8).optional(),
-    unit: z
-      .string({ required_error: "Unit is required" })
-      .trim()
-      .min(1, "Unit is required"),
+  unit: z
+    .string({ required_error: "Unit is required" })
+    .trim()
+    .min(1, "Unit is required"),
   quantity: z
     .number({ error: "Quantity is required" })
     .int("Quantity must be a whole number")
