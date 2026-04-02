@@ -84,10 +84,20 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
     null,
   );
   const [isLoadingSourceInvoice, setIsLoadingSourceInvoice] = useState(false);
+  const [itemEntryMode, setItemEntryMode] = useState<
+    "unit_price" | "line_total"
+  >("unit_price");
+  const [lineTotalDrafts, setLineTotalDrafts] = useState<
+    Record<string, string>
+  >({});
   const sourceInvoiceId = searchParams.get("source_invoice_id");
   const isRevisionMode = searchParams.get("mode") === "revise";
   const round2 = useCallback(
     (value: number) => Math.round((value + Number.EPSILON) * 100) / 100,
+    [],
+  );
+  const roundQuantity = useCallback(
+    (value: number) => Math.max(1, Math.round(value)),
     [],
   );
 
@@ -226,7 +236,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                   description: item.description || "",
                   hsn_code: item.hsn_code || "",
                   unit: item.unit,
-                  quantity: item.quantity,
+                  quantity: roundQuantity(item.quantity),
                   unit_price: round2(item.unit_price),
                   discount_pct: item.discount_pct || 0,
                   gst_rate: item.gst_rate,
@@ -413,6 +423,46 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
 
     return round2(taxableValue + cgstAmount + sgstAmount + igstAmount);
   };
+
+  const deriveUnitPriceFromLineTotal = useCallback(
+    (index: number, targetLineTotal: number) => {
+      const item = watchItems[index];
+      if (!item) return;
+
+      const quantity = item.quantity || 0;
+      if (quantity <= 0) {
+        toast.error("Enter quantity greater than 0 before setting line total");
+        return;
+      }
+
+      const discountPct = item.discount_pct || 0;
+      const gstRate = item.gst_rate || 0;
+      const priceMode = watchPriceMode || "exclusive";
+
+      const discountFactor = 1 - discountPct / 100;
+      if (discountFactor <= 0) {
+        toast.error("Discount cannot be 100% when using line total entry");
+        return;
+      }
+
+      const taxFactor = 1 + gstRate / 100;
+      const grossDivisor =
+        priceMode === "inclusive" ? discountFactor : discountFactor * taxFactor;
+
+      if (grossDivisor <= 0) {
+        return;
+      }
+
+      const grossAmount = targetLineTotal / grossDivisor;
+      const unitPrice = round2(grossAmount / quantity);
+
+      setValue(`items.${index}.unit_price`, unitPrice, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+    },
+    [round2, setValue, watchItems, watchPriceMode],
+  );
 
   const calculateRoundOff = (amount: number) => {
     const totalBeforeRounding = round2(amount);
@@ -978,6 +1028,45 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                           </SelectContent>
                         </Select>
                       </Field>
+
+                      <Field>
+                        <FieldLabel>Item Entry Mode</FieldLabel>
+                        <Select
+                          value={itemEntryMode}
+                          onValueChange={(value) =>
+                            setItemEntryMode(
+                              value as "unit_price" | "line_total",
+                            )
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="unit_price">
+                              <div className="flex flex-col items-start">
+                                <span className="font-medium">
+                                  Unit Price Input
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  Enter quantity and unit price
+                                </span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="line_total">
+                              <div className="flex flex-col items-start">
+                                <span className="font-medium">
+                                  Line Total Input
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  Enter quantity and total, auto-calculate unit
+                                  price
+                                </span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </Field>
                     </div>
 
                     {watchPlaceOfSupply && currentBusiness.state_code && (
@@ -1396,12 +1485,26 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                                 </FieldLabel>
                                 <Input
                                   type="number"
-                                  step="0.001"
-                                  min="0"
+                                  step="1"
+                                  inputMode="numeric"
+                                  min="1"
                                   {...register(`items.${index}.quantity`, {
                                     valueAsNumber: true,
                                   })}
                                   disabled={isSubmitting}
+                                  onBlur={(e) => {
+                                    const value = Number(e.target.value);
+                                    if (Number.isNaN(value)) return;
+
+                                    setValue(
+                                      `items.${index}.quantity`,
+                                      roundQuantity(value),
+                                      {
+                                        shouldDirty: true,
+                                        shouldValidate: true,
+                                      },
+                                    );
+                                  }}
                                   onKeyDown={(e) => {
                                     if (
                                       e.key === "-" ||
@@ -1472,7 +1575,10 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                                   {...register(`items.${index}.unit_price`, {
                                     valueAsNumber: true,
                                   })}
-                                  disabled={isSubmitting}
+                                  disabled={
+                                    isSubmitting ||
+                                    itemEntryMode === "line_total"
+                                  }
                                   onBlur={(e) => {
                                     const value = Number(e.target.value);
                                     if (Number.isNaN(value)) return;
@@ -1497,6 +1603,62 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
                                   className="text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                 />
                               </Field>
+
+                              {itemEntryMode === "line_total" && (
+                                <Field>
+                                  <FieldLabel
+                                    required
+                                    className="text-xs md:text-sm"
+                                  >
+                                    Line Total
+                                  </FieldLabel>
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={
+                                      lineTotalDrafts[field.id] ??
+                                      calculateItemTotal(index).toString()
+                                    }
+                                    disabled={isSubmitting}
+                                    onChange={(e) => {
+                                      setLineTotalDrafts((prev) => ({
+                                        ...prev,
+                                        [field.id]: e.target.value,
+                                      }));
+                                    }}
+                                    onBlur={(e) => {
+                                      const value = Number(e.target.value);
+                                      if (!Number.isNaN(value) && value >= 0) {
+                                        deriveUnitPriceFromLineTotal(
+                                          index,
+                                          round2(value),
+                                        );
+                                      }
+                                      setLineTotalDrafts((prev) => {
+                                        const next = { ...prev };
+                                        delete next[field.id];
+                                        return next;
+                                      });
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (
+                                        e.key === "-" ||
+                                        e.key === "e" ||
+                                        e.key === "E"
+                                      ) {
+                                        e.preventDefault();
+                                      }
+                                    }}
+                                    className="text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                  />
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    {watchPriceMode === "inclusive"
+                                      ? "Tax included total for this line"
+                                      : "Final total (including tax) for this line"}
+                                  </p>
+                                </Field>
+                              )}
 
                               <Field>
                                 <FieldLabel className="text-xs md:text-sm">

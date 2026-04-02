@@ -1,135 +1,142 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useBusinessStore } from "@/store/useBusinessStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { businessService } from "@/services/business.service";
 import { authService } from "@/services/auth.service";
-import { getErrorMessage } from "@/lib/error-handler";
 import { updateBusinessContext } from "@/lib/business-utils";
 
-// Helper for dev-only logging
-const devLog = (...args: unknown[]) => {
-  if (process.env.NODE_ENV === "development") {
-    console.log(...args);
-  }
+export const businessKeys = {
+  all: ["businesses"] as const,
+  list: (userId: string | undefined) =>
+    [...businessKeys.all, userId ?? "anonymous"] as const,
 };
-
-// Global state to track if businesses have been fetched
-let hasInitiallyFetched = false;
-let isFetchingBusinesses = false;
-
-// Global state to track if we've shown the empty business modal
-let hasShownEmptyBusinessModal = false;
 
 /**
  * Hook to fetch and sync businesses from API
- * Only fetches once per session when authenticated
  */
 export function useBusinesses(options?: { forceRefetch?: boolean }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const userId = useAuthStore((state) => state.user?.id);
   const businesses = useBusinessStore((state) => state.businesses);
-  const isLoading = useBusinessStore((state) => state.isLoading);
-
-  const fetchBusinesses = useCallback(
-    async (force = false) => {
-      // Multiple guards to prevent unnecessary fetches
-      if (!isAuthenticated) return;
-      if (!force && hasInitiallyFetched) return;
-      if (isFetchingBusinesses) return;
-      if (!force && businesses.length > 0) return; // Already have data
-
-      try {
-        isFetchingBusinesses = true;
-        hasInitiallyFetched = true;
-
-        const { setLoading, setBusinesses } = useBusinessStore.getState();
-        setLoading(true);
-
-        devLog("[useBusinesses] Fetching businesses from API...");
-        const data = await businessService.listBusinesses();
-        devLog(
-          "[useBusinesses] Businesses fetched:",
-          data.length,
-          "businesses",
-        );
-        devLog("[useBusinesses] First business role:", data[0]?.role);
-
-        setBusinesses(data);
-
-        // Check if user has no businesses and hasn't been shown the modal yet
-        if (data.length === 0 && !hasShownEmptyBusinessModal) {
-          devLog(
-            "[useBusinesses] User has no businesses, should show creation modal",
-          );
-          hasShownEmptyBusinessModal = true;
-          // This will be handled by the AuthGuard component
-        }
-
-        // Auto-select first business if none selected and switch business context
-        const currentBusiness = useBusinessStore.getState().currentBusiness;
-        if (data.length > 0 && !currentBusiness) {
-          devLog(
-            "[useBusinesses] Auto-selecting first business:",
-            data[0].name,
-          );
-          try {
-            // Call switch business to update the server-backed session context
-            const response = await authService.switchBusiness({
-              business_id: data[0].id,
-            });
-            updateBusinessContext(response.tokens, response.session, data[0]);
-            devLog("[useBusinesses] Business context updated");
-          } catch (switchError) {
-            console.error(
-              "[useBusinesses] Failed to switch business:",
-              switchError,
-            );
-            // Fallback: just set the business without switching
-            useBusinessStore.getState().setCurrentBusiness(data[0]);
-          }
-        } else if (data.length > 0 && currentBusiness) {
-          // Update current business with fresh data (including role)
-          const updatedCurrent = data.find((b) => b.id === currentBusiness.id);
-          if (updatedCurrent) {
-            devLog("[useBusinesses] Updating current business with fresh data");
-            useBusinessStore.getState().setCurrentBusiness(updatedCurrent);
-          }
-        }
-      } catch (error) {
-        console.error("[useBusinesses] Failed to fetch businesses:", error);
-        const errorMessage = getErrorMessage(error);
-        console.error("[useBusinesses] Error details:", errorMessage);
-
-        // Reset flags on error to allow retry
-        hasInitiallyFetched = false;
-        hasShownEmptyBusinessModal = false; // Allow retry on error
-      } finally {
-        const { setLoading } = useBusinessStore.getState();
-        setLoading(false);
-        isFetchingBusinesses = false;
-      }
-    },
-    [isAuthenticated, businesses.length],
+  const currentBusiness = useBusinessStore((state) => state.currentBusiness);
+  const setBusinesses = useBusinessStore((state) => state.setBusinesses);
+  const setCurrentBusiness = useBusinessStore(
+    (state) => state.setCurrentBusiness,
   );
+  const setLoading = useBusinessStore((state) => state.setLoading);
+  const [isSwitchingBusiness, setIsSwitchingBusiness] = useState(false);
+  const hasTriggeredForceRefetch = useRef(false);
+  const switchInFlight = useRef(false);
+
+  const query = useQuery({
+    queryKey: businessKeys.list(userId),
+    queryFn: () => businessService.listBusinesses(),
+    enabled: isAuthenticated,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 
   useEffect(() => {
-    fetchBusinesses(options?.forceRefetch);
-  }, [fetchBusinesses, options?.forceRefetch]);
+    setLoading(query.isLoading || query.isFetching || isSwitchingBusiness);
+  }, [query.isLoading, query.isFetching, isSwitchingBusiness, setLoading]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setBusinesses([]);
+      setCurrentBusiness(null);
+      switchInFlight.current = false;
+      setIsSwitchingBusiness(false);
+      return;
+    }
+
+    if (!query.data) {
+      return;
+    }
+
+    setBusinesses(query.data);
+
+    if (query.data.length === 0) {
+      switchInFlight.current = false;
+      setIsSwitchingBusiness(false);
+      return;
+    }
+
+    if (currentBusiness) {
+      const updatedCurrent = query.data.find(
+        (business) => business.id === currentBusiness.id,
+      );
+      if (updatedCurrent) {
+        setCurrentBusiness(updatedCurrent);
+      }
+      switchInFlight.current = false;
+      setIsSwitchingBusiness(false);
+      return;
+    }
+
+    if (switchInFlight.current) {
+      return;
+    }
+
+    switchInFlight.current = true;
+    setIsSwitchingBusiness(true);
+
+    let isMounted = true;
+
+    void (async () => {
+      try {
+        const response = await authService.switchBusiness({
+          business_id: query.data[0].id,
+        });
+
+        if (!isMounted) {
+          return;
+        }
+
+        updateBusinessContext(response.tokens, response.session, query.data[0]);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        console.error("[useBusinesses] Failed to switch business:", error);
+        setCurrentBusiness(query.data[0]);
+      } finally {
+        if (isMounted) {
+          switchInFlight.current = false;
+          setIsSwitchingBusiness(false);
+        }
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [
+    currentBusiness,
+    isAuthenticated,
+    query.data,
+    setBusinesses,
+    setCurrentBusiness,
+  ]);
+
+  useEffect(() => {
+    if (!options?.forceRefetch || hasTriggeredForceRefetch.current) {
+      if (!options?.forceRefetch) {
+        hasTriggeredForceRefetch.current = false;
+      }
+      return;
+    }
+
+    hasTriggeredForceRefetch.current = true;
+    void query.refetch();
+  }, [options?.forceRefetch, query.refetch]);
 
   return {
     businesses,
-    isLoading,
-    refetch: () => fetchBusinesses(true),
+    isLoading: query.isLoading || query.isFetching || isSwitchingBusiness,
+    refetch: query.refetch,
   };
-}
-
-/**
- * Reset the fetch state - useful for testing or after logout
- */
-export function resetBusinessesFetchState() {
-  hasInitiallyFetched = false;
-  isFetchingBusinesses = false;
-  hasShownEmptyBusinessModal = false;
-  devLog("[useBusinesses] Fetch state reset");
 }

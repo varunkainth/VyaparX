@@ -14,6 +14,12 @@ const queueConnection =
           })
         : null;
 
+if (queueConnection) {
+    queueConnection.on("error", (error) => {
+        console.warn("[queue] Redis connection error", error);
+    });
+}
+
 const createQueue = <T>(name: string) => {
     if (!queueConnection) return null;
 
@@ -48,11 +54,16 @@ export const enqueueInvoiceEmail = async (data: SendInvoiceEmailJobData) => {
         return null;
     }
 
-    return invoiceEmailQueue.add(
-        `invoice:${data.invoice_id}:email:${data.recipient_email}`,
-        data,
-        invoiceEmailJobOptions
-    );
+    try {
+        return await invoiceEmailQueue.add(
+            `invoice:${data.invoice_id}:email:${data.recipient_email}`,
+            data,
+            invoiceEmailJobOptions
+        );
+    } catch (error) {
+        console.warn("[queue] Failed to enqueue invoice email job", error);
+        return null;
+    }
 };
 
 export const enqueueInvoicePdfGeneration = async (data: { business_id: string; invoice_id: string }) => {
@@ -60,15 +71,20 @@ export const enqueueInvoicePdfGeneration = async (data: { business_id: string; i
         return null;
     }
 
-    return pdfGenerationQueue.add(`invoice:${data.invoice_id}:pdf`, data, {
-        attempts: 3,
-        backoff: {
-            type: "exponential",
-            delay: 10_000,
-        },
-        removeOnComplete: 100,
-        removeOnFail: 500,
-    });
+    try {
+        return await pdfGenerationQueue.add(`invoice:${data.invoice_id}:pdf`, data, {
+            attempts: 3,
+            backoff: {
+                type: "exponential",
+                delay: 10_000,
+            },
+            removeOnComplete: 100,
+            removeOnFail: 500,
+        });
+    } catch (error) {
+        console.warn("[queue] Failed to enqueue invoice pdf generation job", error);
+        return null;
+    }
 };
 
 export const startWorkers = () => {
@@ -95,6 +111,10 @@ export const startWorkers = () => {
         console.error(`[queue] invoice email job failed (${job?.id ?? "unknown"})`, error);
     });
 
+    invoiceEmailWorker.on("error", (error) => {
+        console.warn("[queue] invoice email worker error", error);
+    });
+
     const pdfWorker = new Worker<{ business_id: string; invoice_id: string }>(
         pdfGenerationQueueName,
         async (job) => ensureInvoicePdfStored(job.data.business_id, job.data.invoice_id, { forceRegenerate: true }),
@@ -111,6 +131,10 @@ export const startWorkers = () => {
 
     pdfWorker.on("failed", (job, error) => {
         console.error(`[queue] invoice pdf job failed (${job?.id ?? "unknown"})`, error);
+    });
+
+    pdfWorker.on("error", (error) => {
+        console.warn("[queue] invoice pdf worker error", error);
     });
 
     console.log(
