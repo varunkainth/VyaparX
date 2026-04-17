@@ -26,6 +26,7 @@ export const resetBusinessesFetchState = (): void => {
 export function useBusinesses(options?: { forceRefetch?: boolean }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const userId = useAuthStore((state) => state.user?.id);
+  const sessionBusinessId = useAuthStore((state) => state.session?.business_id);
   const businesses = useBusinessStore((state) => state.businesses);
   const currentBusiness = useBusinessStore((state) => state.currentBusiness);
   const setBusinesses = useBusinessStore((state) => state.setBusinesses);
@@ -68,6 +69,18 @@ export function useBusinesses(options?: { forceRefetch?: boolean }) {
       switchInFlight.current = false;
       setIsSwitchingBusiness(false);
       return;
+    }
+
+    const activeBusinessId = currentBusiness?.id ?? sessionBusinessId ?? null;
+
+    if (!currentBusiness && activeBusinessId) {
+      const matchedBusiness = query.data.find((business) => business.id === activeBusinessId);
+      if (matchedBusiness) {
+        setCurrentBusiness(matchedBusiness);
+        switchInFlight.current = false;
+        setIsSwitchingBusiness(false);
+        return;
+      }
     }
 
     if (currentBusiness) {
@@ -122,6 +135,7 @@ export function useBusinesses(options?: { forceRefetch?: boolean }) {
     };
   }, [
     currentBusiness,
+    sessionBusinessId,
     isAuthenticated,
     query.data,
     setBusinesses,
