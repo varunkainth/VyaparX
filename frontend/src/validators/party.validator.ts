@@ -59,12 +59,21 @@ const partySchemaFields = {
 };
 
 const applyPincodeStateValidation = <T extends z.ZodTypeAny>(schema: T) =>
-  schema.superRefine((data: { pincode?: string; state_code?: string }, ctx) => {
-    if (!data.pincode || data.pincode.length !== 6) {
+  schema.superRefine((data, ctx) => {
+    if (!data || typeof data !== "object") {
       return;
     }
 
-    const matchingStateCodes = getStateCodesForPincode(data.pincode);
+    const { pincode, state_code } = data as {
+      pincode?: unknown;
+      state_code?: unknown;
+    };
+
+    if (typeof pincode !== "string" || pincode.length !== 6) {
+      return;
+    }
+
+    const matchingStateCodes = getStateCodesForPincode(pincode);
 
     if (matchingStateCodes.length === 0) {
       ctx.addIssue({
@@ -76,8 +85,9 @@ const applyPincodeStateValidation = <T extends z.ZodTypeAny>(schema: T) =>
     }
 
     if (
-      data.state_code &&
-      !isStateCodeValidForPincode(data.state_code, data.pincode)
+      typeof state_code === "string" &&
+      state_code.length > 0 &&
+      !isStateCodeValidForPincode(state_code, pincode)
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

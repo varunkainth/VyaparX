@@ -7,11 +7,17 @@ import { useAuthStore } from "@/store/useAuthStore";
 import { businessService } from "@/services/business.service";
 import { authService } from "@/services/auth.service";
 import { updateBusinessContext } from "@/lib/business-utils";
+import { queryClient } from "@/lib/react-query-client";
 
 export const businessKeys = {
   all: ["businesses"] as const,
   list: (userId: string | undefined) =>
     [...businessKeys.all, userId ?? "anonymous"] as const,
+};
+
+export const resetBusinessesFetchState = (): void => {
+  void queryClient.cancelQueries({ queryKey: businessKeys.all });
+  queryClient.removeQueries({ queryKey: businessKeys.all });
 };
 
 /**

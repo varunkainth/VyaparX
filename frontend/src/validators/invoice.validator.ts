@@ -3,13 +3,13 @@ import { z } from "zod";
 export const invoiceItemSchema = z.object({
   item_id: z.string().uuid().optional(),
   item_name: z
-    .string({ required_error: "Item name is required" })
+    .string()
     .trim()
     .min(1, "Item name is required"),
   description: z.string().optional(),
   hsn_code: z.string().max(8).optional(),
   unit: z
-    .string({ required_error: "Unit is required" })
+    .string()
     .trim()
     .min(1, "Unit is required"),
   quantity: z
@@ -31,14 +31,14 @@ export const invoiceItemSchema = z.object({
 
 export const createInvoiceSchema = z.object({
   party_id: z
-    .string({ required_error: "Please select a party" })
+    .string()
     .uuid("Please select a party"),
   invoice_date: z
-    .string({ required_error: "Invoice date is required" })
+    .string()
     .min(1, "Invoice date is required"),
   due_date: z.string().optional(),
   place_of_supply: z
-    .string({ required_error: "Place of supply is required" })
+    .string()
     .length(2, "Place of supply must be a 2-digit state code"),
   is_igst: z.boolean(),
   price_mode: z.enum(["exclusive", "inclusive"]),

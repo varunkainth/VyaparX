@@ -237,9 +237,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         }
 
         const filteredSubItems = section.items?.filter((subItem) => {
+          const actionKey = "actionKey" in subItem ? subItem.actionKey : undefined;
+
           if (
-            subItem.actionKey === "invoice-create" ||
-            subItem.actionKey === "party-add"
+            actionKey === "invoice-create" ||
+            actionKey === "party-add"
           ) {
             return capabilities.createEdit;
           }

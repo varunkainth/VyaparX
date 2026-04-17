@@ -1,6 +1,10 @@
 import type { NextConfig } from "next";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
+const isLoopbackHost = (hostname: string): boolean => {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+};
+
 const resolveApiBaseUrl = (): string => {
   const rawValue = process.env.NEXT_PUBLIC_API_BASE_URL?.trim();
 
@@ -23,7 +27,7 @@ const resolveApiBaseUrl = (): string => {
     throw new Error("NEXT_PUBLIC_API_BASE_URL must use http or https");
   }
 
-  if (!isDevelopment && parsed.protocol !== "https:") {
+  if (!isDevelopment && parsed.protocol !== "https:" && !isLoopbackHost(parsed.hostname)) {
     throw new Error("NEXT_PUBLIC_API_BASE_URL must use https in production");
   }
 

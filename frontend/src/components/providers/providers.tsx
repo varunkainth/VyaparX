@@ -10,6 +10,8 @@ import { Analytics } from "@vercel/analytics/next";
 import { queryClient } from "@/lib/react-query-client";
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const shouldEnableVercelAnalytics = process.env.NODE_ENV === "production";
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider
@@ -23,7 +25,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <AuthGuard>
             {children}
           </AuthGuard>
-          <Analytics />
+          {shouldEnableVercelAnalytics && <Analytics />}
         </TooltipProvider>
         <Toaster />
       </ThemeProvider>
