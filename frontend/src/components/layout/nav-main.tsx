@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronRight, type LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
@@ -93,12 +94,12 @@ export function NavMain({
                             asChild
                             className="cursor-pointer"
                           >
-                            <a
+                            <Link
                               href={subItem.url}
                               data-sidebar-action={subItem.actionKey}
                             >
                               <span>{subItem.title}</span>
-                            </a>
+                            </Link>
                           </SidebarMenuSubButton>
                         ) : (
                           <SidebarMenuSubButton
@@ -106,9 +107,9 @@ export function NavMain({
                             isActive={pathname === subItem.url}
                             className="cursor-pointer"
                           >
-                            <a href={subItem.url}>
+                            <Link href={subItem.url}>
                               <span>{subItem.title}</span>
-                            </a>
+                            </Link>
                           </SidebarMenuSubButton>
                         )}
                       </SidebarMenuSubItem>
