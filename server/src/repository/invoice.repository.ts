@@ -1,5 +1,7 @@
 import pool from "../config/db";
 import type { PoolClient } from "pg";
+import { AppError } from "../utils/appError";
+import { ERROR_CODES } from "../constants/errorCodes";
 
 const getDb = (client?: PoolClient) => client ?? pool;
 
@@ -26,43 +28,56 @@ export const invoiceRepository = {
     financialYear: string,
     invoiceType: "sales" | "purchase",
   ) {
+    const sequenceColumn =
+      invoiceType === "sales" ? "next_invoice_number" : "next_purchase_number";
+
     await client.query(
       `
-      SELECT pg_advisory_xact_lock(hashtext($1), hashtext($2))
+      INSERT INTO invoice_settings (business_id, invoice_prefix, purchase_prefix, reset_numbering)
+      SELECT id, COALESCE(invoice_prefix, 'INV'), COALESCE(purchase_prefix, 'PUR'), COALESCE(reset_numbering, 'never')
+      FROM businesses
+      WHERE id = $1
+      ON CONFLICT (business_id) DO NOTHING
       `,
-      [businessId, `${financialYear}:${invoiceType}`],
+      [businessId],
     );
 
-    const result = await client.query(
+    const settingsResult = await client.query<{
+      next_invoice_number: number | null;
+      next_purchase_number: number | null;
+    }>(
       `
-            WITH max_existing AS (
-                SELECT COALESCE(
-                    MAX((substring(invoice_number FROM '([0-9]+)$'))::int),
-                    0
-                ) AS max_sequence_no
-                FROM invoices
-                WHERE business_id = $1
-                  AND financial_year = $2
-                  AND invoice_type = $3::invoice_type
-            )
-            INSERT INTO invoice_sequences (business_id, financial_year, invoice_type, last_sequence_no)
-            VALUES (
-                $1,
-                $2,
-                $3::invoice_type,
-                (SELECT max_sequence_no + 1 FROM max_existing)
-            )
-            ON CONFLICT (business_id, financial_year, invoice_type)
-            DO UPDATE
-            SET last_sequence_no = GREATEST(
-                invoice_sequences.last_sequence_no + 1,
-                (SELECT max_sequence_no + 1 FROM max_existing)
-            )
-            RETURNING last_sequence_no
-            `,
-      [businessId, financialYear, invoiceType],
+      SELECT next_invoice_number, next_purchase_number
+      FROM invoice_settings
+      WHERE business_id = $1
+      FOR UPDATE
+      `,
+      [businessId],
     );
-    return result.rows[0].last_sequence_no as number;
+
+    const settings = settingsResult.rows[0];
+    if (!settings) {
+      throw new AppError(
+        "Invoice settings not found for business",
+        404,
+        ERROR_CODES.NOT_FOUND,
+      );
+    }
+
+    const currentSequence = Number(settings[sequenceColumn as keyof typeof settings] ?? 1);
+    const nextSequence = currentSequence + 1;
+
+    await client.query(
+      `
+      UPDATE invoice_settings
+      SET ${sequenceColumn} = $2,
+          updated_at = NOW()
+      WHERE business_id = $1
+      `,
+      [businessId, nextSequence],
+    );
+
+    return currentSequence;
   },
 
   async insertInvoice(

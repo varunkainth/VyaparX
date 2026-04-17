@@ -90,6 +90,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
   const [lineTotalDrafts, setLineTotalDrafts] = useState<
     Record<string, string>
   >({});
+  const submitIdempotencyKeyRef = React.useRef<string | null>(null);
   const sourceInvoiceId = searchParams.get("source_invoice_id");
   const isRevisionMode = searchParams.get("mode") === "revise";
   const round2 = useCallback(
@@ -562,6 +563,15 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
   const onSubmit = async (data: CreateInvoiceFormData) => {
     if (!currentBusiness) return;
 
+    if (!submitIdempotencyKeyRef.current) {
+      submitIdempotencyKeyRef.current =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `idemp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+
+    const submissionIdempotencyKey = submitIdempotencyKeyRef.current;
+
     // Validate stock for sales invoices
     if (invoiceType === "sales") {
       const stockValidation = validateStockForSales();
@@ -683,9 +693,13 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
       };
 
       if (invoiceType === "sales") {
-        await invoiceService.createSalesInvoice(invoiceData);
+        await invoiceService.createSalesInvoice(invoiceData, {
+          idempotencyKey: submissionIdempotencyKey,
+        });
       } else {
-        await invoiceService.createPurchaseInvoice(invoiceData);
+        await invoiceService.createPurchaseInvoice(invoiceData, {
+          idempotencyKey: submissionIdempotencyKey,
+        });
 
         // Auto-update inventory stock for purchase invoices
         const stockUpdatePromises = data.items
@@ -727,6 +741,7 @@ export function CreateInvoicePage({ invoiceType }: CreateInvoicePageProps) {
       toast.success(
         `${invoiceType === "sales" ? "Sales" : "Purchase"} invoice created successfully!`,
       );
+      submitIdempotencyKeyRef.current = null;
       router.push("/invoices");
     } catch (error) {
       const errorMessage = getErrorMessage(error);

@@ -193,8 +193,9 @@ export const invoiceService = {
 
   async createSalesInvoice(
     data: CreateInvoiceInput,
+    options?: { idempotencyKey?: string },
   ): Promise<InvoiceWithItems> {
-    const idempotencyKey = generateIdempotencyKey();
+    const idempotencyKey = options?.idempotencyKey ?? generateIdempotencyKey();
     const response = await apiClient.post<ApiResponse<any>>(
       `/api/v1/invoices/sales`,
       data,
@@ -209,8 +210,9 @@ export const invoiceService = {
 
   async createPurchaseInvoice(
     data: CreateInvoiceInput,
+    options?: { idempotencyKey?: string },
   ): Promise<InvoiceWithItems> {
-    const idempotencyKey = generateIdempotencyKey();
+    const idempotencyKey = options?.idempotencyKey ?? generateIdempotencyKey();
     const response = await apiClient.post<ApiResponse<any>>(
       `/api/v1/invoices/purchase`,
       data,
