@@ -72,6 +72,9 @@ export const useAuthStore = create<AuthState & AuthActions & { _hasHydrated: boo
         const { clearBusinesses } = require("@/store/useBusinessStore").useBusinessStore.getState();
         clearBusinesses();
 
+        const { clearSubscription } = require("@/store/useSubscriptionStore").useSubscriptionStore.getState();
+        clearSubscription();
+
         const { resetBusinessesFetchState } = require("@/hooks/use-businesses");
         resetBusinessesFetchState();
 

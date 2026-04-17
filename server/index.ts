@@ -26,6 +26,9 @@ import analyticsDashboardRouter from "./src/routes/analytics-dashboard.routes";
 import invoiceSettingsRouter from "./src/routes/invoice-settings.routes";
 import emailRouter from "./src/routes/email.routes";
 import notificationRouter from "./src/routes/notification.routes";
+import subscriptionRouter from "./src/routes/subscription.routes";
+import webhookRouter from "./src/routes/webhook.routes";
+import { getRazorpayHealth } from "./src/config/razorpay";
 import { getCacheHealth } from "./src/services/cache.service";
 import { closeQueueConnections, getQueueHealth } from "./src/services/queue.service";
 import { getStorageHealth } from "./src/services/storage.service";
@@ -34,6 +37,10 @@ import { sendSuccess } from "./src/utils/responseHandler";
 
 const app = express();
 app.set("trust proxy", 1);
+
+// Webhooks must be mounted before express.json() so route-level express.raw() gets the original body.
+app.use("/webhooks", webhookRouter);
+
 app.use(express.json());
 app.use(helmetMiddleware);
 app.use(corsMiddleware);
@@ -80,6 +87,17 @@ app.get("/health/storage", async (_req, res) => {
 
     return sendSuccess(res, {
         data,
+    });
+});
+
+app.get("/health/payments", (_req, res) => {
+    const razorpay = getRazorpayHealth();
+    return sendSuccess(res, {
+        data: {
+            status: razorpay.ready ? "ok" : "degraded",
+            provider: "razorpay",
+            razorpay,
+        },
     });
 });
 
@@ -153,6 +171,7 @@ app.use("/api/v1", analyticsDashboardRouter);
 app.use("/api/v1", invoiceSettingsRouter);
 app.use("/api/v1", emailRouter);
 app.use("/api/v1", notificationRouter);
+app.use("/api/v1/subscriptions", subscriptionRouter);
 
 app.use((req, res) => {
     res.status(404).json({

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { FloatingActionButton } from "@/components/ui/floating-action-button"
+import { useFeatureGate } from "@/hooks/useFeatureGate"
 import { 
   DollarSign,
   FileText,
@@ -26,11 +27,13 @@ import {
   Plus,
   BarChart3,
   Activity,
+  Sparkles,
 } from "lucide-react"
 
 export function DashboardPage() {
   const router = useRouter()
   const { currentBusiness } = useBusinessStore()
+  const analyticsGate = useFeatureGate("analytics_overview")
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -146,7 +149,15 @@ export function DashboardPage() {
         </div>
         {/* Desktop Actions */}
         <div className="hidden md:flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={() => router.push("/dashboard/analytics")}>
+          <Button variant="secondary" size="sm" onClick={() => router.push("/settings/subscription")}>
+            <Sparkles className="h-4 w-4 mr-2" />
+            Upgrade to Pro
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => (analyticsGate.allowed ? router.push("/dashboard/analytics") : analyticsGate.upgrade())}
+          >
             <BarChart3 className="h-4 w-4 mr-2" />
             Analytics
           </Button>
@@ -159,6 +170,14 @@ export function DashboardPage() {
             Create Invoice
           </Button>
         </div>
+      </div>
+
+      {/* Mobile Upgrade CTA */}
+      <div className="md:hidden">
+        <Button className="w-full" variant="secondary" onClick={() => router.push("/settings/subscription")}>
+          <Sparkles className="h-4 w-4 mr-2" />
+          Upgrade to Pro
+        </Button>
       </div>
 
       {/* Stats Cards - Mobile Optimized */}

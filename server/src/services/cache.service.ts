@@ -196,6 +196,11 @@ export const buildPublicInvoiceCacheKey = async (businessId: string, invoiceId: 
     return `invoice:public:${businessId}:${invoiceId}:v${version}`;
 };
 
+export const buildUserPlanCacheKey = async (userId: string) => {
+    const version = await getNamespaceVersion(`plan:${userId}`);
+    return `plan:${userId}:v${version}`;
+};
+
 export const getOrSetCache = async <T>(
     key: string,
     ttlSeconds: number,
@@ -248,4 +253,8 @@ export const invalidateBusinessFinancialCache = async (
         invalidateInvoiceListCache(businessId),
         ...uniqueInvoiceIds.map((invoiceId) => invalidateInvoiceCache(businessId, invoiceId)),
     ]);
+};
+
+export const invalidateUserPlanCache = async (userId: string) => {
+    await bumpNamespaceVersion(`plan:${userId}`);
 };

@@ -65,3 +65,10 @@ server/docs/
 .vscode
 temp
 .wrangler
+
+// Ignore files that may contain sensitive information or are not relevant to the project.
+myenv
+.codex
+.github
+graphify-out
+AGENTS.md

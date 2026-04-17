@@ -2,11 +2,13 @@
 
 import { useTheme } from "next-themes"
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { useNotifications } from "@/hooks/useNotifications"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Switch } from "@/components/ui/switch"
+import { Button } from "@/components/ui/button"
 import { AppSidebar } from "@/components/layout/app-sidebar"
 import { PageLayout } from "@/components/layout/page-layout"
 import {
@@ -36,10 +38,12 @@ import {
   Wallet,
   CheckCircle,
   Info,
+  Sparkles,
 } from "lucide-react"
 import { toast } from "sonner"
 
 export function PreferencesPage() {
+  const router = useRouter()
   const { theme, setTheme } = useTheme()
   const { preferences, updatePreferences } = useNotifications()
   const [mounted, setMounted] = useState(false)
@@ -355,14 +359,20 @@ export function PreferencesPage() {
               </CardContent>
             </Card>
 
-            {/* Future Settings Placeholder */}
             <Card className="border-dashed">
-              <CardContent className="pt-6">
-                <div className="text-center text-muted-foreground">
-                  <Settings className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">More preferences coming soon...</p>
-                  <p className="text-xs mt-1">Language, notifications, and more</p>
-                </div>
+              <CardHeader>
+                <CardTitle className="text-base md:text-lg flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Unlock Pro Features
+                </CardTitle>
+                <CardDescription className="text-xs md:text-sm">
+                  Upgrade your plan to enable advanced reports, recurring invoices, and team workflows.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={() => router.push("/settings/subscription")}>
+                  Upgrade to Pro
+                </Button>
               </CardContent>
             </Card>
           </div>

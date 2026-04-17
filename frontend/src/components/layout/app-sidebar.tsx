@@ -208,6 +208,10 @@ const data = {
           url: "/settings/invoice",
         },
         {
+          title: "Billing",
+          url: "/settings/billing",
+        },
+        {
           title: "Team Members",
           url: "/settings/team",
         },

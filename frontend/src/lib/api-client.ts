@@ -1,5 +1,6 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig, type AxiosResponse } from "axios";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useUpgradeModalStore } from "@/store/useUpgradeModalStore";
 import { API_BASE_URL } from "@/lib/env";
 
 // Request deduplication map
@@ -23,6 +24,32 @@ const apiClient: AxiosInstance = axios.create({
 // Refresh state
 let isRefreshing = false;
 let refreshPromise: Promise<void> | null = null;
+
+type UpgradeErrorShape = {
+  error?: {
+    code?: string;
+    message?: string;
+    feature?: string;
+    limit_type?: string;
+    upgrade_required?: boolean;
+  };
+  message?: string;
+  upgrade_required?: boolean;
+};
+
+function maybeOpenUpgradeModal(responseData: unknown) {
+  const payload = responseData as UpgradeErrorShape | undefined;
+  const error = payload?.error;
+  const shouldOpen = Boolean(payload?.upgrade_required || error?.upgrade_required);
+
+  if (!shouldOpen) return;
+
+  useUpgradeModalStore.getState().open({
+    feature: error?.feature ?? error?.limit_type ?? null,
+    message: error?.message ?? payload?.message ?? null,
+    source: "api",
+  });
+}
 
 // Request interceptor to add auth token and handle deduplication
 apiClient.interceptors.request.use(
@@ -84,6 +111,10 @@ apiClient.interceptors.response.use(
     // Handle deduplicated requests
     if (error.__DEDUPLICATED__) {
       return error.pendingRequest;
+    }
+
+    if (error.response?.status === 402 || error.response?.status === 403) {
+      maybeOpenUpgradeModal(error.response.data);
     }
     
     // Clean up pending request on error

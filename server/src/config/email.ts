@@ -563,10 +563,7 @@ This is an automated email. Please do not reply to this message.
     const subject = `Join ${businessName} on VyaparX`;
 
     // Role descriptions and permissions
-    const roleDescriptions: Record<
-      string,
-      { label: string; description: string; permissions: string[] }
-    > = {
+    const roleDescriptions = {
       admin: {
         label: "Admin",
         description: "Can create, edit, delete records and manage team members",
@@ -615,7 +612,8 @@ This is an automated email. Please do not reply to this message.
       },
     };
 
-    const roleInfo = roleDescriptions[role] || roleDescriptions.viewer;
+    const roleKey = role in roleDescriptions ? role : "viewer";
+    const roleInfo = roleDescriptions[roleKey as keyof typeof roleDescriptions];
 
     const html = `
             <!DOCTYPE html>
