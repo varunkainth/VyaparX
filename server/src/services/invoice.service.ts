@@ -220,8 +220,8 @@ async function insertInvoiceWithNumberRetry(params: {
   client: any;
   businessId: string;
   financialYear: string;
+  invoiceDate: string;
   sequenceType: "sales" | "purchase";
-  buildInvoiceNumber: (sequenceNo: number) => string;
   insert: (invoiceNumber: string) => Promise<string>;
   maxRetries?: number;
 }) {
@@ -231,13 +231,12 @@ async function insertInvoiceWithNumberRetry(params: {
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     const savepointName = `invoice_insert_retry_${attempt}`;
 
-    const sequenceNo = await invoiceRepository.nextInvoiceSequence(
-      params.client,
-      params.businessId,
-      params.financialYear,
-      params.sequenceType,
-    );
-    const invoiceNumber = params.buildInvoiceNumber(sequenceNo);
+    const { sequenceNo, invoiceNumber } = await invoiceRepository.nextInvoiceSequence({
+      client: params.client,
+      businessId: params.businessId,
+      invoiceDate: params.invoiceDate,
+      invoiceType: params.sequenceType,
+    });
 
     try {
       await params.client.query(`SAVEPOINT ${savepointName}`);
@@ -347,9 +346,8 @@ export async function createSaleInvoice(data: CreateInvoiceInput) {
         client,
         businessId: data.business_id,
         financialYear,
+        invoiceDate: data.invoice_date,
         sequenceType: "sales",
-        buildInvoiceNumber: (sequenceNo) =>
-          `INV-${invoiceNumberYear}-${String(sequenceNo).padStart(3, "0")}`,
         insert: (candidateInvoiceNumber) =>
           invoiceRepository.insertInvoice(client, {
             business_id: data.business_id,
@@ -659,9 +657,8 @@ export async function createPurchaseInvoice(data: CreateInvoiceInput) {
         client,
         businessId: data.business_id,
         financialYear,
+        invoiceDate: data.invoice_date,
         sequenceType: "purchase",
-        buildInvoiceNumber: (sequenceNo) =>
-          `PINV-${invoiceNumberYear}-${String(sequenceNo).padStart(3, "0")}`,
         insert: (candidateInvoiceNumber) =>
           invoiceRepository.insertInvoice(client, {
             business_id: data.business_id,
@@ -998,9 +995,8 @@ export async function createInvoiceNote(data: CreateInvoiceNoteInput) {
         client,
         businessId: data.business_id,
         financialYear,
+        invoiceDate: data.invoice_date,
         sequenceType,
-        buildInvoiceNumber: (sequenceNo) =>
-          `${prefix}-${invoiceNumberYear}-${String(sequenceNo).padStart(3, "0")}`,
         insert: (candidateInvoiceNumber) =>
           invoiceRepository.insertInvoice(client, {
             business_id: data.business_id,

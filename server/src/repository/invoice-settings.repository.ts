@@ -97,9 +97,13 @@ export const invoiceSettingsRepository = {
              SET 
                 invoice_prefix = 'INV',
                 invoice_number_format = 'INV-{YYYY}-{####}',
+                next_invoice_number = 1,
+                invoice_number_period_key = NULL,
                 reset_numbering = 'never',
                 purchase_prefix = 'PUR',
                 purchase_number_format = 'PUR-{YYYY}-{####}',
+                next_purchase_number = 1,
+                purchase_number_period_key = NULL,
                 default_due_days = 30,
                 default_template = 'default',
                 default_currency = 'INR',

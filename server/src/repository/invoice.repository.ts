@@ -21,15 +21,107 @@ type InvoicePdfStateRecord = {
   pdf_template_id: string | null;
 };
 
+type ResetNumbering = "never" | "yearly" | "monthly";
+
+type InvoiceSequenceResult = {
+  sequenceNo: number;
+  invoiceNumber: string;
+};
+
+const sequenceConfig = {
+  sales: {
+    counterColumn: "next_invoice_number" as const,
+    periodKeyColumn: "invoice_number_period_key" as const,
+    formatColumn: "invoice_number_format" as const,
+    defaultFormat: "INV-{YYYY}-{####}",
+  },
+  purchase: {
+    counterColumn: "next_purchase_number" as const,
+    periodKeyColumn: "purchase_number_period_key" as const,
+    formatColumn: "purchase_number_format" as const,
+    defaultFormat: "PUR-{YYYY}-{####}",
+  },
+} as const;
+
+const parseInvoiceDate = (invoiceDate: string): Date => {
+  const parsed = new Date(`${invoiceDate}T00:00:00Z`);
+
+  if (Number.isNaN(parsed.getTime())) {
+    throw new AppError("Invalid invoice_date", 400, ERROR_CODES.BAD_REQUEST);
+  }
+
+  return parsed;
+};
+
+const deriveResetPeriodKey = (
+  resetNumbering: ResetNumbering,
+  invoiceDate: string,
+): string | null => {
+  if (resetNumbering === "never") {
+    return null;
+  }
+
+  const date = parseInvoiceDate(invoiceDate);
+  const year = date.getUTCFullYear();
+
+  if (resetNumbering === "yearly") {
+    return String(year);
+  }
+
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+};
+
+const ensureResetFriendlyFormat = (
+  format: string,
+  resetNumbering: ResetNumbering,
+): string => {
+  let resolved = format;
+
+  if (resetNumbering !== "never" && !resolved.includes("{YYYY}")) {
+    resolved = resolved.replace("{####}", "{YYYY}-{####}");
+  }
+
+  if (resetNumbering === "monthly" && !resolved.includes("{MM}")) {
+    resolved = resolved.replace("{####}", "{MM}-{####}");
+  }
+
+  return resolved;
+};
+
+const formatInvoiceNumber = (
+  format: string,
+  invoiceDate: string,
+  sequenceNo: number,
+  resetNumbering: ResetNumbering,
+): string => {
+  const date = parseInvoiceDate(invoiceDate);
+  const year = String(date.getUTCFullYear());
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const normalizedFormat = ensureResetFriendlyFormat(format, resetNumbering);
+
+  return normalizedFormat
+    .replaceAll("{YYYY}", year)
+    .replaceAll("{YY}", year.slice(-2))
+    .replaceAll("{MM}", month)
+    .replaceAll("{M}", String(date.getUTCMonth() + 1))
+    .replaceAll("{####}", String(sequenceNo).padStart(3, "0"))
+    .replaceAll("{SEQ}", String(sequenceNo));
+};
+
 export const invoiceRepository = {
-  async nextInvoiceSequence(
+  async nextInvoiceSequence(params: {
     client: PoolClient,
     businessId: string,
-    financialYear: string,
+    invoiceDate: string,
     invoiceType: "sales" | "purchase",
-  ) {
+  }): Promise<InvoiceSequenceResult> {
+    const { client, businessId, invoiceDate, invoiceType } = params;
+    const config = sequenceConfig[invoiceType];
+
     const sequenceColumn =
-      invoiceType === "sales" ? "next_invoice_number" : "next_purchase_number";
+      config.counterColumn;
+    const periodKeyColumn = config.periodKeyColumn;
 
     await client.query(
       `
@@ -45,9 +137,21 @@ export const invoiceRepository = {
     const settingsResult = await client.query<{
       next_invoice_number: number | null;
       next_purchase_number: number | null;
+      invoice_number_period_key: string | null;
+      purchase_number_period_key: string | null;
+      reset_numbering: ResetNumbering;
+      invoice_number_format: string;
+      purchase_number_format: string;
     }>(
       `
-      SELECT next_invoice_number, next_purchase_number
+      SELECT
+        next_invoice_number,
+        next_purchase_number,
+        invoice_number_period_key,
+        purchase_number_period_key,
+        reset_numbering,
+        invoice_number_format,
+        purchase_number_format
       FROM invoice_settings
       WHERE business_id = $1
       FOR UPDATE
@@ -64,20 +168,38 @@ export const invoiceRepository = {
       );
     }
 
-    const currentSequence = Number(settings[sequenceColumn as keyof typeof settings] ?? 1);
-    const nextSequence = currentSequence + 1;
+    const currentSequence = Number(settings[sequenceColumn] ?? 1);
+    const currentPeriodKey = deriveResetPeriodKey(settings.reset_numbering, invoiceDate);
+    const storedPeriodKey = settings[periodKeyColumn];
+    const shouldResetSequence =
+      settings.reset_numbering !== "never" &&
+      currentPeriodKey !== null &&
+      currentPeriodKey !== storedPeriodKey;
+
+    const sequenceNo = shouldResetSequence ? 1 : currentSequence;
+    const nextSequence = sequenceNo + 1;
+    const nextPeriodKey =
+      settings.reset_numbering === "never" ? storedPeriodKey : currentPeriodKey;
+    const format = settings[config.formatColumn] || config.defaultFormat;
+    const invoiceNumber = formatInvoiceNumber(
+      format,
+      invoiceDate,
+      sequenceNo,
+      settings.reset_numbering,
+    );
 
     await client.query(
       `
       UPDATE invoice_settings
       SET ${sequenceColumn} = $2,
+          ${periodKeyColumn} = $3,
           updated_at = NOW()
       WHERE business_id = $1
       `,
-      [businessId, nextSequence],
+      [businessId, nextSequence, nextPeriodKey],
     );
 
-    return currentSequence;
+    return { sequenceNo, invoiceNumber };
   },
 
   async insertInvoice(

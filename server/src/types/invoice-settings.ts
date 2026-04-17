@@ -5,11 +5,13 @@ export interface InvoiceSettings {
     invoice_prefix: string;
     invoice_number_format: string;
     next_invoice_number: number;
+    invoice_number_period_key: string | null;
     reset_numbering: "never" | "yearly" | "monthly";
     
     purchase_prefix: string;
     purchase_number_format: string;
     next_purchase_number: number;
+    purchase_number_period_key: string | null;
     
     default_due_days: number;
     default_template: string;
@@ -41,11 +43,13 @@ export interface UpdateInvoiceSettingsInput {
     invoice_prefix?: string;
     invoice_number_format?: string;
     next_invoice_number?: number;
+    invoice_number_period_key?: string | null;
     reset_numbering?: "never" | "yearly" | "monthly";
     
     purchase_prefix?: string;
     purchase_number_format?: string;
     next_purchase_number?: number;
+    purchase_number_period_key?: string | null;
     
     default_due_days?: number;
     default_template?: string;
