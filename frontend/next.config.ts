@@ -38,11 +38,12 @@ const apiBaseUrl = resolveApiBaseUrl();
 
 const cspDirectives = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://cdn.razorpay.com${isDevelopment ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
-  `connect-src 'self' ${apiBaseUrl}${isDevelopment ? " ws: wss:" : ""}`,
+  `connect-src 'self' ${apiBaseUrl} https://api.razorpay.com https://lumberjack.razorpay.com${isDevelopment ? " ws: wss:" : ""}`,
   "img-src 'self' data: blob: https:",
+  "frame-src 'self' https://checkout.razorpay.com https://api.razorpay.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

@@ -19,6 +19,25 @@ type RazorpayErrorLike = {
   message?: string
 }
 
+
+// Razorpay API types (partial, extend as needed)
+type RazorpaySubscriptionLike = {
+  id: string
+  status?: string
+  current_start?: number
+  current_end?: number
+  plan_amount?: number
+  currency?: string
+}
+
+type RazorpayPaymentLike = {
+  id: string
+  invoice_id?: string
+  amount?: number
+  currency?: string
+  status?: string
+}
+
 function mapRazorpayCreateError(error: RazorpayErrorLike): AppError {
   const description = error.error?.description || error.message || 'Subscription provider request failed'
   const code = error.error?.code || 'UNKNOWN_RAZORPAY_ERROR'
@@ -144,6 +163,118 @@ export async function getSubscriptionStatus(userId: string) {
   )
   return rows[0] ?? null
 }
+
+type SyncedState = {
+  status: 'active' | 'past_due' | 'cancelled' | 'expired'
+  plan: 'free' | 'pro'
+}
+
+function resolveSyncedState(rzStatus: string, currentEndUnix?: number): SyncedState {
+  const normalized = rzStatus.toLowerCase()
+
+  if (normalized === 'active' || normalized === 'authenticated') {
+    return { status: 'active', plan: 'pro' }
+  }
+
+  if (normalized === 'pending' || normalized === 'halted' || normalized === 'paused') {
+    return { status: 'past_due', plan: 'pro' }
+  }
+
+  if (normalized === 'cancelled') {
+    const stillInPaidPeriod =
+      typeof currentEndUnix === 'number' &&
+      Number.isFinite(currentEndUnix) &&
+      currentEndUnix * 1000 > Date.now()
+
+    return { status: 'cancelled', plan: stillInPaidPeriod ? 'pro' : 'free' }
+  }
+
+  return { status: 'expired', plan: 'free' }
+}
+
+export async function syncSubscriptionStatus(userId: string) {
+  logger.info({ userId }, 'syncSubscriptionStatus called')
+  const { rows } = await pool.query<{ razorpay_subscription_id: string | null }>(
+    `SELECT razorpay_subscription_id FROM subscriptions WHERE user_id = $1`,
+    [userId]
+  )
+
+  const razorpaySubscriptionId = rows[0]?.razorpay_subscription_id
+  logger.info({ razorpaySubscriptionId }, 'Fetched razorpaySubscriptionId')
+  if (!razorpaySubscriptionId) {
+    throw new AppError('No Razorpay subscription found to sync.', 404, ERROR_CODES.NOT_FOUND)
+  }
+
+  let razorpaySubscription: RazorpaySubscriptionLike
+  try {
+    razorpaySubscription = await razorpay.subscriptions.fetch(razorpaySubscriptionId) as RazorpaySubscriptionLike
+    logger.info({ razorpaySubscription }, 'Fetched razorpaySubscription')
+  } catch (error) {
+    logger.error({ err: error, userId, razorpaySubscriptionId }, 'Failed to sync subscription from Razorpay')
+    throw mapRazorpayCreateError(error as RazorpayErrorLike)
+  }
+
+  const currentStartUnix =
+    typeof razorpaySubscription.current_start === 'number' && Number.isFinite(razorpaySubscription.current_start)
+      ? razorpaySubscription.current_start
+      : null
+  const currentEndUnix =
+    typeof razorpaySubscription.current_end === 'number' && Number.isFinite(razorpaySubscription.current_end)
+      ? razorpaySubscription.current_end
+      : null
+
+  const nextState = resolveSyncedState(razorpaySubscription.status ?? 'expired', currentEndUnix ?? undefined)
+  logger.info({ currentStartUnix, currentEndUnix, nextState }, 'Parsed subscription period and state')
+
+  await pool.query(
+    `UPDATE subscriptions
+     SET status               = $1,
+         plan                 = $2,
+         current_period_start = COALESCE(to_timestamp($3), current_period_start),
+         current_period_end   = COALESCE(to_timestamp($4), current_period_end),
+         updated_at           = now()
+     WHERE user_id = $5`,
+    [nextState.status, nextState.plan, currentStartUnix, currentEndUnix, userId]
+  )
+
+  // Insert payment record if active and not already present
+  if (nextState.status === 'active' && currentStartUnix && currentEndUnix) {
+    const { rows: subRows } = await pool.query<{ id: string }>(
+      `SELECT id FROM subscriptions WHERE user_id = $1`,
+      [userId]
+    )
+    const subscriptionId = subRows[0]?.id
+    if (subscriptionId) {
+      // Check if a payment exists for this period (by period or by payment id)
+      logger.info({ userId, currentStartUnix, currentEndUnix }, 'Checking for existing payment record')
+      const { rows: paymentRows } = await pool.query<{ id: string }>(
+        `SELECT id FROM subscription_payments WHERE user_id = $1 AND billing_period_start = to_timestamp($2) AND billing_period_end = to_timestamp($3)`,
+        [userId, currentStartUnix, currentEndUnix]
+      )
+      if (paymentRows.length === 0) {
+        // Try to fetch latest payment for this subscription period
+        let amount = razorpaySubscription.plan_amount ?? 0
+        let currency = String(razorpaySubscription.currency ?? 'INR').toUpperCase()
+        // Defensive: fallback if missing
+        if (!amount || amount <= 0) amount = 1
+        if (!currency) currency = 'INR'
+        logger.info({ userId, subscriptionId, amount, currency, currentStartUnix, currentEndUnix }, 'Inserting new subscription_payments record')
+        await pool.query(
+          `INSERT INTO subscription_payments
+             (user_id, subscription_id, amount_paise, currency, status, billing_period_start, billing_period_end)
+           VALUES ($1, $2, $3, $4, 'captured', to_timestamp($5), to_timestamp($6))`,
+          [userId, subscriptionId, amount, currency, currentStartUnix, currentEndUnix]
+        )
+      } else {
+        logger.info({ userId, subscriptionId, currentStartUnix, currentEndUnix }, 'Payment record already exists for this period')
+      }
+    }
+  }
+
+  await bustPlanCache(userId)
+  return getSubscriptionStatus(userId)
+}
+
 
 type SubscriptionPaymentHistoryRow = {
   id: string

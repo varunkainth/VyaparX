@@ -7,6 +7,7 @@ import {
   listSubscriptionPayments,
   getSubscriptionStatus,
   cancelSubscription,
+  syncSubscriptionStatus,
 } from '../services/subscription.service'
 
 type BillingCycle = 'monthly' | 'annual'
@@ -105,6 +106,23 @@ export async function cancel(
 
     return sendSuccess(res, {
       message: 'Subscription will cancel at end of billing period.',
+    })
+  } catch (err) { next(err) }
+}
+
+export async function syncStatus(
+  req: Request, res: Response, next: NextFunction
+) {
+  try {
+    if (!req.user?.id) {
+      throw new AppError('Authentication required', 401, ERROR_CODES.UNAUTHORIZED)
+    }
+
+    const status = await syncSubscriptionStatus(req.user.id)
+
+    return sendSuccess(res, {
+      message: 'Subscription status synced from Razorpay',
+      data: status,
     })
   } catch (err) { next(err) }
 }

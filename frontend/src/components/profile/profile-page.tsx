@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AxiosError } from "axios";
 import { useAuthStore } from "@/store/useAuthStore";
+import { useSubscriptionStore } from "@/store/useSubscriptionStore";
 import { authService } from "@/services/auth.service";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -69,6 +70,9 @@ import type { PasskeyCredential } from "@/types/auth";
 export function ProfilePage() {
   const router = useRouter();
   const { user, setUser, clearAuth } = useAuthStore();
+  const plan = useSubscriptionStore((state) => state.plan);
+  const billingStatus = useSubscriptionStore((state) => state.billingStatus);
+  const refreshForUser = useSubscriptionStore((state) => state.refreshForUser);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -185,6 +189,11 @@ export function ProfilePage() {
     void loadPasskeys();
   }, []);
 
+  useEffect(() => {
+    if (!user?.id) return;
+    void refreshForUser(user.id);
+  }, [refreshForUser, user?.id]);
+
   const handleAddPasskey = async () => {
     if (!passkeyClient.isSupported()) {
       toast.error("Passkeys are not supported in this browser.");
@@ -234,6 +243,10 @@ export function ProfilePage() {
     .join("")
     .toUpperCase()
     .slice(0, 2);
+  const activePlanLabel = plan === "pro" ? "Pro" : "Free";
+  const billingStatusLabel = billingStatus
+    ? billingStatus.replace("_", " ").replace(/\b\w/g, (char) => char.toUpperCase())
+    : null;
 
   return (
     <SidebarProvider>
@@ -299,6 +312,13 @@ export function ProfilePage() {
                           <XCircle className="h-3 w-3" />
                         )}
                         {user.is_verified ? "Verified" : "Not Verified"}
+                      </Badge>
+                      <Badge
+                        variant={plan === "pro" ? "default" : "secondary"}
+                        className="gap-1"
+                      >
+                        Active Plan: {activePlanLabel}
+                        {billingStatusLabel ? ` (${billingStatusLabel})` : ""}
                       </Badge>
                       <Badge variant="outline" className="gap-1">
                         <Calendar className="h-3 w-3" />

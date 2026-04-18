@@ -58,8 +58,8 @@ export const BILLING_FEATURES: Record<BillingFeatureKey, BillingFeatureDefinitio
 };
 
 export const BILLING_PRICE = {
-  monthly: 999,
-  annual: 9999,
+  monthly: 299,
+  annual: 2499,
 };
 
 export const formatINR = (value: number) =>

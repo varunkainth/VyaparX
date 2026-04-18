@@ -30,6 +30,13 @@ export const subscriptionService = {
     return response.data.data;
   },
 
+  async syncStatus(): Promise<SubscriptionStatus | null> {
+    const response = await apiClient.post<ApiResponse<SubscriptionStatus | null>>(
+      "/api/v1/subscriptions/sync-status",
+    );
+    return response.data.data;
+  },
+
   async getHistory(): Promise<SubscriptionPaymentHistoryItem[]> {
     const response = await apiClient.get<ApiResponse<SubscriptionPaymentHistoryItem[]>>(
       "/api/v1/subscriptions/payments",

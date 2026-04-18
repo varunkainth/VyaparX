@@ -79,6 +79,9 @@ export function BillingSettingsPage() {
     return "Free";
   }, [billingStatus, plan]);
 
+  const annualSavings = Math.max(0, (BILLING_PRICE.monthly * 12) - BILLING_PRICE.annual);
+  const savingsPercent = Math.round((annualSavings / (BILLING_PRICE.monthly * 12)) * 100);
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -171,35 +174,38 @@ export function BillingSettingsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-lg border p-4">
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Billing cycle</p>
-                      <div className="mt-2 flex items-center gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={selectedCycle === "monthly" ? "default" : "outline"}
-                          onClick={() => setSelectedCycle("monthly")}
-                        >
-                          Monthly
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant={selectedCycle === "annual" ? "default" : "outline"}
-                          onClick={() => setSelectedCycle("annual")}
-                        >
-                          Annual
-                        </Button>
+                  <div className="space-y-4">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className={`rounded-lg border p-4 transition-all cursor-pointer ${
+                        selectedCycle === "monthly" 
+                          ? "border-primary bg-primary/5" 
+                          : "border-muted hover:border-primary/50"
+                      }`} onClick={() => setSelectedCycle("monthly")}>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Monthly billing</p>
+                        <p className="mt-3 text-2xl font-bold">{formatINR(BILLING_PRICE.monthly)}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">per month</p>
+                      </div>
+
+                      <div className={`rounded-lg border p-4 transition-all cursor-pointer relative overflow-hidden ${
+                        selectedCycle === "annual"
+                          ? "border-green-500 bg-green-50 dark:bg-green-950/20 ring-2 ring-green-500/20"
+                          : "border-muted hover:border-green-500/50"
+                      }`} onClick={() => setSelectedCycle("annual")}>
+                        {selectedCycle === "annual" && (
+                          <div className="absolute top-0 right-0 bg-green-500 text-white text-xs px-2 py-1 rounded-bl">BEST DEAL</div>
+                        )}
+                        <p className="text-xs uppercase tracking-wide text-green-700 dark:text-green-400">Annual billing</p>
+                        <p className="mt-3 text-2xl font-bold text-green-700 dark:text-green-400">{formatINR(BILLING_PRICE.annual)}</p>
+                        <p className="mt-1 text-xs text-green-600 dark:text-green-500">per year • Save {savingsPercent}%</p>
                       </div>
                     </div>
-
-                    <div className="rounded-lg border p-4">
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Selected price</p>
-                      <p className="mt-2 text-2xl font-bold">
-                        {selectedCycle === "monthly" ? formatINR(BILLING_PRICE.monthly) : formatINR(BILLING_PRICE.annual)}
-                      </p>
-                    </div>
+                    {selectedCycle === "annual" && (
+                      <div className="rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 p-3">
+                        <p className="text-sm font-medium text-green-900 dark:text-green-200">
+                          💰 Save {formatINR(annualSavings)}/year vs monthly • Just {formatINR(BILLING_PRICE.annual / 12)}/month
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">

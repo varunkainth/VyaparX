@@ -58,6 +58,20 @@ export function UpgradeModal() {
 
   const price = billingCycle === "monthly" ? BILLING_PRICE.monthly : BILLING_PRICE.annual;
   const annualSavings = Math.max(0, (BILLING_PRICE.monthly * 12) - BILLING_PRICE.annual);
+  const savingsPercent = Math.round((annualSavings / (BILLING_PRICE.monthly * 12)) * 100);
+  const savingsPerMonth = annualSavings / 12;
+
+  const refreshUntilPro = async () => {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const status = await refreshStatus();
+      if (status?.plan === "pro" || status?.status === "active") {
+        return true;
+      }
+      await sleep(1200);
+    }
+
+    return false;
+  };
 
   const startCheckout = async () => {
     setIsCheckingOut(true);
@@ -80,13 +94,24 @@ export function UpgradeModal() {
           contact: user?.phone,
         },
         theme: { color: "#2563eb" },
-        handler: () => {
-          void refreshStatus();
-          toast.success("Payment captured. Refreshing your plan.");
+        handler: async () => {
+          try {
+            await subscriptionService.syncStatus();
+          } catch {
+            // Webhook may still update status; polling below is the fallback.
+          }
+
+          const upgraded = await refreshUntilPro();
+          if (upgraded) {
+            toast.success("Payment captured. Your plan is now Pro.");
+            return;
+          }
+
+          toast.success("Payment captured. Syncing your plan, this can take a few seconds.");
         },
         modal: {
           ondismiss: () => {
-            void refreshStatus();
+            void refreshUntilPro();
           },
         },
       });
@@ -140,38 +165,56 @@ export function UpgradeModal() {
                       <p className="text-sm font-medium">Choose billing cycle</p>
                       <p className="text-sm text-muted-foreground">Monthly or annual billing before checkout.</p>
                     </div>
-                    <div className="flex items-center gap-2 rounded-full border bg-muted/30 p-1">
-                      <button
-                        type="button"
-                        className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${billingCycle === "monthly" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                        onClick={() => setBillingCycle("monthly")}
-                      >
-                        Monthly
-                      </button>
-                      <button
-                        type="button"
-                        className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${billingCycle === "annual" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
-                        onClick={() => setBillingCycle("annual")}
-                      >
-                        Annual
-                      </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex items-center gap-2 rounded-full border bg-muted/30 p-1">
+                        <button
+                          type="button"
+                          className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${billingCycle === "monthly" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                          onClick={() => setBillingCycle("monthly")}
+                        >
+                          Monthly
+                        </button>
+                        <button
+                          type="button"
+                          className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${billingCycle === "annual" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                          onClick={() => setBillingCycle("annual")}
+                        >
+                          Annual
+                        </button>
+                      </div>
+                      {billingCycle === "annual" && (
+                        <Badge className="bg-green-500/20 text-green-700 hover:bg-green-500/30 border-green-500/30">Save {savingsPercent}%</Badge>
+                      )}
                     </div>
                   </div>
 
                   <div className="mt-4 grid gap-3 sm:mt-5 sm:grid-cols-2 sm:gap-4">
-                    <div className="rounded-2xl border bg-muted/25 p-4">
+                    <div className="rounded-2xl border bg-muted/25 p-4 opacity-60">
                       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Free</p>
                       <p className="mt-2 text-3xl font-bold">₹0</p>
                       <p className="mt-1 text-sm text-muted-foreground">For basic bookkeeping</p>
                     </div>
-                    <div className="rounded-2xl border border-primary/25 bg-primary/10 p-4 shadow-sm">
+                    <div className={`rounded-2xl border p-4 shadow-sm transition-all ${
+                      billingCycle === "annual"
+                        ? "border-primary bg-primary/15 ring-2 ring-primary/30 scale-105"
+                        : "border-primary/25 bg-primary/10"
+                    }`}>
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-xs uppercase tracking-[0.18em] text-primary">Pro</p>
-                        <Badge className="bg-primary text-primary-foreground hover:bg-primary">Best value</Badge>
+                        {billingCycle === "annual" ? (
+                          <div className="flex flex-col items-end gap-1">
+                            <Badge className="bg-green-500/20 text-green-700 hover:bg-green-500/30 border-green-500/30">Recommended</Badge>
+                            <Badge className="bg-primary text-primary-foreground hover:bg-primary">Save {savingsPercent}%</Badge>
+                          </div>
+                        ) : (
+                          <Badge variant="outline">Lowest cost</Badge>
+                        )}
                       </div>
-                      <p className="mt-2 text-3xl font-bold">{formatINR(price)}</p>
+                      <p className="mt-3 text-3xl font-bold">{formatINR(price)}</p>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        {billingCycle === "annual" ? `Save ${formatINR(annualSavings)} / year` : "Billed monthly"}
+                        {billingCycle === "annual"
+                          ? `Save ${formatINR(annualSavings)} / year • ${formatINR(savingsPerMonth)}/month`
+                          : "Billed monthly"}
                       </p>
                     </div>
                   </div>
