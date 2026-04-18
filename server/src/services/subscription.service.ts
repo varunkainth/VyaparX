@@ -145,6 +145,39 @@ export async function getSubscriptionStatus(userId: string) {
   return rows[0] ?? null
 }
 
+type SubscriptionPaymentHistoryRow = {
+  id: string
+  razorpay_payment_id: string | null
+  razorpay_invoice_id: string | null
+  amount_paise: number
+  currency: string
+  status: 'captured' | 'failed'
+  billing_period_start: Date | null
+  billing_period_end: Date | null
+  created_at: Date
+}
+
+export async function listSubscriptionPayments(userId: string) {
+  const { rows } = await pool.query<SubscriptionPaymentHistoryRow>(
+    `SELECT id,
+            razorpay_payment_id,
+            razorpay_invoice_id,
+            amount_paise,
+            currency,
+            status,
+            billing_period_start,
+            billing_period_end,
+            created_at
+     FROM subscription_payments
+     WHERE user_id = $1
+     ORDER BY created_at DESC
+     LIMIT 50`,
+    [userId]
+  )
+
+  return rows
+}
+
 // ─── Cancel subscription ──────────────────────────────────────────────────────
 export async function cancelSubscription(userId: string) {
   const { rows } = await pool.query(

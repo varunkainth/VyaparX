@@ -201,6 +201,39 @@ const server = app.listen(PORT, HOST, async () => {
         process.exit(1);
     }
 
+    const razorpayHealth = getRazorpayHealth();
+    console.log("\n--- Razorpay Status ---");
+    if (razorpayHealth.ready) {
+        console.log("Razorpay is configured and ready");
+        console.log(`  Key ID configured: ${razorpayHealth.key_id_present}`);
+        console.log(`  Key secret configured: ${razorpayHealth.key_secret_present}`);
+        console.log(`  Webhook secret configured: ${razorpayHealth.webhook_secret_present}`);
+    } else {
+        console.warn("Razorpay is NOT fully configured");
+        console.warn(`  Key ID configured: ${razorpayHealth.key_id_present}`);
+        console.warn(`  Key secret configured: ${razorpayHealth.key_secret_present}`);
+        console.warn(`  Webhook secret configured: ${razorpayHealth.webhook_secret_present}`);
+        console.warn(`  Monthly plan configured: ${razorpayHealth.monthly_plan_present}`);
+        console.warn(`  Annual plan configured: ${razorpayHealth.annual_plan_present}`);
+        if (razorpayHealth.issues.length > 0) {
+            console.warn(`  Issues: ${razorpayHealth.issues.join('; ')}`);
+        }
+    }
+    console.log(
+        "  Health snapshot:",
+        JSON.stringify(
+            {
+                status: razorpayHealth.ready ? "ok" : "degraded",
+                provider: "razorpay",
+                ready: razorpayHealth.ready,
+                issues: razorpayHealth.issues,
+            },
+            null,
+            2
+        )
+    );
+    console.log("-----------------------");
+
     const cacheHealth = await getCacheHealth();
     console.log("\n--- Cache Status ---");
     if (cacheHealth.status === "ok" || cacheHealth.status === "degraded") {
